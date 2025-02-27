@@ -1,5 +1,5 @@
 # wikimaster
 
-fluehsi2
-hagereli
+fluehsi2 \
+hagereli \
 gutbrjoa
