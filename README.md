@@ -1,5 +1,5 @@
 # wikimaster
 
-fluehsi2 \
-hagereli \
-gutbrjoa
+Simeon Flühmann (fluehsi2)  \
+Elias Hager (hagereli) \
+Joanna Gutbrod (gutbrjoa)
