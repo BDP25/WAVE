@@ -44,13 +44,8 @@ result:
     - pubtime
     - medium_code
     - medium_name
-    - rubric
     - regional
-    - doctype
-    - doctype_description
-    - language
     - char_count
-    - dateline
     - head
     - subhead
     - article_link
@@ -92,24 +87,15 @@ if r.status_code == 200:
         if status.get('status') == 'finished':
             download_url = status.get('downloadUrl')
 
-            if download_url:
-                print(f"Download URL: {download_url}")  # Print the URL to verify
+            # Directly download the file from the download URL
+            download_response = requests.get(download_url, headers=headers)
+            file_name = download_url.split("/")[-1]  # Get the file name from the URL
 
-                # Directly download the file from the download URL
-                download_response = requests.get(download_url, headers=headers)
-
-                # Check if the download was successful
-                if download_response.status_code == 200:
-                    # Save the file in the current directory
-                    file_name = download_url.split("/")[-1]  # Get the file name from the URL
-                    with open(file_name, "wb") as file:
-                        file.write(download_response.content)
-                    print(f"Download complete. File saved as {file_name}")
-                else:
-                    print(f"Error downloading the file. Status code: {download_response.status_code}")
-            else:
-                print("Download URL not found.")
+            with open(file_name, "wb") as file:
+                file.write(download_response.content)
+                print(f"Download complete. File saved as {file_name}")
             break
+
         else:
             print("Job still running...")
             time.sleep(5)
