@@ -5,29 +5,30 @@ import random
 import time
 from dotenv import load_dotenv
 
-# .env-Datei laden
-load_dotenv()
+# Load the .env file
+load_dotenv(dotenv_path='.env.example')
 
-# API-Zugangsdaten aus Umgebungsvariablen
+# API credentials from environment variables
 headers = {
     "X-API-Key": os.getenv("SWISSDOX_KEY"),
     "X-API-Secret": os.getenv("SWISSDOX_SECRET")
 }
 
+# Define the base URL for the API
 API_BASE_URL = "https://swissdox.linguistik.uzh.ch/api"
 API_URL_QUERY = f"{API_BASE_URL}/query"
 API_URL_STATUS = f"{API_BASE_URL}/status"
 API_URL_DOWNLOAD = f"{API_BASE_URL}/download"
 
-# Berechnung des Zeitraums der letzten Woche
+# Calculate the date range for the last week
 end_date = datetime.date.today()
 start_date = end_date - datetime.timedelta(days=7)
 
-# Formatieren der Daten im gewünschten Format (YYYY-MM-DD)
+# Format the dates in the desired format (YYYY-MM-DD)
 start_date_str = start_date.strftime("%Y-%m-%d")
 end_date_str = end_date.strftime("%Y-%m-%d")
 
-# Erstellen der YAML-Abfrage mit den formatierten Start- und Enddaten
+# Create the YAML query with the formatted start and end dates
 query_yaml = f"""
 query:
   dates:
@@ -58,7 +59,7 @@ result:
 version: 1.2
 """
 
-# Generiere einen einzigartigen Namen für die Query
+# Generate a unique name for the query
 query_name = f"LastWeekNews_{int(time.time())}_{random.randint(1000, 9999)}"
 
 data = {
@@ -68,7 +69,7 @@ data = {
     "expirationDate": str(end_date + datetime.timedelta(days=30))
 }
 
-# Senden der Anfrage an die API
+# Send the request to the API
 r = requests.post(
     API_URL_QUERY,
     headers=headers,
