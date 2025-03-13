@@ -3,6 +3,7 @@
 - Wes für Resourcen bekommen wir.
 
 - News-Api?
+  - https://swissdox.linguistik.uzh.ch/
 
 - Speicher ? Wikipedia ist sehr viele Daten
 
