@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # https://swissdox.linguistik.uzh.ch/queries
 
 # Load the .env file
-load_dotenv(dotenv_path='.env')
+load_dotenv(dotenv_path='../WAVE/.env')
 
 # API credentials from environment variables
 headers = {
@@ -25,7 +25,7 @@ API_URL_DOWNLOAD = f"{API_BASE_URL}/download"
 
 # Calculate the date range for the last week
 end_date = datetime.date.today()
-start_date = end_date - datetime.timedelta(days=4)
+start_date = end_date - datetime.timedelta(days=10)
 
 
 # Format the dates in the desired format (YYYY-MM-DD)
@@ -40,10 +40,20 @@ sources_list = [
 ]
 
 
+
+abbreviations = [
+    "ZWAF", "ZWA", "ZWAO", "ZWAS", "ZWSO", "HEU", "HEUL", "APO", "AZ", "APPZ",
+    "BT", "BLZ", "BAZ", "BEOL", "BZ", "BLI", "BBLI", "BLIA", "BOLF", "CVAL",
+    "WEW", "WOZ", "DOMO", "GTB", "LPNV", "TLMD", "LTZ", "LUZ", "MLZ", "CAMP",
+    "NZZG", "TICK", "NZZS", "NZZM", "NLZ", "NZZ", "NNTZ", "NIW", "OBW", "OAS",
+    "LRVI", "PME", "SAS", "SAW", "SI", "NMZ", "HEUN", "TAE", "SHZ", "LM",
+    "LAT", "TA", "THT", "TZ", "TBT", "NLZS", "ZHUL", "BLIAO", "BLIO", "SRF",
+    "SGTO", "NNTA", "SFTV", "ZSZO", "ZHUO"
+]
+
 # Create the YAML query with the formatted start and end dates
 query_yaml = f"""
 query:
-  sources: {sources_list}
   dates:
     - from: {start_date_str}
       to: {end_date_str}
@@ -72,7 +82,7 @@ data = {
     "query": query_yaml,
     "name": query_name,
     "comment": "Alle Nachrichten aus der letzten Woche",
-    "expirationDate": str(end_date + datetime.timedelta(days=2))
+    "expirationDate": str(end_date + datetime.timedelta(days=30))
 }
 
 # Send the request to the API
