@@ -82,7 +82,7 @@ data = {
     "query": query_yaml,
     "name": query_name,
     "comment": "Alle Nachrichten aus der letzten Woche",
-    "expirationDate": str(end_date + datetime.timedelta(days=30))
+    "expirationDate": str(end_date + datetime.timedelta(days=5))
 }
 
 # Send the request to the API
@@ -111,7 +111,14 @@ if r.status_code == 200:
 
             if d.status_code == 200:
                 print("Size of file: %.2f KB" % (len(d.content) / 1024))
-                fp = open(f"./{filename}", "wb")
+
+                # Define the raw_data folder path
+                raw_data_folder = './raw_data'
+                # Ensure the folder exists
+                os.makedirs(raw_data_folder, exist_ok=True)
+                file_path = os.path.join(raw_data_folder, filename)
+
+                fp = open(f"./{file_path}", "wb")
                 fp.write(d.content)
                 fp.close()
             else:
