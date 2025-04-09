@@ -20,12 +20,12 @@ db_params = {
 # Calculate the date range for the last week
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Process news data for a specific date.')
-parser.add_argument('--date', type=str, default='today', help='Date in YYYY-MM-DD format or "today"')
+parser.add_argument('--date', type=str, default='latest', help='Date in YYYY-MM-DD format or "latest" for the latest data. Witch is two days ago')
 args = parser.parse_args()
 
 # Handle the date parameter
-if args.date.lower() == "today":
-    date_of_interest = datetime.date.today()
+if args.date.lower() == "latest":
+    date_of_interest = datetime.date.today() - datetime.timedelta(days=2)
 else:
     try:
         date_of_interest = datetime.datetime.strptime(args.date, "%Y-%m-%d").date()
