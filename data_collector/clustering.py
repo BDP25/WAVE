@@ -1,15 +1,14 @@
-import pandas as pd
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import DBSCAN
 from sklearn.manifold import TSNE
-import plotly.express as px
 from collections import Counter
+from dotenv import load_dotenv
+from cluster_data_to_db_json import generate_cluster_json
 import nltk
 import os
-import json
 import re
 import groq
-from dotenv import load_dotenv
+import json
 
 
 
@@ -19,18 +18,12 @@ groq_key = os.getenv("GROQ_API_KEY")
 client = groq.Groq(api_key=groq_key)
 
 
-os.environ["TOKENIZERS_PARALLELISM"] = "true"  # or "true"
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
-
-# Sicherstellen, dass der Punkt-Tokenizer von NLTK heruntergeladen ist
-nltk.download('punkt')
-
-
-
-
-def load_data():
-    """Lädt die bereinigte Daten aus einer Parquet-Datei."""
-    return pd.read_parquet("cleaned_data/cleaned_data.parquet", engine="pyarrow")
+# TODO
+# Download NLTK resources if needed (uncomment first time)
+# nltk.download('punkt')
+# nltk.download('punkt_tab')
 
 
 
@@ -130,69 +123,6 @@ def get_common_suggestions(cluster_texts):
 
 
 
-import json
-import hashlib
-from datetime import datetime
-
-def generate_cluster_id(cluster_number):
-    """
-    Erstelle eine gehashte Cluster-ID aus der Clusterzahl und der aktuellen Zeit.
-    :param cluster_number: Die Clusterzahl
-    :return: Gehashte Cluster-ID als String
-    """
-    current_time = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')  # Aktuelle Zeit im gewünschten Format
-    raw_id = f"{cluster_number}-{current_time}"
-    # Hashen der ID mit SHA256
-    hashed_id = hashlib.sha256(raw_id.encode()).hexdigest()
-    return hashed_id
-
-def generate_cluster_json(filtered_df):
-    """
-    Diese Funktion nimmt einen gefilterten DataFrame und gibt die Cluster-Daten im neuen JSON-Format zurück.
-    :param filtered_df: DataFrame mit Clusterdaten
-    :return: JSON-String der Cluster-Daten im neuen Format
-    """
-    cluster_data = {}
-    artikel_data = []
-
-    for cluster_id in sorted(filtered_df["dbscan_cluster"].unique()):
-        # Gehashte Cluster-ID erstellen
-        hashed_cluster_id = generate_cluster_id(cluster_id)
-
-        cluster_entries = filtered_df[filtered_df['dbscan_cluster'] == cluster_id]
-        # TODO replace with ARTICLE Names
-        wikipedia_article_names = ['test', 'test2']
-
-        # Cluster-Daten für die Cluster-Tabelle erstellen
-        cluster_data[hashed_cluster_id] = {
-            "cluster_id": hashed_cluster_id,
-            "wikipedia_article_names": wikipedia_article_names,
-            "date": filtered_df["pubtime"].iloc[0].strftime('%Y-%m-%d')
-        }
-
-        # Artikel-Daten für die Artikel-Tabelle erstellen
-        for _, row in cluster_entries.iterrows():
-            article_entry = {
-                "article_id": str(row["id"]),
-                "cluster_id": hashed_cluster_id,
-                "pubtime": row["pubtime"].strftime('%Y-%m-%dT%H:%M:%S'),
-                "medium_name": row["medium_name"],
-                "head": row["head"],
-                "article_link": row.get("article_link", "")
-            }
-            artikel_data.append(article_entry)
-
-    # Das final formatierte JSON
-    json_data = {
-        "artikel": artikel_data,
-        "cluster": list(cluster_data.values())
-    }
-
-    # Ausgabe als JSON-String ohne Unicode-Escape-Sequenzen
-    return json.dumps(json_data, indent=4, ensure_ascii=False)
-
-
-
 
 def df_plot_dbscan_with_json_output(df, target_clusters=(4, 6)):
     if len(df) <= 400:
@@ -232,19 +162,13 @@ def df_plot_dbscan_with_json_output(df, target_clusters=(4, 6)):
     # JSON-Daten für jedes Cluster sammeln
     cluster_json_data = generate_cluster_json(filtered_df)
 
-    # Ausgabe des JSON-Strings
+    # TODO testing Ausgabe des JSON-Strings
     print("\nCluster JSON Output:")
     print(type(cluster_json_data))
 
 
-
-
-    # Optional: Rückgabe des JSON-Strings
     return cluster_json_data
 
 
 
-# Beispielaufruf
-df = load_data()
-df_plot_dbscan_with_json_output(df, target_clusters=(4, 6))
 

@@ -15,7 +15,7 @@ def clean_text(text):
     return text
 
 
-def clean_and_process_data(folder='raw_data', output_folder='cleaned_data', similarity_threshold=0.98):
+def clean_and_process_data(folder='raw_data', similarity_threshold=0.98):
     """
     Loads a .tsv.xz file from the given folder, cleans the content, removes similar articles,
     and saves the result as a Parquet file.
@@ -51,11 +51,5 @@ def clean_and_process_data(folder='raw_data', output_folder='cleaned_data', simi
     # Convert 'pubtime' to a datetime format
     df['pubtime'] = pd.to_datetime(df['pubtime'])
 
-    # Create the 'cleaned_data' folder if it doesn't exist
-    os.makedirs(output_folder, exist_ok=True)
-
-    # Save the DataFrame as a Parquet file in the 'cleaned_data' folder
-    output_file = os.path.join(output_folder, "cleaned_data.parquet")
-    df.to_parquet(output_file, engine="pyarrow", index=False)
 
     return df
