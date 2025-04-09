@@ -3,14 +3,14 @@ import hashlib
 from datetime import datetime
 
 
-def generate_cluster_id(cluster_number: int, date) -> str:
+def generate_cluster_id(cluster_number: str, date: str) -> str:
     """
     Generates a hashed cluster ID based on the cluster number and the current timestamp.
 
     :param cluster_number: The cluster number
     :return: A hashed cluster ID as a string
     """
-    raw_id = f"{cluster_number}-{date}"
+    raw_id = f"{cluster_number}{date}"
 
     # Hashing the ID with SHA256
     return hashlib.sha256(raw_id.encode()).hexdigest()
@@ -30,7 +30,7 @@ def generate_cluster_json(filtered_df) -> str:
 
     # Process each unique cluster
     for cluster_id in sorted(filtered_df["dbscan_cluster"].unique()):
-        hashed_cluster_id = generate_cluster_id(cluster_id, publication_date)
+        hashed_cluster_id = generate_cluster_id(str(cluster_id), str(publication_date))
 
         # Filter DataFrame for current cluster
         cluster_entries = filtered_df[filtered_df['dbscan_cluster'] == cluster_id]
@@ -65,3 +65,6 @@ def generate_cluster_json(filtered_df) -> str:
 
     # Return the formatted JSON string without Unicode escapes
     return json.dumps(json_data, indent=4, ensure_ascii=False)
+
+if __name__ == "__main__":
+    print(generate_cluster_id("1", "2023-10-01"))
