@@ -243,8 +243,9 @@ def df_plot_dbscan_with_json_output(df, target_clusters=(4, 6)):
     return cluster_json_data
 
 
-
-# Beispielaufruf
-df = load_data()
-df_plot_dbscan_with_json_output(df, target_clusters=(4, 6))
+if __name__ == "__main__":
+    # Beispielaufruf
+    df = load_data()
+    json_output = df_plot_dbscan_with_json_output(df, target_clusters=(4, 6))
+    print(json_output)  # Ausgabe des JSON-Strings
 
