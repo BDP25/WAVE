@@ -11,7 +11,7 @@ import re
 import groq
 from dotenv import load_dotenv
 
-from load_db import load_data as load_db
+
 
 # Umgebungsvariablen laden
 load_dotenv(dotenv_path='../../WAVE/.env')
@@ -26,13 +26,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"  # or "true"
 nltk.download('punkt')
 
 
-db_params = {
-        "dbname": os.getenv("DB_NAME", "your_database"),
-        "user": os.getenv("DB_USER", "your_username"),
-        "password": os.getenv("DB_PASSWORD", "your_password"),
-        "host": os.getenv("DB_HOST", "localhost"),
-        "port": os.getenv("DB_PORT", "5432")
-    }
+
 
 def load_data():
     """Lädt die bereinigte Daten aus einer Parquet-Datei."""
@@ -173,7 +167,7 @@ def generate_cluster_json(filtered_df):
         cluster_data[hashed_cluster_id] = {
             "cluster_id": hashed_cluster_id,
             "wikipedia_article_names": wikipedia_article_names,
-            "date": datetime.now().strftime('%Y-%m-%d')
+            "date": filtered_df["pubtime"].iloc[0].strftime('%Y-%m-%d')
         }
 
         # Artikel-Daten für die Artikel-Tabelle erstellen
@@ -242,7 +236,7 @@ def df_plot_dbscan_with_json_output(df, target_clusters=(4, 6)):
     print("\nCluster JSON Output:")
     print(type(cluster_json_data))
 
-    load_db(cluster_json_data, db_params)
+
 
 
     # Optional: Rückgabe des JSON-Strings
