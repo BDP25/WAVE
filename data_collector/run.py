@@ -33,25 +33,13 @@ else:
         print(f"Error: Invalid date format '{args.date}'. Please use YYYY-MM-DD or 'today'. Using today's date.")
         date_of_interest = datetime.date.today()
 
-end_date = datetime.date.today()
-start_date = end_date - datetime.timedelta(days=2)
-
-
-
-
-
-# Format the dates in the desired format (YYYY-MM-DD)
-start_date_str = start_date.strftime("%Y-%m-%d")
-end_date_str = end_date.strftime("%Y-%m-%d")
 
 # download data
-fetch_swissdox_data(start_date_str, end_date_str)
+fetch_swissdox_data(date_of_interest, date_of_interest)
 
 # clean data
 cleaned_data = clean_and_process_data()
 
-
-#
 json_data = df_plot_dbscan_with_json_output(cleaned_data, target_clusters=(4, 6))
 
 # load data to database
