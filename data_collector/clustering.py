@@ -11,6 +11,8 @@ import re
 import groq
 from dotenv import load_dotenv
 
+from load_db import load_data as load_db
+
 # Umgebungsvariablen laden
 load_dotenv(dotenv_path='../../WAVE/.env')
 groq_key = os.getenv("GROQ_API_KEY")
@@ -22,6 +24,15 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"  # or "true"
 
 # Sicherstellen, dass der Punkt-Tokenizer von NLTK heruntergeladen ist
 nltk.download('punkt')
+
+
+db_params = {
+        "dbname": os.getenv("DB_NAME", "your_database"),
+        "user": os.getenv("DB_USER", "your_username"),
+        "password": os.getenv("DB_PASSWORD", "your_password"),
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5432")
+    }
 
 def load_data():
     """Lädt die bereinigte Daten aus einer Parquet-Datei."""
@@ -229,7 +240,10 @@ def df_plot_dbscan_with_json_output(df, target_clusters=(4, 6)):
 
     # Ausgabe des JSON-Strings
     print("\nCluster JSON Output:")
-    print(cluster_json_data)
+    print(type(cluster_json_data))
+
+    load_db(cluster_json_data, db_params)
+
 
     # Optional: Rückgabe des JSON-Strings
     return cluster_json_data
