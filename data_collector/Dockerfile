@@ -14,7 +14,7 @@ RUN rm -f /app/requirements.txt
 RUN echo '#!/bin/bash\n\
 # Default to today if no date specified\n\
 if [ $# -eq 0 ]; then\n\
-  python run.py --date today\n\
+  python run.py --date latest\n\
 else\n\
   # Pass all arguments directly to the Python script\n\
   python run.py "$@"\n\
