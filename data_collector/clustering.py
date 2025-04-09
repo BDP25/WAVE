@@ -162,11 +162,6 @@ def df_plot_dbscan_with_json_output(df, target_clusters=(4, 6)):
     # JSON-Daten für jedes Cluster sammeln
     cluster_json_data = generate_cluster_json(filtered_df)
 
-    # TODO testing Ausgabe des JSON-Strings
-    print("\nCluster JSON Output:")
-    print(type(cluster_json_data))
-
-
     return cluster_json_data
 
 
