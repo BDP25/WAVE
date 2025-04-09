@@ -76,11 +76,15 @@ def create_schema(db_params=None):
 
 
 def load_data(json_input, db_params):
-    # Check if json_input is a file path or a dictionary
+    # Check if json_input is a file path, a JSON string, or a dictionary
     if isinstance(json_input, (str, bytes, os.PathLike)):
-        # Read JSON data from file
-        with open(json_input, "r") as f:
-            data = json.load(f)
+        try:
+            # Try to parse it as a JSON string
+            data = json.loads(json_input)
+        except json.JSONDecodeError:
+            # If it fails, assume it's a file path and read JSON data from the file
+            with open(json_input, "r") as f:
+                data = json.load(f)
     else:
         # Assume json_input is already a dictionary
         data = json_input
