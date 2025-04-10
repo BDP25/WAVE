@@ -1,6 +1,5 @@
 import json
 import hashlib
-from datetime import datetime
 
 
 def generate_cluster_id(cluster_number: str, date: str) -> str:
@@ -16,7 +15,7 @@ def generate_cluster_id(cluster_number: str, date: str) -> str:
     return hashlib.sha256(raw_id.encode()).hexdigest()
 
 
-def generate_cluster_json(filtered_df) -> str:
+def generate_cluster_json(filtered_df, cluster_topics) -> str:
     """
     Transforms the filtered DataFrame into a structured JSON format for clustering data.
 
@@ -28,6 +27,8 @@ def generate_cluster_json(filtered_df) -> str:
     publication_date = filtered_df["pubtime"].iloc[0].strftime('%Y-%m-%d')
 
 
+
+
     # Process each unique cluster
     for cluster_id in sorted(filtered_df["dbscan_cluster"].unique()):
         hashed_cluster_id = generate_cluster_id(str(cluster_id), str(publication_date))
@@ -36,7 +37,8 @@ def generate_cluster_json(filtered_df) -> str:
         cluster_entries = filtered_df[filtered_df['dbscan_cluster'] == cluster_id]
 
         # Placeholder for actual article names (to be replaced later)
-        wikipedia_article_names = ['test', 'test2']
+        wikipedia_article_names = cluster_topics.get(cluster_id, [])
+        print(wikipedia_article_names)
 
         # Create cluster data entries
         cluster_data[hashed_cluster_id] = {
