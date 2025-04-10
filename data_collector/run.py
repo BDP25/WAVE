@@ -1,12 +1,13 @@
 import datetime
-import time
 import argparse
 import os
-
 from get_news_data import fetch_swissdox_data
 from clean_data import clean_and_process_data
-from load_db import load_data as db_load
-from clustering import df_plot_dbscan_with_json_output
+from load_db import load_data
+from clustering import dbscan_clustering_get_relevant_articles
+from content_to_relevant_titles import collect_wikipedia_candidates_per_cluster
+from cluster_data_to_db_json import generate_cluster_json
+
 
 
 db_params = {
@@ -46,8 +47,24 @@ fetch_swissdox_data(date_of_interest, date_of_interest)
 # clean data
 cleaned_data = clean_and_process_data()
 
-json_data = df_plot_dbscan_with_json_output(cleaned_data, target_clusters=(4, 6))
+
+# clustering
+df_relevant_articles = dbscan_clustering_get_relevant_articles(cleaned_data, target_clusters=(4, 6))
+
+
+# TODO content to wikipedia titles
+df_cluster_topics = collect_wikipedia_candidates_per_cluster(df_relevant_articles)
+print("Common")
+print(df_cluster_topics)
+# TODO
+# validate titles with wikpedia articles
+
+# convert relevant context to json format
+json_data = generate_cluster_json(df_relevant_articles, df_cluster_topics)
+
+
+
 
 # load data to database
-db_load(json_data, db_params)
+load_data(json_data, db_params)
 
