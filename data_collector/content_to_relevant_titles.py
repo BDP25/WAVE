@@ -12,16 +12,12 @@ load_dotenv(dotenv_path='../../WAVE/.env')
 groq_key = os.getenv("GROQ_API_KEY")
 client = groq.Groq(api_key=groq_key)
 
-
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 # TODO
 # Download NLTK resources if needed (uncomment first time)
-# nltk.download('punkt')
-# nltk.download('punkt_tab')
-
-
-
+nltk.download('punkt')
+nltk.download('punkt_tab')
 
 
 def split_text_sentencewise(text, max_length=1000):
@@ -60,6 +56,7 @@ def parse_json_response(response):
     except json.JSONDecodeError:
         return {}
 
+
 def get_wikipedia_suggestions(text):
     """Get Wikipedia suggestions from Groq for a single text, ensuring the titles exist on Wikipedia"""
 
@@ -95,6 +92,7 @@ def get_wikipedia_suggestions(text):
 
     return all_titles
 
+
 def get_common_suggestions(cluster_texts):
     """Analyze multiple texts to find common Wikipedia articles as a list"""
     all_articles = []
@@ -118,7 +116,6 @@ def get_common_suggestions(cluster_texts):
     ]
 
     return common_articles[:5]  # return top 5 if available
-
 
 
 def collect_wikipedia_candidates_per_cluster(filtered_df):
