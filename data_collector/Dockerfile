@@ -6,6 +6,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Download NLTK resources during build
+RUN python -m nltk.downloader punkt
+RUN python -m nltk.downloader punkt_tab
+
 # Copy application files, excluding the requirements file
 COPY . .
 RUN rm -f /app/requirements.txt

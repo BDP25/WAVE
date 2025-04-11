@@ -14,11 +14,6 @@ client = groq.Groq(api_key=groq_key)
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
-# TODO
-# Download NLTK resources if needed (uncomment first time)
-nltk.download('punkt')
-nltk.download('punkt_tab')
-
 
 def split_text_sentencewise(text, max_length=1000):
     """Split the text into sentence-wise chunks that do not exceed max_length"""
@@ -135,6 +130,5 @@ def collect_wikipedia_candidates_per_cluster(filtered_df):
         cluster_candidates[cluster_id] = suggestions
 
     return cluster_candidates
-
 
 
