@@ -1,3 +1,5 @@
+
+
 /* ================================
    Sidebar
 =================================== */
@@ -6,44 +8,72 @@
   top: 0;
   left: 0;
   height: 100vh;
-  width: 250px;
+  width: 250px; /* Fixed width of the sidebar */
   background-color: #12171e;
   padding: 0.4rem 0.8rem;
   z-index: 20;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar .top {
-  flex-shrink: 0;
 }
 
 .sidebar .top .logo {
   color: #fff;
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Place text below the logo */
   align-items: center;
   height: auto;
-  margin-bottom: 0.8rem; /* Reduziert von 1rem */
+  margin-bottom: 1rem;
 }
 
 .sidebar .top .logo span {
   font-size: 0.65rem;
   font-weight: bold;
-  margin-top: 0.3rem; /* Reduziert von 0.5rem */
+  margin-top: 0.5rem;
 }
+
+.sidebar ul li {
+  list-style-type: none;
+  margin: 0.2rem auto;
+}
+
+.sidebar ul li a {
+  color: #fff;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 3px;
+  border-radius: 0.8rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.sidebar ul li a:hover {
+  background-color: #fff;
+  color: #12171e;
+}
+
+.sidebar ul li a i {
+  font-size: 0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar ul li a span {
+  font-size: 0.75rem;
+}
+
 
 .logo {
   max-width: 100%;
-  height: auto;
+  height: auto; /* Maintain aspect ratio */
   display: block;
-  margin-top: 8px; /* Reduziert von 10px */
+  margin-top: 10px;
   max-height: 400px;
 }
 
+
+
+
 .sidebar .top .date-picker-container {
-  margin-top: 0.8rem; /* Reduziert von 1rem */
+  margin-top: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -52,98 +82,91 @@
 }
 
 .sidebar .top .date-picker-container label {
-  margin-bottom: 0.3rem; /* Reduziert von 0.4rem */
+  margin-bottom: 0.4rem;
   font-weight: bold;
 }
 
 .sidebar .top .date-picker {
   width: 85%;
-  padding: 5px 8px; /* Reduziert von 6px 10px */
+  padding: 6px 10px;
+  margin: 0 0 12px 0;
   border: none;
-  border-radius: 0.4rem; /* Reduziert von 0.5rem */
+  border-radius: 0.5rem;
   background-color: #1f2a38;
   color: #fff;
-  font-size: 0.8rem; /* Reduziert von 0.85rem */
+  font-size: 0.85rem;
   outline: none;
 }
 
 .sidebar .top .date-picker::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+  filter: invert(1); /* Kalender-Icon weiß */
 }
 
+
+
+
+
+
+
 /* ================================
-   Cluster Container (kompakt)
+   Cluster Container
 =================================== */
+
+/* Style for the cluster container */
 #cluster-container {
-  width: 85%;
-  margin: 0.3rem auto; /* Reduziert von 0.5rem */
-  flex-grow: 1;
-  overflow-y: auto;
-  padding-bottom: 0.5rem; /* Reduziert von 1rem */
+    width: 85%;
+    margin: 0.5rem auto 0;  /* Weniger Abstand oben */
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
 }
 
+/* Style for each cluster - kompakter */
 .cluster {
-  border: 2px solid #1f2a38;
-  padding: 0.3rem; /* Reduziert von 0.5rem */
-  margin-bottom: 0.3rem; /* Reduziert von 0.5rem */
-  background-color: #1f2a38;
-  border-radius: 0.4rem; /* Reduziert von 0.5rem */
-  color: #fff;
-  width: 100%;
-  box-sizing: border-box;
+    border: 2px solid #1f2a38;
+    padding: 0 0.5rem;  /* Reduziert von 0.8rem */
+    margin-bottom: 0.5rem;  /* Reduziert von 0.8rem */
+    background-color: #1f2a38;
+    border-radius: 0.5rem;
+    color: #fff;
+    width: 100%;
+    box-sizing: border-box;
 }
 
+/* Style for the cluster title */
 .cluster h3 {
-  margin: 0 0 0.1rem 0; /* Reduziert von 0.2rem */
-  font-size: 0.8rem; /* Reduziert von 0.85rem */
-  font-weight: bold;
-  color: #fff;
-  padding: 0.1rem 0; /* Neu hinzugefügt */
+    margin: 0 0 0.3rem 0;  /* Noch weniger Abstand unter dem Titel */
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #fff;
 }
 
+/* Style for the list of Wikipedia articles */
 .cluster ul {
-  list-style-type: none;
-  padding-left: 0;
-  margin: 0;
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
 }
 
+
+/* Style for each list item - MINIMALE ABSTÄNDE */
 .cluster li {
-  margin-bottom: 0;
-  font-size: 0.7rem; /* Reduziert von 0.75rem */
-  line-height: 1.1; /* Angepasst für bessere Lesbarkeit */
-  padding: 0.05rem 0; /* Reduziert */
+    margin-bottom: 0;
+    font-size: 0.75rem;
+    line-height: 1.0;       /* Noch geringerer Zeilenabstand */
+    padding: 0.05rem 0;
 }
 
+/* Style for links inside list items */
 .cluster li a {
-  color: #4dabf7;
-  text-decoration: none;
-  transition: color 0.2s ease;
-  display: block;
-  padding: 0.02rem 0; /* Stark reduziert (vorher 0.05rem) */
+    color: #4dabf7;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    display: block;        /* Für bessere Klickbarkeit */
+    padding: 0.05rem 0;    /* Minimalster vertikaler Abstand */
 }
 
+/* Style for links on hover */
 .cluster li a:hover {
-  color: #74c0fc;
-  text-decoration: underline;
-}
-
-/* ================================
-   Scrollbar
-=================================== */
-#cluster-container::-webkit-scrollbar {
-  width: 5px; /* Reduziert von 6px */
-}
-
-#cluster-container::-webkit-scrollbar-track {
-  background: #12171e;
-  border-radius: 2px;
-}
-
-#cluster-container::-webkit-scrollbar-thumb {
-  background: #1f2a38;
-  border-radius: 2px;
-}
-
-#cluster-container::-webkit-scrollbar-thumb:hover {
-  background: #2c3a4d;
+    color: #74c0fc;
+    text-decoration: underline;
 }
