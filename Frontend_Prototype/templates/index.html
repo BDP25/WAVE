@@ -31,16 +31,20 @@
                 <img src="{{ url_for('static', filename='images/Logo.png') }}" class="logo">
             </div>
 
-             <div class="date-picker-container">
-                    <label for="date-picker">Datum wählen:</label>
-                    <input type="date"
-                           class="date-picker"
-                           id="date-picker"
-                           name="date"
-                           min="{{ mindatum }}"
-                           max="{{ vorgestern }}"
-                           value="{{ vorgestern }}">
-             </div>
+            <div class="date-picker-container">
+                <label for="date-picker">Datum wählen:</label>
+                <input type="date"
+                       class="date-picker"
+                       id="date-picker"
+                       name="date"
+                       min="{{ min_date }}"
+                       max="{{ vorgestern }}"
+                       value="{{ vorgestern }}"
+                       required />
+                <!-- Kommentar zum min und max Attribut -->
+            </div>
+
+
 
 
             <!-- Container to hold clusters' Wikipedia articles -->

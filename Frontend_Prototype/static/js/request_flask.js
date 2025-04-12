@@ -1,6 +1,12 @@
 // Global variable to store clusters data
 let clustersData = [];
 
+document.addEventListener("DOMContentLoaded", function() {
+
+    // Trigger change event to load the data for vorgestern
+    document.getElementById("date-picker").dispatchEvent(new Event("change"));
+});
+
 document.getElementById("date-picker").addEventListener("change", function () {
     const selectedDate = this.value;
     console.log("Ausgewähltes Datum:", selectedDate); // Debug-Ausgabe
