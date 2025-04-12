@@ -124,7 +124,7 @@ def get_article_info(article_id):
         return {"error": str(e)}
 
 
-def get_min_date():
+def get_min_max_date():
     db_params = {
         "dbname": os.getenv("DB_NAME", "your_database"),
         "user": os.getenv("DB_USER", "your_username"),
@@ -137,17 +137,18 @@ def get_min_date():
         conn = psycopg2.connect(**db_params)
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Get the oldest date from the cluster table
+        # Get the oldest and newest date from the cluster table
         cursor.execute(
-            "SELECT MIN(date) AS oldest_date FROM cluster"
+            "SELECT MIN(date) AS oldest_date, MAX(date) AS newest_date FROM cluster"
         )
         result = cursor.fetchone()
 
         cursor.close()
         conn.close()
 
-        if result and result['oldest_date']:
-            return result['oldest_date'].isoformat()
+        if result and result['oldest_date'] and result['newest_date']:
+            return result['oldest_date'].isoformat(), result['newest_date'].isoformat()
+
         else:
             return {"error": "No dates found in the database"}
 
@@ -167,10 +168,11 @@ if __name__ == "__main__":
     dotenv.load_dotenv()
 
     # Call the function to get the oldest date
-    oldest_date_data = get_min_date()
+    min_date, max_date = get_min_max_date()
 
     # Print with ensure_ascii=False to properly display Unicode characters
-    print(json.dumps(oldest_date_data, indent=4, ensure_ascii=False))
+    print(json.dumps(max_date, indent=4, ensure_ascii=False))
+    print(json.dumps(min_date, indent=4, ensure_ascii=False))
 
     date = "2025-04-10"
     clusters_data = get_clusters_per_date(date)
