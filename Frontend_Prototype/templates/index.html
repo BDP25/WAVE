@@ -11,8 +11,7 @@
     <link rel="icon" href="{{ url_for('static', filename='images/favicon.icon') }}" type="image/x-icon">
 
 
-    <!--Boxicons Sidebar -->
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
 
     <!-- Style -->
     <link rel="stylesheet" href="../static/css/style.css">
@@ -26,35 +25,30 @@
 
     <!-- Static Sidebar -->
     <div class="sidebar">
-        <div class="top">
-            <div class="logo">
-                <img src="{{ url_for('static', filename='images/Logo.png') }}" class="logo">
-            </div>
-
-            <div class="date-picker-container">
-                <label for="date-picker">Datum wählen:</label>
-                <input type="date"
-                       class="date-picker"
-                       id="date-picker"
-                       name="date"
-                       min="{{ min_date }}"
-                       max="{{ vorgestern }}"
-                       value="{{ vorgestern }}"
-                       required />
-                <!-- Kommentar zum min und max Attribut -->
-            </div>
-
-
-
-
-            <!-- Container to hold clusters' Wikipedia articles -->
-            <div id="cluster-container">
-                <!-- Cluster information will be populated dynamically here -->
-            </div>
-
+    <div class="top">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" class="logo">
         </div>
 
+        <div class="date-picker-container">
+            <label for="date-picker">Datum wählen:</label>
+            <input type="date"
+                   class="date-picker"
+                   id="date-picker"
+                   name="date"
+                   min="{{ min_date }}"
+                   max="{{ vorgestern }}"
+                   value="{{ vorgestern }}"
+                   required />
+        </div>
     </div>
+
+    <!-- !!! WICHTIG: Cluster-Container jetzt außerhalb von .top !!! -->
+    <div id="cluster-container">
+        <!-- Cluster information will be populated dynamically here -->
+    </div>
+</div>
+
 
 
     <div id="home" class="home">
