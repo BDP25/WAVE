@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template, request
 from datetime import datetime, timedelta
-from frontend_agregator import get_clusters_per_date, get_min_date
+from frontend_agregator import get_clusters_per_date, get_min_max_date
 
 app = Flask(__name__)
 
@@ -20,9 +20,8 @@ def api_clusters():
 
 @app.route("/")
 def index():
-    #three days ago
-    max_date = datetime.now().date() - timedelta(days=2)
-    min_date = get_min_date()
+
+    min_date, max_date = get_min_max_date()
     return render_template("index.html", vorgestern=max_date, min_date=min_date)
 
 
