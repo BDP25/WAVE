@@ -8,11 +8,17 @@
   top: 0;
   left: 0;
   height: 100vh;
-  width: 250px; /* Fixed width of the sidebar */
+  width: 250px;
   background-color: #12171e;
   padding: 0.4rem 0.8rem;
   z-index: 20;
   text-align: center;
+  display: flex; /* Neu */
+  flex-direction: column; /* Neu */
+}
+
+.sidebar .top {
+  flex-shrink: 0; /* Verhindert Komprimierung des Headers */
 }
 
 .sidebar .top .logo {
@@ -114,22 +120,23 @@
 
 /* Style for the cluster container */
 #cluster-container {
-    width: 85%;
-    margin: 0.5rem auto 0;  /* Weniger Abstand oben */
-    max-height: calc(100vh - 250px);
-    overflow-y: auto;
+  width: 85%;
+  margin: 0.5rem auto;
+  flex-grow: 1; /* Nimmt verfügbaren Platz ein */
+  overflow-y: auto;
+  padding-bottom: 1rem; /* Platz für letzten Cluster */
 }
 
 /* Style for each cluster - kompakter */
 .cluster {
-    border: 2px solid #1f2a38;
-    padding: 0 0.5rem;  /* Reduziert von 0.8rem */
-    margin-bottom: 0.5rem;  /* Reduziert von 0.8rem */
-    background-color: #1f2a38;
-    border-radius: 0.5rem;
-    color: #fff;
-    width: 100%;
-    box-sizing: border-box;
+  border: 2px solid #1f2a38;
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: #1f2a38;
+  border-radius: 0.5rem;
+  color: #fff;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Style for the cluster title */
