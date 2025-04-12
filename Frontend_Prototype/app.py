@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, render_template, request
+from datetime import datetime, timedelta
 from frontend_agregator import get_clusters_per_date, get_min_date
 
 app = Flask(__name__)
@@ -7,25 +8,20 @@ app = Flask(__name__)
 def api_clusters():
     try:
         datum = request.args.get("datum")
-        print(f"Empfangenes Datum: {datum}")  # Debug-Ausgabe
         if not datum:
             return jsonify({"error": "Kein Datum angegeben"}), 400
         clusters = get_clusters_per_date(datum)
-        print(f"Zurückgegebene Cluster: {clusters}")  # Debug-Ausgabe
         return jsonify(clusters)
     except Exception as e:
         print(f"Fehler in api_clusters: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-from flask import request, jsonify, render_template
 
-from datetime import datetime, timedelta
 
 @app.route("/")
 def index():
     #three days ago
     max_date = datetime.now().date() - timedelta(days=2)
-    # TODO
     min_date = get_min_date()
     return render_template("index.html", vorgestern=max_date, min_date=min_date)
 

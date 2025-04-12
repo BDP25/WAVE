@@ -3,7 +3,6 @@ let clustersData = [];
 
 document.addEventListener("DOMContentLoaded", function() {
 
-    // Trigger change event to load the data for vorgestern
     document.getElementById("date-picker").dispatchEvent(new Event("change"));
 });
 
