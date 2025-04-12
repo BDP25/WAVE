@@ -89,6 +89,7 @@
 .sidebar .top .date-picker {
   width: 85%;
   padding: 6px 10px;
+  margin: 0 0 12px 0;
   border: none;
   border-radius: 0.5rem;
   background-color: #1f2a38;
