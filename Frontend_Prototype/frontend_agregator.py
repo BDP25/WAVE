@@ -123,12 +123,61 @@ def get_article_info(article_id):
         print(f"Database error: {e}")
         return {"error": str(e)}
 
+
+def get_min_date():
+    db_params = {
+        "dbname": os.getenv("DB_NAME", "your_database"),
+        "user": os.getenv("DB_USER", "your_username"),
+        "password": os.getenv("DB_PASSWORD", "your_password"),
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5432")
+    }
+
+    try:
+        conn = psycopg2.connect(**db_params)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get the oldest date from the cluster table
+        cursor.execute(
+            "SELECT MIN(date) AS oldest_date FROM cluster"
+        )
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result and result['oldest_date']:
+            return result['oldest_date'].isoformat()
+        else:
+            return {"error": "No dates found in the database"}
+
+    except Exception as e:
+        print(f"Database error: {e}")
+        return {"error": str(e)}
+
+
+
+
+
+
+
+
 if __name__ == "__main__":
     import dotenv
     dotenv.load_dotenv()
 
+    # Call the function to get the oldest date
+    oldest_date_data = get_min_date()
+
+    # Print with ensure_ascii=False to properly display Unicode characters
+    print(json.dumps(oldest_date_data, indent=4, ensure_ascii=False))
+
     date = "2025-04-10"
     clusters_data = get_clusters_per_date(date)
-    
+
     # Print with ensure_ascii=False to properly display Unicode characters like umlauts
     print(json.dumps(clusters_data, indent=4, ensure_ascii=False))
+
+
+
+
