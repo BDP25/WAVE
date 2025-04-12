@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAVE </title>
+
+    <!--Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+
+
+    <!--Boxicons Sidebar -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+    <!-- Style -->
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="../static/css/home.css">
+    <link rel="stylesheet" href="../static/css/sidebar.css">
+
+
+
+
+
+
+
+
+
+
+
+</head>
+
+<body>
+
+    <!-- Static Sidebar -->
+    <div class="sidebar">
+        <div class="top">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/Logo.png') }}" class="logo">
+            </div>
+        </div>
+        <div>
+            <ul>
+                <li>
+                    <a href="#map">
+                        <i class="bx bxs-map"></i>
+                        <span>Karte</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#analytics">
+                        <i class="bx bx-bar-chart"></i>
+                        <span>Analysen</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#question">
+                        <i class='bx bx-info-circle'></i>
+                        <span>Fragen</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+
+
+
+
+
+    <div id="home" class="home">
+        <!-- Map on Homepage -->
+        <div id="map"></div>
+
+        # TODO style page
+
+
+    </div>
+       
+
+
+
+
+
+
+
+
+       
+
+
+
+        <div id="message-container" class="message-container"></div>
+        <script type="module" src="../static/js/home/map.js"></script>
+
+
+        <script type="module" src="../static/js/visibilityManager.js"></script>
+
+
+
+    
+
+
+</body>
+
+
+</html>
