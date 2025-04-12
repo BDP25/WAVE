@@ -8,7 +8,7 @@
     <title>WAVE </title>
 
     <!--Favicon -->
-    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.icon') }}" type="image/x-icon">
 
 
     <!--Boxicons Sidebar -->
@@ -18,15 +18,6 @@
     <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="../static/css/home.css">
     <link rel="stylesheet" href="../static/css/sidebar.css">
-
-
-
-
-
-
-
-
-
 
 
 </head>
@@ -39,34 +30,27 @@
             <div class="logo">
                 <img src="{{ url_for('static', filename='images/Logo.png') }}" class="logo">
             </div>
+
+             <div class="date-picker-container">
+                    <label for="date-picker">Datum wählen:</label>
+                    <input type="date"
+                           class="date-picker"
+                           id="date-picker"
+                           name="date"
+                           min="{{ mindatum }}"
+                           max="{{ vorgestern }}"
+                           value="{{ vorgestern }}">
+             </div>
+
+
+            <!-- Container to hold clusters' Wikipedia articles -->
+            <div id="cluster-container">
+                <!-- Cluster information will be populated dynamically here -->
+            </div>
+
         </div>
-        <div>
-            <ul>
-                <li>
-                    <a href="#map">
-                        <i class="bx bxs-map"></i>
-                        <span>Karte</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#analytics">
-                        <i class="bx bx-bar-chart"></i>
-                        <span>Analysen</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#question">
-                        <i class='bx bx-info-circle'></i>
-                        <span>Fragen</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
+
     </div>
-
-
-
-
 
 
     <div id="home" class="home">
@@ -77,28 +61,11 @@
 
 
     </div>
-       
 
 
 
 
-
-
-
-
-       
-
-
-
-        <div id="message-container" class="message-container"></div>
-        <script type="module" src="../static/js/home/map.js"></script>
-
-
-        <script type="module" src="../static/js/visibilityManager.js"></script>
-
-
-
-    
+        <script type="module" src="static/js/request_flask.js"></script>
 
 
 </body>
