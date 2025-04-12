@@ -69,3 +69,103 @@
   max-height: 400px;
 }
 
+
+
+
+.sidebar .top .date-picker-container {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.sidebar .top .date-picker-container label {
+  margin-bottom: 0.4rem;
+  font-weight: bold;
+}
+
+.sidebar .top .date-picker {
+  width: 85%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: #1f2a38;
+  color: #fff;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.sidebar .top .date-picker::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Kalender-Icon weiß */
+}
+
+
+
+
+
+
+
+/* ================================
+   Cluster Container
+=================================== */
+
+/* Style for the cluster container */
+#cluster-container {
+    width: 85%;
+    margin: 0.5rem auto 0;  /* Weniger Abstand oben */
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+}
+
+/* Style for each cluster - kompakter */
+.cluster {
+    border: 2px solid #1f2a38;
+    padding: 0.5rem;  /* Reduziert von 0.8rem */
+    margin-bottom: 0.5rem;  /* Reduziert von 0.8rem */
+    background-color: #1f2a38;
+    border-radius: 0.5rem;
+    color: #fff;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Style for the cluster title */
+.cluster h3 {
+    margin: 0 0 0.2rem 0;  /* Noch weniger Abstand unter dem Titel */
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* Style for the list of Wikipedia articles */
+.cluster ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+
+/* Style for each list item - MINIMALE ABSTÄNDE */
+.cluster li {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+    line-height: 1.0;       /* Noch geringerer Zeilenabstand */
+    padding: 0.05rem 0;
+}
+
+/* Style for links inside list items */
+.cluster li a {
+    color: #4dabf7;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    display: block;        /* Für bessere Klickbarkeit */
+    padding: 0.05rem 0;    /* Minimalster vertikaler Abstand */
+}
+
+/* Style for links on hover */
+.cluster li a:hover {
+    color: #74c0fc;
+    text-decoration: underline;
+}

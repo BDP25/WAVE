@@ -18,41 +18,6 @@ html, body {
 
 
 
-/* ================================
-   User Informations
-=================================== */
-.message-container {
-  position: fixed;
-  top: 10px;
-  left: 95px; /* distance to the sidebar */
-  right: 130px; /* distance to the filter container */
-  max-width: calc(100% - 240px); /* max width remains constant with the fixed side distances */
-  width: fit-content;
-  box-sizing: border-box;
-  padding: 10px 20px;
-  background-color: #1e252f;
-  color: #fff;
-  border-radius: 5px;
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-  z-index: 1000000;
-  font-size: 14px;
-  display: flex;
-  flex-direction: column;
-  margin-left: auto;
-  margin-right: auto;
-  display: none;
-}
-
-
-.message-container.show {
-  display: block;
-  opacity: 1;
-}
-
-
-
-
-
 
 
 
