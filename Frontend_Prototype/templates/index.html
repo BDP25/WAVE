@@ -18,6 +18,16 @@
     <link rel="stylesheet" href="../static/css/home.css">
     <link rel="stylesheet" href="../static/css/sidebar.css">
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Im <head> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+
+
+
+
 
 </head>
 
@@ -51,14 +61,19 @@
 
 
 
-    <div id="home" class="home">
-        <!-- Map on Homepage -->
-        <div id="map"></div>
 
-        # TODO style page
-
-
+    <!-- container to the right of the sidebar -->
+    <div class="main-container">
+        <div id="home" class="home">
+            <div id="chart-container">
+                <!-- Chart will be rendered here -->
+            </div>
+            <div id="wiki-article">
+                <!-- Wikipedia article details will be shown here -->
+            </div>
+        </div>
     </div>
+
 
 
 

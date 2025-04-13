@@ -7,6 +7,7 @@ from load_db import load_data
 from clustering import dbscan_clustering_get_relevant_articles
 from content_to_relevant_titles import collect_wikipedia_candidates_per_cluster
 from cluster_data_to_db_json import generate_cluster_json
+from get_wiki_article import validate_wikipedia_titles
 
 
 
@@ -58,13 +59,16 @@ print("Common")
 print(df_cluster_topics)
 # TODO
 # validate titles with wikpedia articles
+wikipedia_articles_cluster = validate_wikipedia_titles(df_cluster_topics)
+
+
 
 # convert relevant context to json format
-json_data = generate_cluster_json(df_relevant_articles, df_cluster_topics)
+json_data = generate_cluster_json(df_relevant_articles, wikipedia_articles_cluster)
 
 
 
-
+# TODO aktuell cluster_id in Database = 0
 # load data to database
 load_data(json_data, db_params)
 

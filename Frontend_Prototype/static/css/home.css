@@ -1,0 +1,68 @@
+.main-container {
+    flex: 1;
+    background-color: #2b343f;
+    color: white;
+    padding: 40px;
+    overflow-y: auto;
+    margin-left: 275px;
+    margin-top: 20px;
+    margin-right: 25px;
+    margin-bottom: 20px;
+    border-radius: 12px 12px 12px 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    height: calc(100vh - 40px); /* Adjusts the height to fill the viewport, leaving room for top and bottom margins */
+}
+
+
+
+/* ================================
+   Slider Timeseries
+=================================== */
+/* Distance to top edge */
+.slider-wrapper {
+    width: 100%;
+    margin: 70px 0;
+}
+
+#multi-range-slider {
+    margin: 0 15px; /* Damit der Slider mit der Achse ausgerichtet ist */
+}
+
+.timeline-axis {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 20px;
+    padding: 0 15px; /* Anpassung für die Ausrichtung mit dem Slider */
+    box-sizing: border-box;
+}
+
+.year-label {
+    font-size: 12px;
+    color: #666;
+    position: relative;
+    transform: translateX(-50%); /* Zentriert die Jahreszahlen unter den Markern */
+}
+
+.year-label::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 1px;
+    height: 5px;
+    background-color: #999;
+}
+
+.noUi-tooltip {
+    cursor: pointer;
+}
+
+.date-picker-input {
+    position: absolute;
+    z-index: 1000;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
