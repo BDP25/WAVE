@@ -1,0 +1,7 @@
+nest_asyncio
+pandas
+psycopg2-binary
+python-dotenv
+wikipedia-api
+requests
+aiohttp
