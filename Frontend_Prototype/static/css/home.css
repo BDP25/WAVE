@@ -15,13 +15,26 @@
 
 
 
+/* Underline title in wiki article in main container */
+#wiki-article h2 {
+    text-decoration: underline;
+    margin-bottom: 20px; /* Abstand zum folgenden Absatz */
+}
+
+/* Increase the spacing of the summary text */
+#wiki-article p {
+    margin-top: 20px;
+    line-height: 1.6;
+}
+
+
 /* ================================
    Slider Timeseries
 =================================== */
 /* Distance to top edge */
 .slider-wrapper {
     width: 100%;
-    margin: 70px 0;
+    margin: 80px 0;
 }
 
 #multi-range-slider {
