@@ -1,5 +1,3 @@
-
-
 /* ================================
    Sidebar
 =================================== */
@@ -13,12 +11,12 @@
   padding: 0.4rem 0.8rem;
   z-index: 20;
   text-align: center;
-  display: flex; /* Neu */
-  flex-direction: column; /* Neu */
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar .top {
-  flex-shrink: 0; /* Verhindert Komprimierung des Headers */
+  flex-shrink: 0;
 }
 
 .sidebar .top .logo {
@@ -121,12 +119,12 @@
 #cluster-container {
   width: 85%;
   margin: 0.5rem auto;
-  flex-grow: 1; /* Nimmt verfügbaren Platz ein */
+  flex-grow: 1;
   overflow-y: auto;
-  padding-bottom: 1rem; /* Platz für letzten Cluster */
+  padding-bottom: 1rem;
 }
 
-/* Style for each cluster - kompakter */
+/* Style for each cluster */
 .cluster {
   border: 2px solid #1f2a38;
   padding: 0 0.5rem;
@@ -140,7 +138,7 @@
 
 /* Style for the cluster title */
 .cluster h3 {
-    margin: 0.3rem 0 0.3rem 0;  /* Noch weniger Abstand unter dem Titel */
+    margin: 0.3rem 0 0.3rem 0;
     font-size: 0.85rem;
     font-weight: bold;
     color: #fff;
@@ -154,11 +152,11 @@
 }
 
 
-/* Style for each list item - MINIMALE ABSTÄNDE */
+/* Style for each list item  */
 .cluster li {
     margin-bottom: 0;
     font-size: 0.75rem;
-    line-height: 1.0;       /* Noch geringerer Zeilenabstand */
+    line-height: 1.0;
     padding: 0.05rem 0;
 }
 
@@ -167,8 +165,8 @@
     color: #4dabf7;
     text-decoration: none;
     transition: color 0.2s ease;
-    display: block;        /* Für bessere Klickbarkeit */
-    padding: 0.05rem 0;    /* Minimalster vertikaler Abstand */
+    display: block;
+    padding: 0.05rem 0;
 }
 
 /* Style for links on hover */

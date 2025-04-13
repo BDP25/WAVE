@@ -18,7 +18,7 @@
 /* Underline title in wiki article in main container */
 #wiki-article h2 {
     text-decoration: underline;
-    margin-bottom: 20px; /* Abstand zum folgenden Absatz */
+    margin-bottom: 20px;
 }
 
 /* Increase the spacing of the summary text */
@@ -38,7 +38,7 @@
 }
 
 #multi-range-slider {
-    margin: 0 15px; /* Damit der Slider mit der Achse ausgerichtet ist */
+    margin: 0 15px;
 }
 
 .timeline-axis {
@@ -46,7 +46,7 @@
     justify-content: space-between;
     width: 100%;
     margin-top: 20px;
-    padding: 0 15px; /* Anpassung für die Ausrichtung mit dem Slider */
+    padding: 0 15px;
     box-sizing: border-box;
 }
 
@@ -54,7 +54,7 @@
     font-size: 12px;
     color: #666;
     position: relative;
-    transform: translateX(-50%); /* Zentriert die Jahreszahlen unter den Markern */
+    transform: translateX(-50%);
 }
 
 .year-label::before {
