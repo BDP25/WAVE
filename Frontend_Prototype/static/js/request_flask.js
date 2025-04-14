@@ -67,32 +67,45 @@ function fetchWikipediaContent(article) {
     const articleContainer = document.getElementById("wiki-article");
     articleContainer.innerHTML = "";
 
-    // Titel
+    // Wikipedia-article Title
     const titleElement = document.createElement("h2");
     titleElement.style.fontWeight = "bold";
     titleElement.innerText = article;
     articleContainer.appendChild(titleElement);
 
-    // Zusammenfassung
+    // Article Summmary
     const summaryPlaceholder = document.createElement("p");
     summaryPlaceholder.innerText = "Zusammenfassung wird geladen...";
     articleContainer.appendChild(summaryPlaceholder);
 
-    // 🔁 Slider hinzufügen (ausgelagerte Funktion)
-    createDateSliderWithPicker(articleContainer);
+    // Timestamp
+    const timestampsPlaceholder = document.createElement("p");
+    timestampsPlaceholder.innerText = "Zeitstempel werden geladen...";
+    articleContainer.appendChild(timestampsPlaceholder);
 
-    // Wikipedia-API laden
-    const url = `/api/wiki_content?title=${encodeURIComponent(article)}`;
-    fetch(url)
-        .then(res => res.json())
+
+    // Zeitstempel-API laden
+    const historyUrl = `/api/article_history?title=${encodeURIComponent(article)}`;
+    console.log("📤 Requesting timestamps for article:", article, "with URL:", historyUrl);
+
+    fetch(historyUrl)
+        .then(res => {
+            console.log("📥 Response status:", res.status);
+            return res.json();
+        })
         .then(data => {
-            summaryPlaceholder.innerText = data.summary || "Keine Zusammenfassung gefunden.";
+            console.log("📥 Response data:", data);
+            if (data.error) {
+                timestampsPlaceholder.innerText = "Keine Zeitstempel gefunden.";
+            } else {
+                timestampsPlaceholder.innerText = "Zeitstempel: " + data.join(", ");
+            }
         })
         .catch(err => {
-            summaryPlaceholder.innerText = "Fehler beim Laden der Zusammenfassung.";
+            console.error("❌ Error fetching timestamps:", err);
+            timestampsPlaceholder.innerText = "Fehler beim Laden der Zeitstempel.";
         });
 }
-
 
 
 
