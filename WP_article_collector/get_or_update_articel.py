@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 # Import from the new db_utils module
 from db_utils import create_db_connection
 
-from wikipedia_histories import get_history
+from wikipedia_histories import get_history, to_df
 from wikipedia_histories import to_df
 import pandas as pd
 import io
@@ -140,7 +140,8 @@ def download_wiki_history(article_title, language_code):
                                 'revid': getattr(item, 'revid', ''),
                                 'time': getattr(item, 'time', ''),  # Use 'time' consistently
                                 'user': getattr(item, 'user', ''),
-                                'comment': getattr(item, 'comment', '')
+                                'comment': getattr(item, 'comment', ''),
+                                'text': getattr(item, 'text', '')
                             }
                             data.append(entry)
                         except Exception as inner_e:
@@ -150,7 +151,7 @@ def download_wiki_history(article_title, language_code):
                 except Exception as e:
                     print(f"All parsing methods failed: {e}")
                     # Create empty DataFrame with expected columns as last resort
-                    history_df = pd.DataFrame(columns=["revid", "time", "user", "comment"])
+                    history_df = pd.DataFrame(columns=["revid", "time", "user", "comment", 'text'])
 
     # Return both the history dataframe and the page ID
     return history_df, page_id
@@ -261,7 +262,7 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
 
         history_rows = cursor.fetchall()
         # Use 'time' for the column name instead of 'timestamp'
-        history_data = pd.DataFrame(history_rows, columns=["revid", "time", "user", "comment"])
+        history_data = pd.DataFrame(history_rows, columns=["revid", "time", "user", "comment", "text"])
 
         cursor.close()
         conn.close()
@@ -277,4 +278,27 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
         print("Falling back to direct download")
         history_df, page_id = download_wiki_history(article_title, language_code)
         return {"title": article_title, "language": language_code, "article_id": page_id}, history_df
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    import os
+
+    # Load environment variables from .env file
+    load_dotenv("../.env")
+
+    db_config = {
+        "dbname": os.getenv("DB_NAME", "your_database"),
+        "user": os.getenv("DB_USER", "your_username"),
+        "password": os.getenv("DB_PASSWORD", "your_password"),
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5432")
+    }
+
+    # Example usage
+    article_title = "Refugiados"
+    language_code = "de"
+    article_data, history_data = get_or_update_article(article_title, language_code, db_config= db_config)
+
+    print("Article Data:", article_data)
+    print("History Data:", history_data.head(1))
 

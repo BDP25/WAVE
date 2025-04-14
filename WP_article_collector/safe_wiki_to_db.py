@@ -25,7 +25,7 @@ def initialize_tables(conn):
             )
         """)
 
-        # Create history table
+        # Create history table with content column
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS history (
                 history_id SERIAL PRIMARY KEY,
@@ -34,6 +34,7 @@ def initialize_tables(conn):
                 timestamp TIMESTAMP,
                 user_name TEXT,
                 comment TEXT,
+                content TEXT,
                 UNIQUE(article_id, revid)
             )
         """)
@@ -110,13 +111,14 @@ def save_article_history_to_db(conn, article_id, history_df):
                 row.get('revid'),
                 timestamp,
                 row.get('user'),
-                row.get('comment')
+                row.get('comment'),
+                row.get('text')  # Add content field
             ))
 
-        # Batch insert using execute_batch
+        # Batch insert using execute_batch with content field
         execute_batch(cursor, """
-            INSERT INTO history (article_id, revid, timestamp, user_name, comment)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO history (article_id, revid, timestamp, user_name, comment, content)
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (article_id, revid) DO NOTHING
         """, history_data)
 
