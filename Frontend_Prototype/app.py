@@ -25,11 +25,7 @@ def api_clusters():
         return jsonify({"error": str(e)}), 500
 
 
-
-
 # TODO
-
-
 
 
 if __name__ == "__main__":
