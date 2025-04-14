@@ -1,6 +1,14 @@
 import psycopg2
 import os
 import dotenv
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 dotenv.load_dotenv()
@@ -12,6 +20,14 @@ db_params = {
         "host": os.getenv("DB_HOST", "localhost"),
         "port": os.getenv("DB_PORT", "5432")
     }
+
+# Redis connection parameters
+redis_params = {
+    "host": os.getenv("REDIS_HOST", "localhost").replace("DB_HOST=", ""),  # Fix potential typo in env var
+    "port": int(os.getenv("REDIS_PORT", "6379")),
+    "db": 0,
+    "password": os.getenv("REDIS_PASSWORD", None)
+}
 
 def create_db_connection(db_config=None, dbname=None, user=None, password=None, host=None, port=None):
     """Create and return a database connection.
@@ -44,7 +60,7 @@ def create_db_connection(db_config=None, dbname=None, user=None, password=None, 
             )
         return conn
     except Exception as e:
-        print(f"Error connecting to the database: {e}")
+        logger.error(f"Error connecting to the database: {e}")
         return None
 
 def test_db_connection(db_config=None):
@@ -58,24 +74,24 @@ def test_db_connection(db_config=None):
     """
     config = db_config or db_params
     
-    print("Testing database connection with the following parameters:")
+    logger.info("Testing database connection with the following parameters:")
     # Print connection details (hiding password)
     safe_config = config.copy()
     if 'password' in safe_config:
         safe_config['password'] = '********' 
-    print(safe_config)
+    logger.info(safe_config)
     
     try:
         conn = create_db_connection(db_config=config)
         if conn:
-            print("✅ Database connection successful!")
+            logger.info("✅ Database connection successful!")
             conn.close()
             return True
         else:
-            print("❌ Database connection failed!")
+            logger.error("❌ Database connection failed!")
             return False
     except Exception as e:
-        print(f"❌ Database connection failed with error: {e}")
+        logger.error(f"❌ Database connection failed with error: {e}")
         return False
 
 if __name__ == "__main__":
