@@ -11,7 +11,6 @@ def index():
     return render_template("index.html", vorgestern=max_date, min_date=min_date)
 
 
-
 @app.route("/api/clusters")
 def api_clusters():
     try:
@@ -23,9 +22,6 @@ def api_clusters():
     except Exception as e:
         print(f"Fehler in api_clusters: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-
-# TODO
 
 
 if __name__ == "__main__":
