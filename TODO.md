@@ -10,6 +10,7 @@
 - RAM ?
   
 - entity extraction
+- was wenn API für Daten nicht funktioiert hatten ausfall
 
 - Die Api ist ab und zur nicht verfügbar
 
@@ -24,3 +25,10 @@
   - ihn ins CC setzen
 
 - Ray warnings
+- Erhalten API Daten erst von Vorgestern
+- Wie viele V's müssen wir haben für
+- Weiter Daten hinzufügen NAU.ch etc
+- Beachten bei Duplikatentexten das die verschiedenen Anbieter in Datenbank gespeichert werden
+- Prüft aktuell schon ob Valide Wikipedia Artikel
+- Wollen wir zum Topic noch einen Zusammengefassten Artikel zeigen mit KI zusammengefasst
+- Statistiken im Fussball auf blacklist?
