@@ -4,6 +4,7 @@ import os
 import random
 import time
 from dotenv import load_dotenv
+import shutil
 
 # https://liri.linguistik.uzh.ch/wiki/langtech/swissdox/api
 # https://swissdox.linguistik.uzh.ch/queries
@@ -24,7 +25,7 @@ API_URL_STATUS = f"{API_BASE_URL}/status"
 API_URL_DOWNLOAD = f"{API_BASE_URL}/download"
 
 # Calculate the date range for the last week
-end_date = datetime.date.today()
+end_date = datetime.date.today() - datetime.timedelta(days=3)
 start_date = end_date - datetime.timedelta(days=5)
 
 
@@ -66,7 +67,6 @@ used_sources = [
 # Create the YAML query with the formatted start and end dates
 query_yaml = f"""
 query:
-  sources: {used_sources}
   dates:
     - from: {start_date_str}
       to: {end_date_str}
@@ -127,7 +127,11 @@ if r.status_code == 200:
 
                 # Define the raw_data folder path
                 raw_data_folder = './raw_data'
-                # Ensure the folder exists
+
+                # If the folder exists, delete all its contents
+                if os.path.exists(raw_data_folder):
+                    shutil.rmtree(raw_data_folder)
+                    # Ensure the folder exists
                 os.makedirs(raw_data_folder, exist_ok=True)
                 file_path = os.path.join(raw_data_folder, filename)
 
