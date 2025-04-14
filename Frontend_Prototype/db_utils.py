@@ -112,7 +112,7 @@ def get_article_history_by_title(article_title: str):
 
         cursor.execute(
             """
-            SELECT h.timestamp
+            SELECT w.article_id, h.revid, h.timestamp
             FROM wp_article w
             JOIN history h ON w.article_id = h.article_id
             WHERE w.article_title = %s
@@ -120,21 +120,32 @@ def get_article_history_by_title(article_title: str):
             """,
             (article_title,)
         )
-        timestamps = cursor.fetchall()
+        history = cursor.fetchall()
 
         cursor.close()
         conn.close()
 
-        if timestamps:
-            return [ts['timestamp'].isoformat() for ts in timestamps]
+        if history:
+            # Extract article_id once
+            article_id = history[0]["article_id"]
+
+            # Format the result to include revid and timestamp
+            return {
+                "article_id": article_id,
+                "history": [
+                    {
+                        "revid": record["revid"],
+                        "timestamp": record["timestamp"].isoformat()
+                    }
+                    for record in history
+                ]
+            }
         else:
             return {"error": "No history found for the given article_title"}
 
     except Exception as e:
-        print(f"Database error: {e}")
+        logger.error(f"Database error: {e}")
         return {"error": str(e)}
-
-
 
 
 if __name__ == "__main__":
