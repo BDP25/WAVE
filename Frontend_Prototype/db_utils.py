@@ -128,5 +128,4 @@ if __name__ == "__main__":
     article_title = "Refugiados"
     history = get_article_history_by_title(article_title)
 
-    # Print the result
     print(json.dumps(history, indent=4, ensure_ascii=False))
