@@ -1,6 +1,9 @@
 from flask import Flask, jsonify, render_template, request
 from frontend_agregator import get_clusters_per_date, get_min_max_date
 from db_utils import get_article_history_by_title
+from db_utils import db_params, redis_params
+from vis_text_diff import visualize_wiki_versions_with_deletions
+
 app = Flask(__name__)
 
 
@@ -37,6 +40,39 @@ def api_article_history():
         return jsonify(history)
     except Exception as e:
         print(f"Fehler in api_article_history: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/visualize", methods=["GET"])
+def api_visualize():
+    try:
+        # Get parameters from the request
+        article_id = request.args.get("article_id")
+        article_id = 50810
+        start_revid = 249057752
+        end_revid = 255081031
+
+        print(article_id, start_revid, end_revid)
+
+        # Validate parameters
+        if not article_id or not start_revid or not end_revid:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        # Call the visualization function
+        html = visualize_wiki_versions_with_deletions(
+            article_id=article_id,
+            start_revid=start_revid,
+            end_revid=end_revid,
+            word_level=True,
+            verbose=False,
+            db_config=db_params,
+            redis_config=redis_params,
+            show_revision_info=False
+        )
+
+        # Return the HTML as a response
+        return jsonify({"html": html})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
