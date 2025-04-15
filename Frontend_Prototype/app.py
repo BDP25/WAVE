@@ -54,7 +54,7 @@ def api_visualize():
         print("Start Revid:", start_revid)
         print("End Revid:", end_revid)
         # TODO delete after Testing
-        article_id = 50810
+
 
 
 
