@@ -82,3 +82,26 @@
 
 
 
+/* Style for the visualization output container */
+.output-container {
+    background-color: #2b343f; /* Match the main container background */
+    color: black; /* Ensure text is visible */
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    overflow-x: auto; /* Handle horizontal overflow */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
+}
+
+/* Style for titles inside the visualization output container */
+.output-container h2,
+.output-container h3 {
+    color: white; /* Set the text color to white */
+    font-weight: bold; /* Make the title bold */
+    margin-bottom: 10px; /* Add spacing below the title */
+}
+
+.output-container p {
+    line-height: 1.6; /* Improve readability */
+    margin: 10px 0;
+}
