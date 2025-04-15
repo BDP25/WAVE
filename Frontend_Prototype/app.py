@@ -33,7 +33,7 @@ def api_article_history():
         article_title = request.args.get("title")
         # TODO debug
         print(article_title)
-        article_title = "Refugiados"
+        article_title = "Nintendo"
         if not article_title:
             return jsonify({"error": "Kein Artikel angegeben"}), 400
         history = get_article_history_by_title(article_title)
@@ -48,9 +48,16 @@ def api_visualize():
     try:
         # Get parameters from the request
         article_id = request.args.get("article_id")
+        start_revid = int(request.args.get("start_revid"))
+        end_revid = int(request.args.get("end_revid"))
+        print("Article ID:", article_id)
+        print("Start Revid:", start_revid)
+        print("End Revid:", end_revid)
+        # TODO delete after Testing
         article_id = 50810
-        start_revid = 249057752
-        end_revid = 255081031
+
+
+
 
         print(article_id, start_revid, end_revid)
 
@@ -69,6 +76,8 @@ def api_visualize():
             redis_config=redis_params,
             show_revision_info=False
         )
+
+        print(html)
 
         # Return the HTML as a response
         return jsonify({"html": html})
