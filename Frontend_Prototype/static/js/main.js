@@ -102,8 +102,10 @@ function fetchWikipediaContent(article) {
 
 // Display article history and create a date slider
 function displayArticleHistory(data, articleContainer, timestampsSection) {
+    const articleId = data.article_id; // Store article_id in a variable
+
     const articleIdElement = document.createElement("p");
-    articleIdElement.innerText = `Article ID: ${data.article_id}`;
+    articleIdElement.innerText = `Article ID: ${articleId}`;
     articleContainer.appendChild(articleIdElement);
 
     const timestamps = data.history.map(entry => ({
@@ -111,6 +113,6 @@ function displayArticleHistory(data, articleContainer, timestampsSection) {
         timestamp: entry.timestamp
     }));
 
-    createDateSliderWithPicker(timestampsSection, timestamps);
+    createDateSliderWithPicker(timestampsSection, timestamps, articleId);
 }
 
