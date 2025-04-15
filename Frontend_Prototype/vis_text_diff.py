@@ -4,6 +4,8 @@ import redis
 import logging
 import re
 from bs4 import BeautifulSoup
+import hashlib
+import json
 
 # Setup logging
 def setup_logger(level=logging.INFO):
@@ -346,7 +348,33 @@ def clean_html_output(html_content):
         logger.error(f"Error while cleaning HTML: {e}")
         return html_content  # Return original HTML if cleaning fails
 
-# Modify the visualize_wiki_versions_with_deletions function to use the clean_html_output function
+def get_cache_key_for_visualization(article_id, start_revid, end_revid, word_level, show_revision_info, clean_html):
+    """
+    Generate a cache key for visualization results based on input parameters
+    
+    Parameters:
+    article_id (int): The ID of the article
+    start_revid (int): The starting revision ID
+    end_revid (int): The ending revision ID
+    word_level (bool): Whether to use word-level diff
+    show_revision_info (bool): Whether to show revision info
+    clean_html (bool): Whether to clean the HTML output
+    
+    Returns:
+    str: Cache key for Redis
+    """
+    # Create a unique key based on input parameters
+    key_parts = [
+        f"article:{article_id}",
+        f"start:{start_revid}",
+        f"end:{end_revid}",
+        f"word_level:{word_level}",
+        f"rev_info:{show_revision_info}",
+        f"clean:{clean_html}"
+    ]
+    return "visualization:" + ":".join(key_parts)
+
+# Modify the visualize_wiki_versions_with_deletions function to use Redis caching
 def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=None, start_revid=None, end_revid=None, word_level=True, verbose=False, db_config=None, use_mock_data=False, redis_config=None, show_revision_info=True, clean_html=True):
     """
     Visualize Wikipedia versioning with each revision's contributions colored by revision ID,
@@ -383,6 +411,18 @@ def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=Non
             'db': 0,
             'password': None
         }
+    
+    # Check if we have a cached result in Redis
+    if article_id is not None and start_revid is not None and end_revid is not None:
+        cache_key = get_cache_key_for_visualization(article_id, start_revid, end_revid, word_level, show_revision_info, clean_html)
+        
+        # Try to get from Redis
+        r = get_redis_connection(**redis_config)
+        if r:
+            cached_result = r.get(cache_key)
+            if cached_result:
+                logger.info(f"Using cached visualization for article {article_id} from {start_revid} to {end_revid}")
+                return cached_result
 
     # Check if we're using article_id and revids
     if article_id is not None:
@@ -657,6 +697,20 @@ def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=Non
     if clean_html:
         html_output = clean_html_output(html_output)
 
+    # Cache the result in Redis before returning
+    if article_id is not None and start_revid is not None and end_revid is not None:
+        cache_key = get_cache_key_for_visualization(article_id, start_revid, end_revid, word_level, show_revision_info, clean_html)
+        r = get_redis_connection(**redis_config)
+        if r and html_output:
+            # Store the result with a TTL of 1 day (86400 seconds)
+            r.setex(cache_key, 86400, html_output)
+            logger.info(f"Cached visualization result for article {article_id} from {start_revid} to {end_revid}")
+            
+            # Also add to a set of cached visualizations for this article
+            article_cache_key = f"article:{article_id}:visualizations"
+            r.sadd(article_cache_key, cache_key)
+            r.expire(article_cache_key, 86400)
+
     return html_output
 
 def get_revisions_between(article_id, start_revid, end_revid, db_config=None):
@@ -740,5 +794,6 @@ if __name__ == "__main__":
                                                                               clean_html=True)  # Enable HTML cleanup
 
     print(f"\nHTML:\n-------------------------------------------------------\n{html}\n-------------------------------------------------------")
+
 
 
