@@ -2,6 +2,8 @@
 import pandas as pd
 import redis
 import logging
+import re
+from bs4 import BeautifulSoup
 
 # Setup logging
 def setup_logger(level=logging.INFO):
@@ -267,7 +269,85 @@ def get_revision_text(rev_id, redis_config=None):
     # Not found in any cache
     return None
 
-def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=None, start_revid=None, end_revid=None, word_level=True, verbose=False, db_config=None, use_mock_data=False, redis_config=None, show_revision_info=True):
+def clean_html_output(html_content):
+    """
+    Clean up HTML output by combining consecutive spans with identical formatting.
+    
+    Parameters:
+    html_content (str): The HTML content to clean
+    
+    Returns:
+    str: Cleaned HTML content with combined spans
+    """
+    # First check if BeautifulSoup is available, if not, install it
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        logger.warning("BeautifulSoup not found, installing...")
+        import subprocess
+        import sys
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "beautifulsoup4"])
+        from bs4 import BeautifulSoup
+    
+    # Parse the HTML content
+    try:
+        # Extract just the content div to work with
+        content_div_match = re.search(r'<div style=\'padding: 20px; border: 1px solid #ccc; background-color: #f9f9f9;\'>\n(.*?)\n</div> ',
+                                     html_content, re.DOTALL)
+        
+        if not content_div_match:
+            logger.warning("Could not extract content div for cleaning")
+            return html_content
+            
+        content_html = content_div_match.group(1)
+        soup = BeautifulSoup(content_html, 'html.parser')
+        
+        # Group consecutive spans with the same class and style
+        current_span = None
+        current_attrs = None
+        spans_to_remove = []
+        
+        for span in soup.find_all('span'):
+            # Get attributes for comparison (class and style)
+            span_attrs = (
+                tuple(span.get('class', [])), 
+                span.get('style', '')
+            )
+            
+            if current_span is not None and span_attrs == current_attrs:
+                # Same formatting as previous span, merge content
+                if span.string:
+                    if current_span.string:
+                        current_span.string += ' ' + span.string
+                    else:
+                        current_span.string = span.string
+                spans_to_remove.append(span)
+            else:
+                # New formatting group
+                current_span = span
+                current_attrs = span_attrs
+        
+        # Remove merged spans
+        for span in spans_to_remove:
+            span.decompose()
+        
+        # Replace the content div with cleaned content
+        cleaned_content = str(soup)
+        cleaned_html = re.sub(
+            r'<div style=\'padding: 20px; border: 1px solid #ccc; background-color: #f9f9f9;\'>\n.*?\n</div>',
+            f"<div style='padding: 20px; border: 1px solid #ccc; background-color: #f9f9f9;'>\n{cleaned_content}\n</div>",
+            html_content,
+            flags=re.DOTALL
+        )
+        
+        return cleaned_html
+    
+    except Exception as e:
+        logger.error(f"Error while cleaning HTML: {e}")
+        return html_content  # Return original HTML if cleaning fails
+
+# Modify the visualize_wiki_versions_with_deletions function to use the clean_html_output function
+def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=None, start_revid=None, end_revid=None, word_level=True, verbose=False, db_config=None, use_mock_data=False, redis_config=None, show_revision_info=True, clean_html=True):
     """
     Visualize Wikipedia versioning with each revision's contributions colored by revision ID,
     including inline strikethrough for deleted text.
@@ -283,6 +363,7 @@ def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=Non
     use_mock_data (bool): If True, use mock data instead of database (for development/testing)
     redis_config (dict): Redis connection parameters
     show_revision_info (bool): If True, show revision info lines at the top of the visualization
+    clean_html (bool): If True, clean up the HTML by combining consecutive spans with identical formatting
 
     Returns:
     str: HTML content for visualization
@@ -335,40 +416,27 @@ def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=Non
                 logger.error(f"Could not retrieve revision history for article ID {article_id}")
                 return None
 
-        # Set the global history_table variable
-        history_table = article_history
+            # Set the global history_table variable
+            history_table = article_history
+
+            # Use get_revisions_between to get all revisions between start_revid and end_revid
+            if start_revid is not None and end_revid is not None:
+                revision_ids = get_revisions_between(article_id, start_revid, end_revid, db_config)
+                if not revision_ids:
+                    logger.error("No revisions found between the specified revision IDs")
+                    return None
+                
+                # Map revision IDs to indices in the history_table
+                rev_to_idx = {row['revid']: idx for idx, row in article_history.iterrows()}
+                revision_indices = [rev_to_idx[rev_id] for rev_id in revision_ids if rev_id in rev_to_idx]
+            else:
+                if not use_mock_data:
+                    logger.info("No specific revision IDs provided. Using first and last available revisions.")
+                    revision_indices = [0, len(article_history) - 1]
 
         # Extract revision texts if not already loaded
         if not revision_texts:
             revision_texts = extract_revision_texts(history_table, redis_config)
-
-        # Find indices for the specified revision IDs
-        if start_revid is not None and end_revid is not None and not use_mock_data:
-            # Check if the specified revisions exist
-            start_exists = start_revid in article_history['revid'].values
-            end_exists = end_revid in article_history['revid'].values
-
-            if not start_exists or not end_exists:
-                logger.warning(f"Specified revision IDs not found.")
-                if not start_exists:
-                    logger.warning(f"Start revision ID {start_revid} not found")
-                if not end_exists:
-                    logger.warning(f"End revision ID {end_revid} not found")
-
-                # Fallback: Use first and last revisions instead
-                logger.info("Using first and last available revisions instead.")
-                revision_indices = [0, len(article_history) - 1]
-            else:
-                # Get the indices of the specified revisions
-                start_idx = article_history[article_history['revid'] == start_revid].index
-                end_idx = article_history[article_history['revid'] == end_revid].index
-
-                # Get all revisions between start and end (inclusive)
-                revision_indices = list(range(start_idx[0], end_idx[0] + 1))
-        else:
-            if not use_mock_data:
-                logger.info("No specific revision IDs provided. Using first and last available revisions.")
-                revision_indices = [0, len(article_history) - 1]
 
     # Make sure history_table is defined before continuing
     if 'history_table' not in globals():
@@ -436,6 +504,12 @@ def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=Non
 
     # Prepare the visualized output
     html_output = "<div style='font-family: monospace; white-space: pre-wrap;'>\n"
+    # Add CSS to fix spacing issues
+    html_output += "<style>\n"
+    html_output += "  span { display: inline; }\n"
+    html_output += "  .word-span { margin-right: 0; }\n"  # Changed from 0.25em to 0
+    html_output += "  .deleted-word { margin-right: 0; }\n"
+    html_output += "</style>\n"
     html_output += "<h3>Wikipedia Article Diff Visualization</h3>\n"
 
     # Display revision info at the top (only if show_revision_info is True)
@@ -445,76 +519,197 @@ def visualize_wiki_versions_with_deletions(revision_indices=None, article_id=Non
 
     html_output += "<hr>\n<div style='padding: 20px; border: 1px solid #ccc; background-color: #f9f9f9;'>\n"
 
-    # Perform diff between first and last revision
-    first_text = texts[0]
-    last_text = texts[-1]
-
-    # Split text by words or lines based on the word_level parameter
-    if word_level:
-        first_tokens = first_text.split()
-        last_tokens = last_text.split()
-    else:
-        first_tokens = first_text.splitlines()
-        last_tokens = last_text.splitlines()
-
-    # Generate the diff
-    diff = difflib.SequenceMatcher(None, first_tokens, last_tokens)
-
-    # Process the diff operations
+    # Process all revisions sequentially to show cumulative changes
+    # Start with the first revision text as our base
+    current_text = texts[0]
     result = []
 
-    for op, i1, i2, j1, j2 in diff.get_opcodes():
-        if op == 'equal':
-            # Text present in both versions
-            for token in first_tokens[i1:i2]:
-                result.append(f"<span>{html.escape(token)}</span>")
-                if word_level:
+    # Add the first revision text (unmarked as it's the base)
+    if word_level:
+        tokens = current_text.split()
+        for i, token in enumerate(tokens):
+            # Don't add space through CSS margin
+            is_last = i == len(tokens) - 1
+            result.append(f"<span class='word-span'>{html.escape(token)}</span>")
+            # Add a real space between words (not before punctuation)
+            if not is_last:
+                if tokens[i+1] not in [',', '.', ':', ';', '?', '!', ')', ']', '}'] and token not in ['(', '[', '{', '-']:
                     result.append(" ")
-                else:
-                    result.append("<br>")
-        elif op == 'delete':
-            # Text deleted in the newer version
-            color = get_color_for_revision(rev_ids[0])
-            for token in first_tokens[i1:i2]:
-                result.append(f"<span style='text-decoration:line-through; color:{color};'>{html.escape(token)}</span>")
-                if word_level:
-                    result.append(" ")
-                else:
-                    result.append("<br>")
-        elif op == 'insert':
-            # Text added in the newer version
-            color = get_color_for_revision(rev_ids[-1])
-            for token in last_tokens[j1:j2]:
-                result.append(f"<span style='background-color:rgba({color[4:-1]},0.2); color:{color};'>{html.escape(token)}</span>")
-                if word_level:
-                    result.append(" ")
-                else:
-                    result.append("<br>")
-        elif op == 'replace':
-            # Text replaced (combination of delete and insert)
-            # First show the deleted text
-            delete_color = get_color_for_revision(rev_ids[0])
-            for token in first_tokens[i1:i2]:
-                result.append(f"<span style='text-decoration:line-through; color:{delete_color};'>{html.escape(token)}</span>")
-                if word_level:
-                    result.append(" ")
-                else:
-                    result.append("<br>")
+    else:
+        lines = current_text.splitlines()
+        for line in lines:
+            result.append(f"<span>{html.escape(line)}</span><br>")
 
-            # Then show the inserted text
-            insert_color = get_color_for_revision(rev_ids[-1])
-            for token in last_tokens[j1:j2]:
-                result.append(f"<span style='background-color:rgba({insert_color[4:-1]},0.2); color:{insert_color};'>{html.escape(token)}</span>")
-                if word_level:
-                    result.append(" ")
-                else:
-                    result.append("<br>")
+    # Process each subsequent revision and apply changes
+    for i in range(1, len(texts)):
+        prev_text = current_text
+        current_text = texts[i]
+        current_rev_id = rev_ids[i]
+
+        # Get color for this revision
+        color = get_color_for_revision(current_rev_id)
+
+        # Calculate diff between previous text and current text
+        if word_level:
+            prev_tokens = prev_text.split()
+            curr_tokens = current_text.split()
+            diff = difflib.SequenceMatcher(None, prev_tokens, curr_tokens)
+
+            # Create a new result with changes applied
+            new_result = []
+            current_pos = 0
+
+            # Process each diff operation
+            for op, i1, i2, j1, j2 in diff.get_opcodes():
+                if op == 'equal':
+                    # Copy unchanged tokens
+                    for k in range(i1, i2):
+                        token_idx = current_pos
+                        current_pos += 1
+                        if token_idx < len(result):
+                            new_result.append(result[token_idx])
+                elif op == 'delete':
+                    # Mark deleted tokens with strikethrough and add class with revision ID
+                    for k in range(i1, i2):
+                        token = prev_tokens[k]
+                        # Use classes to control spacing
+                        new_result.append(f"<span class='rev-{current_rev_id} deleted-word' style='text-decoration:line-through; color:{color};'>{html.escape(token)}</span>")
+                        current_pos += 1
+                        # Add appropriate space after deleted text unless it's the last token or before punctuation
+                        if k < i2-1 and prev_tokens[k+1] not in [',', '.', ':', ';', '?', '!', ')', ']', '}'] and token not in ['(', '[', '{', '-']:
+                            new_result.append(" ")
+                elif op == 'insert':
+                    # Add new tokens with highlight and add class with revision ID
+                    for k in range(j1, j2):
+                        token = curr_tokens[k]
+                        new_result.append(f"<span class='rev-{current_rev_id} word-span' style='background-color:rgba({color[4:-1]},0.2); color:{color};'>{html.escape(token)}</span>")
+                        # Add space only if needed - not before punctuation and not at the end
+                        if k < j2-1 and curr_tokens[k+1] not in [',', '.', ':', ';', '?', '!', ')', ']', '}'] and token not in ['(', '[', '{', '-']:
+                            new_result.append(" ")
+                elif op == 'replace':
+                    # Mark deleted tokens with strikethrough
+                    for k in range(i1, i2):
+                        token = prev_tokens[k]
+                        new_result.append(f"<span class='rev-{current_rev_id} deleted-word' style='text-decoration:line-through; color:{color};'>{html.escape(token)}</span>")
+                        current_pos += 1
+                        # Only add space between deleted words, not after the last one
+                        if k < i2-1 and prev_tokens[k+1] not in [',', '.', ':', ';', '?', '!', ')', ']', '}'] and token not in ['(', '[', '{', '-']:
+                            new_result.append(" ")
+
+                    # Add new tokens with highlight
+                    for k in range(j1, j2):
+                        token = curr_tokens[k]
+                        new_result.append(f"<span class='rev-{current_rev_id} word-span' style='background-color:rgba({color[4:-1]},0.2); color:{color};'>{html.escape(token)}</span>")
+                        # Add space only when needed
+                        if k < j2-1 and curr_tokens[k+1] not in [',', '.', ':', ';', '?', '!', ')', ']', '}'] and token not in ['(', '[', '{', '-']:
+                            new_result.append(" ")
+
+            result = new_result
+        else:
+            # Line-level diff
+            prev_lines = prev_text.splitlines()
+            curr_lines = current_text.splitlines()
+            diff = difflib.SequenceMatcher(None, prev_lines, curr_lines)
+
+            # Create a new result with changes applied
+            new_result = []
+            current_pos = 0
+
+            # Process each diff operation
+            for op, i1, i2, j1, j2 in diff.get_opcodes():
+                if op == 'equal':
+                    # Copy unchanged lines
+                    for k in range(i1, i2):
+                        line_idx = current_pos
+                        current_pos += 1
+                        if line_idx < len(result):
+                            new_result.append(result[line_idx])
+                elif op == 'delete':
+                    # Mark deleted lines with strikethrough and add class with revision ID
+                    for k in range(i1, i2):
+                        line = prev_lines[k]
+                        new_result.append(f"<span class='rev-{current_rev_id}' style='text-decoration:line-through; color:{color};'>{html.escape(line)}</span><br>")
+                        current_pos += 1
+                elif op == 'insert':
+                    # Add new lines with highlight and add class with revision ID
+                    for k in range(j1, j2):
+                        line = curr_lines[k]
+                        new_result.append(f"<span class='rev-{current_rev_id}' style='background-color:rgba({color[4:-1]},0.2); color:{color};'>{html.escape(line)}</span><br>")
+                elif op == 'replace':
+                    # Mark deleted lines with strikethrough and add class with revision ID
+                    for k in range(i1, i2):
+                        line = prev_lines[k]
+                        new_result.append(f"<span class='rev-{current_rev_id}' style='text-decoration:line-through; color:{color};'>{html.escape(line)}</span><br>")
+                        current_pos += 1
+
+                    # Add new lines with highlight and add class with revision ID
+                    for k in range(j1, j2):
+                        line = curr_lines[k]
+                        new_result.append(f"<span class='rev-{current_rev_id}' style='background-color:rgba({color[4:-1]},0.2); color:{color};'>{html.escape(line)}</span><br>")
+
+            result = new_result
 
     # Add the result to the HTML output
     html_output += "".join(result)
     html_output += "\n</div>\n</div>"
 
+    # Clean up the HTML if requested
+    if clean_html:
+        html_output = clean_html_output(html_output)
+
     return html_output
+
+def get_revisions_between(article_id, start_revid, end_revid, db_config=None):
+    """
+    Get a list of revision IDs between two revisions (inclusive) in chronological order.
+
+    Parameters:
+    article_id (int): The ID of the article
+    start_revid (int): The starting revision ID
+    end_revid (int): The ending revision ID
+    db_config (dict): Database connection parameters
+
+    Returns:
+    list: List of revision IDs in chronological order between start_revid and end_revid (inclusive)
+    """
+    from db_utils import db_params
+
+    # Set default db_config if not provided
+    if db_config is None:
+        db_config = db_params
+
+    # Get revision history from database
+    article_history = get_revisions_by_article_id(article_id, db_config)
+
+    if article_history.empty:
+        logger.error(f"Could not retrieve revision history for article ID {article_id}")
+        return []
+
+    # Check if the specified revisions exist
+    start_exists = start_revid in article_history['revid'].values
+    end_exists = end_revid in article_history['revid'].values
+
+    if not start_exists or not end_exists:
+        if not start_exists:
+            logger.warning(f"Start revision ID {start_revid} not found")
+        if not end_exists:
+            logger.warning(f"End revision ID {end_revid} not found")
+        return []
+
+    # Get the indices of the specified revisions
+    start_idx = article_history[article_history['revid'] == start_revid].index[0]
+    end_idx = article_history[article_history['revid'] == end_revid].index[0]
+
+    # Make sure start comes before end in the history
+    if start_idx > end_idx:
+        start_idx, end_idx = end_idx, start_idx
+
+    # Extract all revision IDs between start and end (inclusive)
+    revision_ids = article_history.iloc[start_idx:end_idx+1]['revid'].tolist()
+
+    logger.info(f"Found {len(revision_ids)} revisions between {start_revid} and {end_revid}")
+
+    return revision_ids
 
 if __name__ == "__main__":
     from db_utils import create_db_connection, db_params, redis_params, test_db_connection
@@ -535,14 +730,15 @@ if __name__ == "__main__":
 
 
     html = visualize_wiki_versions_with_deletions(article_id=article_id,
-                                                  start_revid=start_revid,
-                                                  end_revid=end_revid,
-                                                  word_level=True,
-                                                  verbose=True,
-                                                  db_config=db_config,
-                                                  redis_config=redis_config,
-                                                  show_revision_info=False
-                                                 )
+                                                                              start_revid=start_revid,
+                                                                              end_revid=end_revid,
+                                                                              word_level=True,
+                                                                              verbose=True,
+                                                                              db_config=db_config,
+                                                                              redis_config=redis_config,
+                                                                              show_revision_info=False,
+                                                                              clean_html=True)  # Enable HTML cleanup
 
     print(f"\nHTML:\n-------------------------------------------------------\n{html}\n-------------------------------------------------------")
+
 
