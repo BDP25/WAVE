@@ -153,7 +153,7 @@ function fetchRevidsAndVisualization(history, article_id, newestTimestamp, tenth
         });
 }
 
-function setupSliderTooltips(slider, seventnewestEntry, maxYear, isSingleYear, articleId, history) {
+function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, history) {
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
 
     tooltips.forEach((tooltip, index) => {
@@ -163,7 +163,7 @@ function setupSliderTooltips(slider, seventnewestEntry, maxYear, isSingleYear, a
             const input = document.createElement("input");
             input.type = "date";
             input.className = "date-picker-input";
-            const timestamp = index === 0 ? seventnewestEntry.timestamp : history[history.length - 1].timestamp;
+            const timestamp = index === 0 ? seventnewestEntry.timestamp : newestEntry.timestamp;
             input.value = new Date(timestamp).toISOString().split("T")[0];
 
             const rect = tooltip.getBoundingClientRect();
@@ -172,9 +172,19 @@ function setupSliderTooltips(slider, seventnewestEntry, maxYear, isSingleYear, a
             input.style.top = `${rect.bottom + window.scrollY + 5}px`;
 
             input.addEventListener("change", () => {
-                const selectedDate = new Date(input.value);
-                const newValue = isSingleYear ? selectedDate.getMonth() : selectedDate.getTime();
-                slider.noUiSlider.setHandle(index, newValue);
+                const selectedDate = new Date(input.value).getTime();
+                slider.noUiSlider.setHandle(index, selectedDate);
+
+                // Update the slider's range and fetch new data
+                const updatedStart = slider.noUiSlider.get()[0];
+                const updatedEnd = slider.noUiSlider.get()[1];
+                const startEntry = history.find(entry => new Date(entry.timestamp).getTime() === +updatedStart);
+                const endEntry = history.find(entry => new Date(entry.timestamp).getTime() === +updatedEnd);
+
+                if (startEntry && endEntry) {
+                    fetchRevidsAndVisualization(history, articleId, endEntry, startEntry);
+                }
+
                 input.remove();
             });
 
