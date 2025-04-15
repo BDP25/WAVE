@@ -42,30 +42,45 @@
 }
 
 .timeline-axis {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    margin-top: 20px;
-    padding: 0 15px;
-    box-sizing: border-box;
+    position: relative;
+    height: 20px;
+    margin-top: 10px;
 }
+
+.timeline-axis span {
+    position: absolute;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    font-size: 12px;
+}
+
+.timeline-axis span::before {
+    content: "";
+    display: block;
+    width: 1px;
+    height: 10px;
+    background-color: #999;
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 
 .year-label {
     font-size: 12px;
     color: #666;
-    position: relative;
-    transform: translateX(-50%);
 }
 
-.year-label::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    width: 1px;
-    height: 5px;
-    background-color: #999;
+.month-label {
+    font-size: 10px;
+    color: #666;
 }
+
+
+
+
+
 
 .noUi-tooltip {
     cursor: pointer;
