@@ -1,6 +1,6 @@
 import { fetchVisualization } from "./api.js";
 
-export function createDateSliderWithPicker(container, history, article_id) {
+export function createDateSliderWithPicker(container, history, articleId) {
     container.innerHTML = "";
 
     const sliderWrapper = document.createElement("div");
@@ -10,13 +10,15 @@ export function createDateSliderWithPicker(container, history, article_id) {
     slider.id = "multi-range-slider";
     sliderWrapper.appendChild(slider);
 
-    const sortedHistory = history.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const sortedHistory = [...history].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const firstEntry = sortedHistory[0];
     const lastEntry = sortedHistory[sortedHistory.length - 1];
-    const newestEntry = lastEntry;
-    const seventnewestEntry = sortedHistory.length >= 10
-        ? sortedHistory[sortedHistory.length - 10]
-        : sortedHistory[0];
+    const tenthNewestEntry = sortedHistory[Math.max(0, sortedHistory.length - 10)];
+
+    const fullRangeStart = new Date(firstEntry.timestamp).getTime();
+    const fullRangeEnd = new Date(lastEntry.timestamp).getTime();
+    const sliderStart = new Date(tenthNewestEntry.timestamp).getTime();
+    const sliderEnd = new Date(lastEntry.timestamp).getTime();
 
     const timelineAxis = createTimelineAxis(firstEntry.timestamp, lastEntry.timestamp);
     sliderWrapper.appendChild(timelineAxis);
@@ -24,28 +26,14 @@ export function createDateSliderWithPicker(container, history, article_id) {
 
     if (slider.noUiSlider) slider.noUiSlider.destroy();
 
-    const fullRangeStart = new Date(firstEntry.timestamp).getTime();
-    const fullRangeEnd = new Date(lastEntry.timestamp).getTime();
-    const sliderStart = new Date(seventnewestEntry.timestamp).getTime();
-    const sliderEnd = new Date(newestEntry.timestamp).getTime();
-
     noUiSlider.create(slider, {
         start: [sliderStart, sliderEnd],
         connect: true,
-        range: {
-            min: fullRangeStart,
-            max: fullRangeEnd
-        },
+        range: { min: fullRangeStart, max: fullRangeEnd },
         step: 24 * 60 * 60 * 1000,
         tooltips: [
-            {
-                to: (value) => formatDate(new Date(+value)),
-                from: Number
-            },
-            {
-                to: (value) => formatDate(new Date(+value)),
-                from: Number
-            }
+            { to: value => formatDate(new Date(+value)), from: Number },
+            { to: value => formatDate(new Date(+value)), from: Number }
         ],
         format: {
             to: value => +value,
@@ -54,128 +42,50 @@ export function createDateSliderWithPicker(container, history, article_id) {
     });
 
     slider.noUiSlider.on("update", (values, handle) => {
-        const tooltip = slider.querySelectorAll(".noUi-tooltip")[handle];
-        tooltip.textContent = formatDate(new Date(+values[handle]));
+        slider.querySelectorAll(".noUi-tooltip")[handle].textContent = formatDate(new Date(+values[handle]));
     });
 
-    // Add event listener for slider changes
-    slider.noUiSlider.on("change", (values) => {
-        const updatedStart = new Date(+values[0]);
-        const updatedEnd = new Date(+values[1]);
-
-        const startEntry = history.find(entry => new Date(entry.timestamp).getTime() === updatedStart.getTime());
-        const endEntry = history.find(entry => new Date(entry.timestamp).getTime() === updatedEnd.getTime());
-
-        if (!startEntry) {
-            console.log(`No matching entry found in history for start date: ${formatDate(updatedStart)}`);
-        }
-        if (!endEntry) {
-            console.log(`No matching entry found in history for end date: ${formatDate(updatedEnd)}`);
-        }
-
+    const handleSliderChange = () => {
+        const [start, end] = slider.noUiSlider.get().map(Number);
+        const startEntry = findClosestEntry(history, start);
+        const endEntry = findClosestEntry(history, end);
         if (startEntry && endEntry) {
-            // Trigger a new request with the updated range
-            fetchRevidsAndVisualization(history, article_id, endEntry, startEntry);
+            updateVisualization(sliderWrapper, articleId, startEntry, endEntry);
         }
-    });
+    };
 
-    fetchRevidsAndVisualization(history, article_id, newestEntry, seventnewestEntry);
-    setupSliderTooltips(slider, seventnewestEntry, newestEntry, article_id, history);
+    slider.noUiSlider.on("change", handleSliderChange);
+    setupSliderTooltips(slider, history, articleId, handleSliderChange);
+
+    updateVisualization(sliderWrapper, articleId, tenthNewestEntry, lastEntry);
 }
 
-function formatDate(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
 
-function createTimelineAxis(startDate, endDate) {
-    const timelineAxis = document.createElement("div");
-    timelineAxis.className = "timeline-axis";
+function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
+    removeExistingOutput(sliderWrapper);
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const yearRange = end.getFullYear() - start.getFullYear();
-
-    if (yearRange <= 2) {
-        addYearAndMonthLabels(timelineAxis, start, end);
-    } else if (yearRange <= 10) {
-        addYearLabels(timelineAxis, start, end, 1);
-    } else {
-        addYearLabels(timelineAxis, start, end, 5);
-    }
-
-    return timelineAxis;
-}
-
-function addYearAndMonthLabels(axis, startDate, endDate) {
-    const startYear = startDate.getFullYear();
-    const endYear = endDate.getFullYear();
-
-    for (let year = startYear; year <= endYear; year++) {
-        const label = document.createElement("span");
-        label.className = "year-label";
-        label.textContent = year.toString();
-        axis.appendChild(label);
-
-        // Add month labels for each year
-        const monthStart = year === startYear ? startDate.getMonth() : 0;
-        const monthEnd = year === endYear ? endDate.getMonth() : 11;
-
-        for (let month = monthStart; month <= monthEnd; month++) {
-            const monthLabel = document.createElement("span");
-            monthLabel.className = "month-label";
-            monthLabel.textContent = new Date(year, month).toLocaleString('default', { month: 'short' });
-            axis.appendChild(monthLabel);
-        }
-    }
-}
-
-function addYearLabels(axis, startDate, endDate, step) {
-    const startYear = startDate.getFullYear();
-    const endYear = endDate.getFullYear();
-
-    for (let year = startYear; year <= endYear; year += step) {
-        const label = document.createElement("span");
-        label.className = "year-label";
-        label.textContent = year.toString();
-        axis.appendChild(label);
-    }
-}
-
-function fetchRevidsAndVisualization(history, article_id, newestTimestamp, tenthNewestTimestamp) {
-    const startRevid = newestTimestamp.revid;
-    const endRevid = tenthNewestTimestamp.revid;
-
-    const sliderWrapper = document.querySelector(".slider-wrapper");
-
-    // Clear previous content
-    const existingOutputContainer = sliderWrapper.querySelector(".output-container");
-    const existingErrorContainer = sliderWrapper.querySelector(".error-container");
-    if (existingOutputContainer) existingOutputContainer.remove();
-    if (existingErrorContainer) existingErrorContainer.remove();
-
-    fetchVisualization(article_id, startRevid, endRevid)
-        .then((data) => {
-            console.log(data);
-            const outputContainer = document.createElement("div");
-            outputContainer.className = "output-container";
-            outputContainer.innerHTML = data.html || "<p>No visualization data available.</p>";
-            sliderWrapper.appendChild(outputContainer);
+    fetchVisualization(articleId, endEntry.revid, startEntry.revid)
+        .then(data => {
+            const output = document.createElement("div");
+            output.className = "output-container";
+            output.innerHTML = data.html || "<p>No visualization data available.</p>";
+            sliderWrapper.appendChild(output);
         })
-        .catch((err) => {
+        .catch(err => {
             console.error("Error fetching visualization data:", err);
-
-            const errorContainer = document.createElement("div");
-            errorContainer.className = "error-container";
-            errorContainer.innerHTML = "<p>Error loading visualization data.</p>";
-            sliderWrapper.appendChild(errorContainer);
+            const error = document.createElement("div");
+            error.className = "error-container";
+            error.innerHTML = "<p>Error loading visualization data.</p>";
+            sliderWrapper.appendChild(error);
         });
 }
 
+function removeExistingOutput(wrapper) {
+    wrapper.querySelectorAll(".output-container, .error-container").forEach(el => el.remove());
+}
 
-function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, history) {
-    const tooltips = slider.querySelectorAll(".noUi-tooltip");
-
-    tooltips.forEach((tooltip, index) => {
+function setupSliderTooltips(slider, history, articleId, onChange) {
+    slider.querySelectorAll(".noUi-tooltip").forEach((tooltip, index) => {
         tooltip.style.cursor = "pointer";
 
         tooltip.addEventListener("click", () => {
@@ -183,7 +93,6 @@ function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, 
             input.type = "date";
             input.className = "date-picker-input";
 
-            // Get the current slider handle value and set it as the date picker's value
             const currentTimestamp = slider.noUiSlider.get()[index];
             input.value = new Date(+currentTimestamp).toISOString().split("T")[0];
 
@@ -193,24 +102,12 @@ function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, 
             input.style.top = `${rect.bottom + window.scrollY + 5}px`;
 
             input.addEventListener("change", () => {
-                const selectedDate = new Date(input.value).getTime();
-                slider.noUiSlider.setHandle(index, selectedDate);
+                const newDate = new Date(input.value).getTime();
+                const currentSliderValue = Number(slider.noUiSlider.get()[index]);
 
-                // Update the slider's range and fetch new data
-                const updatedStart = slider.noUiSlider.get()[0];
-                const updatedEnd = slider.noUiSlider.get()[1];
-                const startEntry = history.find(entry => new Date(entry.timestamp).getTime() === +updatedStart);
-                const endEntry = history.find(entry => new Date(entry.timestamp).getTime() === +updatedEnd);
-
-                if (!startEntry) {
-                    console.log(`No matching entry found in history for start date: ${formatDate(new Date(+updatedStart))}`);
-                }
-                if (!endEntry) {
-                    console.log(`No matching entry found in history for end date: ${formatDate(new Date(+updatedEnd))}`);
-                }
-
-                if (startEntry && endEntry) {
-                    fetchRevidsAndVisualization(history, articleId, endEntry, startEntry);
+                if (newDate !== currentSliderValue) {
+                    slider.noUiSlider.setHandle(index, newDate);
+                    onChange();
                 }
 
                 input.remove();
@@ -219,16 +116,78 @@ function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, 
             document.body.appendChild(input);
             input.focus();
 
-            const removeOnClickOutside = (e) => {
+            const removeOnClickOutside = e => {
                 if (!input.contains(e.target)) {
                     input.remove();
                     document.removeEventListener("click", removeOnClickOutside);
                 }
             };
 
-            setTimeout(() => {
-                document.addEventListener("click", removeOnClickOutside);
-            }, 0);
+            setTimeout(() => document.addEventListener("click", removeOnClickOutside), 0);
         });
     });
 }
+
+function formatDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function findClosestEntry(history, timestamp) {
+    return history.reduce((closest, entry) => {
+        const entryTime = new Date(entry.timestamp).getTime();
+        const closestTime = new Date(closest.timestamp).getTime();
+        return Math.abs(entryTime - timestamp) < Math.abs(closestTime - timestamp) ? entry : closest;
+    });
+}
+
+
+function createTimelineAxis(startDate, endDate) {
+    const axis = document.createElement("div");
+    axis.className = "timeline-axis";
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const range = end.getTime() - start.getTime();
+
+    const addLabel = (date, text, className) => {
+        const label = document.createElement("span");
+        label.className = className;
+        label.textContent = text;
+
+        const offset = ((date.getTime() - start.getTime()) / range) * 100;
+        label.style.left = `${offset}%`;
+
+        axis.appendChild(label);
+    };
+
+    const yearsDiff = end.getFullYear() - start.getFullYear();
+
+    if (yearsDiff <= 2) {
+        for (let year = start.getFullYear(); year <= end.getFullYear(); year++) {
+            for (let month = 0; month < 12; month++) {
+                const current = new Date(year, month);
+                if (current >= start && current <= end) {
+                    const monthLabel = current.toLocaleString("default", { month: "short" });
+                    addLabel(current, monthLabel, "month-label");
+                }
+            }
+            const yearLabelDate = new Date(year, 0, 1);
+            if (yearLabelDate >= start && yearLabelDate <= end) {
+                addLabel(yearLabelDate, year.toString(), "year-label");
+            }
+        }
+    } else {
+        const step = yearsDiff <= 10 ? 1 : 5;
+        for (let year = start.getFullYear(); year <= end.getFullYear(); year += step) {
+            const labelDate = new Date(year, 0, 1);
+            addLabel(labelDate, year.toString(), "year-label");
+        }
+    }
+
+    return axis;
+}
+
+
+
+
+
