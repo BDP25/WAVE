@@ -10,7 +10,6 @@ export function createDateSliderWithPicker(container, history, article_id) {
     slider.id = "multi-range-slider";
     sliderWrapper.appendChild(slider);
 
-    // Sort history chronologically
     const sortedHistory = history.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const firstEntry = sortedHistory[0];
     const lastEntry = sortedHistory[sortedHistory.length - 1];
@@ -19,30 +18,25 @@ export function createDateSliderWithPicker(container, history, article_id) {
         ? sortedHistory[sortedHistory.length - 10]
         : sortedHistory[0];
 
-    // Create timeline axis showing FULL range (first to last entry)
-    const timelineAxis = createTimelineAxis(
-        firstEntry.timestamp,
-        lastEntry.timestamp
-    );
+    const timelineAxis = createTimelineAxis(firstEntry.timestamp, lastEntry.timestamp);
     sliderWrapper.appendChild(timelineAxis);
     container.appendChild(sliderWrapper);
 
     if (slider.noUiSlider) slider.noUiSlider.destroy();
 
-    // Convert timestamps to milliseconds
     const fullRangeStart = new Date(firstEntry.timestamp).getTime();
     const fullRangeEnd = new Date(lastEntry.timestamp).getTime();
     const sliderStart = new Date(seventnewestEntry.timestamp).getTime();
     const sliderEnd = new Date(newestEntry.timestamp).getTime();
 
     noUiSlider.create(slider, {
-        start: [sliderStart, sliderEnd], // Initial slider position
+        start: [sliderStart, sliderEnd],
         connect: true,
         range: {
             min: fullRangeStart,
             max: fullRangeEnd
         },
-        step: 24 * 60 * 60 * 1000, // 1 day steps
+        step: 24 * 60 * 60 * 1000,
         tooltips: [
             {
                 to: (value) => formatDate(new Date(+value)),
@@ -62,6 +56,27 @@ export function createDateSliderWithPicker(container, history, article_id) {
     slider.noUiSlider.on("update", (values, handle) => {
         const tooltip = slider.querySelectorAll(".noUi-tooltip")[handle];
         tooltip.textContent = formatDate(new Date(+values[handle]));
+    });
+
+    // Add event listener for slider changes
+    slider.noUiSlider.on("change", (values) => {
+        const updatedStart = new Date(+values[0]);
+        const updatedEnd = new Date(+values[1]);
+
+        const startEntry = history.find(entry => new Date(entry.timestamp).getTime() === updatedStart.getTime());
+        const endEntry = history.find(entry => new Date(entry.timestamp).getTime() === updatedEnd.getTime());
+
+        if (!startEntry) {
+            console.log(`No matching entry found in history for start date: ${formatDate(updatedStart)}`);
+        }
+        if (!endEntry) {
+            console.log(`No matching entry found in history for end date: ${formatDate(updatedEnd)}`);
+        }
+
+        if (startEntry && endEntry) {
+            // Trigger a new request with the updated range
+            fetchRevidsAndVisualization(history, article_id, endEntry, startEntry);
+        }
     });
 
     fetchRevidsAndVisualization(history, article_id, newestEntry, seventnewestEntry);
@@ -126,19 +141,24 @@ function addYearLabels(axis, startDate, endDate, step) {
     }
 }
 
-// Rest of the functions (fetchRevidsAndVisualization, setupSliderTooltips) remain the same
-
 function fetchRevidsAndVisualization(history, article_id, newestTimestamp, tenthNewestTimestamp) {
     const startRevid = newestTimestamp.revid;
     const endRevid = tenthNewestTimestamp.revid;
 
+    const sliderWrapper = document.querySelector(".slider-wrapper");
+
+    // Clear previous content
+    const existingOutputContainer = sliderWrapper.querySelector(".output-container");
+    const existingErrorContainer = sliderWrapper.querySelector(".error-container");
+    if (existingOutputContainer) existingOutputContainer.remove();
+    if (existingErrorContainer) existingErrorContainer.remove();
+
     fetchVisualization(article_id, startRevid, endRevid)
         .then((data) => {
+            console.log(data);
             const outputContainer = document.createElement("div");
             outputContainer.className = "output-container";
             outputContainer.innerHTML = data.html || "<p>No visualization data available.</p>";
-
-            const sliderWrapper = document.querySelector(".slider-wrapper");
             sliderWrapper.appendChild(outputContainer);
         })
         .catch((err) => {
@@ -147,11 +167,10 @@ function fetchRevidsAndVisualization(history, article_id, newestTimestamp, tenth
             const errorContainer = document.createElement("div");
             errorContainer.className = "error-container";
             errorContainer.innerHTML = "<p>Error loading visualization data.</p>";
-
-            const sliderWrapper = document.querySelector(".slider-wrapper");
             sliderWrapper.appendChild(errorContainer);
         });
 }
+
 
 function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, history) {
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
@@ -163,8 +182,10 @@ function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, 
             const input = document.createElement("input");
             input.type = "date";
             input.className = "date-picker-input";
-            const timestamp = index === 0 ? seventnewestEntry.timestamp : newestEntry.timestamp;
-            input.value = new Date(timestamp).toISOString().split("T")[0];
+
+            // Get the current slider handle value and set it as the date picker's value
+            const currentTimestamp = slider.noUiSlider.get()[index];
+            input.value = new Date(+currentTimestamp).toISOString().split("T")[0];
 
             const rect = tooltip.getBoundingClientRect();
             input.style.position = "absolute";
@@ -180,6 +201,13 @@ function setupSliderTooltips(slider, seventnewestEntry, newestEntry, articleId, 
                 const updatedEnd = slider.noUiSlider.get()[1];
                 const startEntry = history.find(entry => new Date(entry.timestamp).getTime() === +updatedStart);
                 const endEntry = history.find(entry => new Date(entry.timestamp).getTime() === +updatedEnd);
+
+                if (!startEntry) {
+                    console.log(`No matching entry found in history for start date: ${formatDate(new Date(+updatedStart))}`);
+                }
+                if (!endEntry) {
+                    console.log(`No matching entry found in history for end date: ${formatDate(new Date(+updatedEnd))}`);
+                }
 
                 if (startEntry && endEntry) {
                     fetchRevidsAndVisualization(history, articleId, endEntry, startEntry);
