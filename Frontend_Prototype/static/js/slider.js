@@ -124,14 +124,15 @@ function removeExistingOutput(wrapper) {
 
 
 
+
+
 function setupSliderTooltips(slider, history, articleId, onChange) {
     const firstEntryDate = new Date(history[0].timestamp);
     const lastEntryDate = new Date(history[history.length - 1].timestamp);
-
-    const validDates = history.map(entry => entry.timestamp.split('T')[0]); // Extract valid dates as strings
+    const validDates = history.map(entry => entry.timestamp.split('T')[0]);
 
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
-    const calendars = new Array(tooltips.length).fill(null); // Store flatpickr instances
+    const calendars = new Array(tooltips.length).fill(null);
 
     tooltips.forEach((tooltip, index) => {
         tooltip.style.cursor = "pointer";
@@ -154,7 +155,6 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                 dateFormat: "Y-m-d",
                 disable: [
                     function (date) {
-                        // Disable dates not in the validDates array
                         const dateStr = date.toISOString().split('T')[0];
                         return !validDates.includes(dateStr);
                     }
@@ -172,26 +172,34 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                         onChange();
                     }
 
-                    // Destroy the flatpickr instance
                     fp.destroy();
                     tooltip.classList.remove("calendar-open");
                     calendars[index] = null;
                     document.removeEventListener("mousedown", closeCalendar);
                 },
                 onReady: function (_, __, instance) {
-                    instance.calendarContainer.classList.add("small-flatpickr");
+                    const calendar = instance.calendarContainer;
+                    calendar.classList.add("small-flatpickr");
+
+                    // Positionierung prüfen & anpassen
+                    setTimeout(() => {
+                        const rect = calendar.getBoundingClientRect();
+                        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+
+                        if (rect.right > viewportWidth) {
+                            const overflow = rect.right - viewportWidth + 80;
+                            calendar.style.left = `${calendar.offsetLeft - overflow}px`;
+                        }
+                    }, 0);
                 }
             });
 
-            // Store the flatpickr instance
             calendars[index] = fp;
-
             fp.jumpToDate(new Date(+currentSliderValue));
 
             function closeCalendar(event) {
                 const calendarElement = fp.calendarContainer;
-
-                if (!calendarElement || !tooltip.contains(event.target) && !calendarElement.contains(event.target)) {
+                if (!calendarElement || (!tooltip.contains(event.target) && !calendarElement.contains(event.target))) {
                     fp.destroy();
                     tooltip.classList.remove("calendar-open");
                     calendars[index] = null;
@@ -205,21 +213,16 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
         });
     });
 
-    // Close calendar when slider is moved
     slider.noUiSlider.on("slide", () => {
         calendars.forEach((fpInstance, index) => {
-
             if (fpInstance) {
-
-                fpInstance.destroy();  // Kalender schließen
+                fpInstance.destroy();
                 tooltips[index].classList.remove("calendar-open");
                 calendars[index] = null;
             }
         });
     });
 }
-
-
 
 
 
