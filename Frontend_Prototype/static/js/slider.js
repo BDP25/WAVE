@@ -1,4 +1,5 @@
 import { fetchVisualization } from "./api.js";
+let debounceTimeout;
 
 export function createDateSliderWithPicker(container, history, articleId) {
     container.innerHTML = "";
@@ -46,13 +47,17 @@ export function createDateSliderWithPicker(container, history, articleId) {
     });
 
     const handleSliderChange = () => {
+    clearTimeout(debounceTimeout); // Clear any existing timeout
+
+    debounceTimeout = setTimeout(() => {
         const [start, end] = slider.noUiSlider.get().map(Number);
         const startEntry = findClosestEntry(history, start);
         const endEntry = findClosestEntry(history, end);
         if (startEntry && endEntry) {
             updateVisualization(sliderWrapper, articleId, startEntry, endEntry);
         }
-    };
+    }, 50); // 50ms delay
+};
 
     slider.noUiSlider.on("change", handleSliderChange);
     setupSliderTooltips(slider, history, articleId, handleSliderChange);
@@ -67,6 +72,7 @@ function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
     fetchVisualization(articleId, endEntry.revid, startEntry.revid)
         .then(data => {
             const output = document.createElement("div");
+            console.log("Response data:");
             output.className = "output-container";
             output.innerHTML = data.html || "<p>No visualization data available.</p>";
             sliderWrapper.appendChild(output);
@@ -84,11 +90,16 @@ function removeExistingOutput(wrapper) {
     wrapper.querySelectorAll(".output-container, .error-container").forEach(el => el.remove());
 }
 
+
 function setupSliderTooltips(slider, history, articleId, onChange) {
     slider.querySelectorAll(".noUi-tooltip").forEach((tooltip, index) => {
         tooltip.style.cursor = "pointer";
 
-        tooltip.addEventListener("click", () => {
+        tooltip.addEventListener("click", (e) => {
+            // Verhindere sofortige Änderung oder Request-Ausführung
+            e.stopImmediatePropagation();
+            e.preventDefault();
+
             const input = document.createElement("input");
             input.type = "date";
             input.className = "date-picker-input";
@@ -100,24 +111,32 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
             input.style.position = "absolute";
             input.style.left = `${rect.left}px`;
             input.style.top = `${rect.bottom + window.scrollY + 5}px`;
+            input.style.zIndex = "9999";
 
+            // Warten bis der Benutzer das Datum auswählt
             input.addEventListener("change", () => {
                 const newDate = new Date(input.value).getTime();
                 const currentSliderValue = Number(slider.noUiSlider.get()[index]);
 
                 if (newDate !== currentSliderValue) {
-                    slider.noUiSlider.setHandle(index, newDate);
-                    onChange();
+                    slider.noUiSlider.setHandle(index, newDate); // Manuelle Slider-Anpassung
                 }
 
-                input.remove();
+                // Verhindere den Request beim Öffnen des Datepickers
+                setTimeout(() => {
+                    onChange(); // Erst wenn der Benutzer den Datepicker verlassen hat
+                }, 0);
+
+                input.remove(); // Entferne das Eingabefeld nach der Auswahl
             });
 
+            // Datepicker anzeigen
             document.body.appendChild(input);
             input.focus();
 
+            // Klick außerhalb des Inputs entfernt ihn
             const removeOnClickOutside = e => {
-                if (!input.contains(e.target)) {
+                if (!input.contains(e.target) && e.target !== tooltip) {
                     input.remove();
                     document.removeEventListener("click", removeOnClickOutside);
                 }
@@ -127,6 +146,7 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
         });
     });
 }
+
 
 function formatDate(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
