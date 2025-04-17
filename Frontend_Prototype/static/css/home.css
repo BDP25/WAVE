@@ -8,6 +8,7 @@
     margin-top: 20px;
     margin-right: 25px;
     margin-bottom: 20px;
+    overflow-x: hidden; /* <-- Das verhindert horizontales Scrollen */
     border-radius: 12px 12px 12px 12px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     height: calc(100vh - 40px); /* Adjusts the height to fill the viewport, leaving room for top and bottom margins */
@@ -120,3 +121,53 @@
     line-height: 1.6; /* Improve readability */
     margin: 10px 0;
 }
+
+
+
+
+
+.valid-entry-day {
+    background: #b6e6b6 !important;
+    border-radius: 50%;
+    color: black;
+}
+
+
+
+.small-flatpickr {
+
+    box-sizing: border-box;
+}
+
+/* Kalenderelement extrem klein */
+.small-flatpickr .flatpickr-calendar {
+    width: 120px; /* Sehr kleine Breite */
+    height: auto; /* Automatische Höhe */
+    font-size: 8px; /* Sehr kleine Schriftgröße */
+}
+
+.small-flatpickr .flatpickr-day {
+    width: 18px; /* Sehr kleine Tage */
+    height: 18px; /* Sehr kleine Tage */
+    line-height: 18px; /* Zentrale Ausrichtung der Zahl */
+}
+
+.small-flatpickr .flatpickr-months {
+    font-size: 8px; /* Sehr kleine Schriftgröße für Monate */
+}
+
+/* Optional: Verkleinern der Monatsnamen und Pfeile */
+.small-flatpickr .flatpickr-months .flatpickr-prev-month,
+.small-flatpickr .flatpickr-months .flatpickr-next-month {
+    font-size: 8px; /* Sehr kleine Schrift für Pfeile */
+}
+
+/* Optional: Verkleinern der Navigationspfeile */
+.small-flatpickr .flatpickr-prev-month,
+.small-flatpickr .flatpickr-next-month {
+    font-size: 10px; /* Kleiner für die Pfeile */
+}
+
+
+
+
