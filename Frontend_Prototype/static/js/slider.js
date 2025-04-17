@@ -1,5 +1,7 @@
 import { fetchVisualization } from "./api.js";
 let debounceTimeout;
+let currentRequestController = null;
+let isInCooldown = false;
 
 export function createDateSliderWithPicker(container, history, articleId) {
     container.innerHTML = "";
@@ -47,17 +49,17 @@ export function createDateSliderWithPicker(container, history, articleId) {
     });
 
     const handleSliderChange = () => {
-    clearTimeout(debounceTimeout); // Clear any existing timeout
+        clearTimeout(debounceTimeout); // Clear any existing timeout
 
-    debounceTimeout = setTimeout(() => {
-        const [start, end] = slider.noUiSlider.get().map(Number);
-        const startEntry = findClosestEntry(history, start);
-        const endEntry = findClosestEntry(history, end);
-        if (startEntry && endEntry) {
-            updateVisualization(sliderWrapper, articleId, startEntry, endEntry);
-        }
-    }, 50); // 50ms delay
-};
+        debounceTimeout = setTimeout(() => {
+            const [start, end] = slider.noUiSlider.get().map(Number);
+            const startEntry = findClosestEntry(history, start);
+            const endEntry = findClosestEntry(history, end);
+            if (startEntry && endEntry) {
+                updateVisualization(sliderWrapper, articleId, startEntry, endEntry);
+            }
+        }, 100); // 50 ms delay
+    };
 
     slider.noUiSlider.on("change", handleSliderChange);
     setupSliderTooltips(slider, history, articleId, handleSliderChange);
@@ -65,23 +67,53 @@ export function createDateSliderWithPicker(container, history, articleId) {
     updateVisualization(sliderWrapper, articleId, tenthNewestEntry, lastEntry);
 }
 
-
 function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
-    removeExistingOutput(sliderWrapper);
+    // Wenn Cooldown aktiv → nicht erneut ausführen
+    if (isInCooldown) {
+        console.log("Cooldown aktiv – Request blockiert.");
+        return;
+    }
 
-    fetchVisualization(articleId, endEntry.revid, startEntry.revid)
+    // Falls bereits ein Request läuft → abbrechen
+    if (currentRequestController) {
+        console.log("Vorheriger Request wird abgebrochen.");
+        currentRequestController.abort();
+    }
+
+    // Neue AbortController-Instanz für diesen Request
+    currentRequestController = new AbortController();
+    const { signal } = currentRequestController;
+
+    removeExistingOutput(sliderWrapper);
+    console.log("Request startet...");
+
+    // Cooldown aktivieren
+    isInCooldown = true;
+    setTimeout(() => {
+        isInCooldown = false;
+    }, 1500);
+
+    fetchVisualization(articleId, endEntry.revid, startEntry.revid, signal)
         .then(data => {
+            if (signal.aborted) {
+                console.log("Request wurde abgebrochen.");
+                return;
+            }
+
             const output = document.createElement("div");
-            console.log("Response data:");
             output.className = "output-container";
             output.innerHTML = data.html || "<p>No visualization data available.</p>";
             sliderWrapper.appendChild(output);
         })
         .catch(err => {
-            console.error("Error fetching visualization data:", err);
+            if (err.name === "AbortError") {
+                console.log("Fetch wurde abgebrochen.");
+                return;
+            }
+            console.error("Fehler beim Laden der Visualisierung:", err);
             const error = document.createElement("div");
             error.className = "error-container";
-            error.innerHTML = "<p>Error loading visualization data.</p>";
+            error.innerHTML = "<p>Fehler beim Laden der Visualisierung.</p>";
             sliderWrapper.appendChild(error);
         });
 }
@@ -91,61 +123,109 @@ function removeExistingOutput(wrapper) {
 }
 
 
+
 function setupSliderTooltips(slider, history, articleId, onChange) {
-    slider.querySelectorAll(".noUi-tooltip").forEach((tooltip, index) => {
+    const firstEntryDate = new Date(history[0].timestamp);
+    const lastEntryDate = new Date(history[history.length - 1].timestamp);
+
+    const validDates = history.map(entry => entry.timestamp.split('T')[0]); // Extract valid dates as strings
+
+    const tooltips = slider.querySelectorAll(".noUi-tooltip");
+    const calendars = new Array(tooltips.length).fill(null); // Store flatpickr instances
+
+    tooltips.forEach((tooltip, index) => {
         tooltip.style.cursor = "pointer";
 
         tooltip.addEventListener("click", (e) => {
-            // Verhindere sofortige Änderung oder Request-Ausführung
             e.stopImmediatePropagation();
             e.preventDefault();
 
-            const input = document.createElement("input");
-            input.type = "date";
-            input.className = "date-picker-input";
+            if (tooltip.classList.contains("calendar-open")) return;
+            tooltip.classList.add("calendar-open");
 
-            const currentTimestamp = slider.noUiSlider.get()[index];
-            input.value = new Date(+currentTimestamp).toISOString().split("T")[0];
+            const currentSliderValue = slider.noUiSlider.get()[index];
 
-            const rect = tooltip.getBoundingClientRect();
-            input.style.position = "absolute";
-            input.style.left = `${rect.left}px`;
-            input.style.top = `${rect.bottom + window.scrollY + 5}px`;
-            input.style.zIndex = "9999";
+            const fp = flatpickr(tooltip, {
+                defaultDate: new Date(+currentSliderValue),
+                minDate: firstEntryDate,
+                maxDate: lastEntryDate,
+                inline: true,
+                clickOpens: false,
+                dateFormat: "Y-m-d",
+                disable: [
+                    function (date) {
+                        // Disable dates not in the validDates array
+                        const dateStr = date.toISOString().split('T')[0];
+                        return !validDates.includes(dateStr);
+                    }
+                ],
+                onDayCreate: function (dObj, dStr, fpInstance, dayElem) {
+                    const dateStr = dayElem.dateObj.toISOString().split('T')[0];
+                    if (validDates.includes(dateStr)) {
+                        dayElem.classList.add("valid-entry-day");
+                    }
+                },
+                onChange: function (selectedDates) {
+                    const newDate = selectedDates[0].getTime();
+                    if (newDate !== +currentSliderValue) {
+                        slider.noUiSlider.setHandle(index, newDate);
+                        onChange();
+                    }
 
-            // Warten bis der Benutzer das Datum auswählt
-            input.addEventListener("change", () => {
-                const newDate = new Date(input.value).getTime();
-                const currentSliderValue = Number(slider.noUiSlider.get()[index]);
-
-                if (newDate !== currentSliderValue) {
-                    slider.noUiSlider.setHandle(index, newDate); // Manuelle Slider-Anpassung
+                    // Destroy the flatpickr instance
+                    fp.destroy();
+                    tooltip.classList.remove("calendar-open");
+                    calendars[index] = null;
+                    document.removeEventListener("mousedown", closeCalendar);
+                },
+                onReady: function (_, __, instance) {
+                    instance.calendarContainer.classList.add("small-flatpickr");
                 }
-
-                // Verhindere den Request beim Öffnen des Datepickers
-                setTimeout(() => {
-                    onChange(); // Erst wenn der Benutzer den Datepicker verlassen hat
-                }, 0);
-
-                input.remove(); // Entferne das Eingabefeld nach der Auswahl
             });
 
-            // Datepicker anzeigen
-            document.body.appendChild(input);
-            input.focus();
+            // Store the flatpickr instance
+            calendars[index] = fp;
 
-            // Klick außerhalb des Inputs entfernt ihn
-            const removeOnClickOutside = e => {
-                if (!input.contains(e.target) && e.target !== tooltip) {
-                    input.remove();
-                    document.removeEventListener("click", removeOnClickOutside);
+            fp.jumpToDate(new Date(+currentSliderValue));
+
+            function closeCalendar(event) {
+                const calendarElement = fp.calendarContainer;
+
+                if (!calendarElement || !tooltip.contains(event.target) && !calendarElement.contains(event.target)) {
+                    fp.destroy();
+                    tooltip.classList.remove("calendar-open");
+                    calendars[index] = null;
+                    document.removeEventListener("mousedown", closeCalendar);
                 }
-            };
+            }
 
-            setTimeout(() => document.addEventListener("click", removeOnClickOutside), 0);
+            setTimeout(() => {
+                document.addEventListener("mousedown", closeCalendar);
+            }, 0);
+        });
+    });
+
+    // Close calendar when slider is moved
+    slider.noUiSlider.on("slide", () => {
+        calendars.forEach((fpInstance, index) => {
+
+            if (fpInstance) {
+
+                fpInstance.destroy();  // Kalender schließen
+                tooltips[index].classList.remove("calendar-open");
+                calendars[index] = null;
+            }
         });
     });
 }
+
+
+
+
+
+
+
+
 
 
 function formatDate(date) {
@@ -159,7 +239,6 @@ function findClosestEntry(history, timestamp) {
         return Math.abs(entryTime - timestamp) < Math.abs(closestTime - timestamp) ? entry : closest;
     });
 }
-
 
 function createTimelineAxis(startDate, endDate) {
     const axis = document.createElement("div");
@@ -206,8 +285,3 @@ function createTimelineAxis(startDate, endDate) {
 
     return axis;
 }
-
-
-
-
-
