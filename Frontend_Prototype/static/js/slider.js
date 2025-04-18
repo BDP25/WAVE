@@ -1,7 +1,12 @@
 import { fetchVisualization } from "./api.js";
+
 let debounceTimeout;
 let currentRequestController = null;
 let isInCooldown = false;
+
+// 🆕 Neue Variablen zur Vermeidung redundanter Requests
+let lastStartRevid = null;
+let lastEndRevid = null;
 
 export function createDateSliderWithPicker(container, history, articleId) {
     container.innerHTML = "";
@@ -14,6 +19,9 @@ export function createDateSliderWithPicker(container, history, articleId) {
     sliderWrapper.appendChild(slider);
 
     const sortedHistory = [...history].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    console.log("✅ Sortierte History:");
+    console.table(sortedHistory);
+
     const firstEntry = sortedHistory[0];
     const lastEntry = sortedHistory[sortedHistory.length - 1];
     const tenthNewestEntry = sortedHistory[Math.max(0, sortedHistory.length - 10)];
@@ -22,6 +30,9 @@ export function createDateSliderWithPicker(container, history, articleId) {
     const fullRangeEnd = new Date(lastEntry.timestamp).getTime();
     const sliderStart = new Date(tenthNewestEntry.timestamp).getTime();
     const sliderEnd = new Date(lastEntry.timestamp).getTime();
+
+    lastStartRevid = tenthNewestEntry.revid;
+    lastEndRevid = lastEntry.revid;
 
     const timelineAxis = createTimelineAxis(firstEntry.timestamp, lastEntry.timestamp);
     sliderWrapper.appendChild(timelineAxis);
@@ -49,45 +60,54 @@ export function createDateSliderWithPicker(container, history, articleId) {
     });
 
     const handleSliderChange = () => {
-        clearTimeout(debounceTimeout); // Clear any existing timeout
+        clearTimeout(debounceTimeout);
 
         debounceTimeout = setTimeout(() => {
             const [start, end] = slider.noUiSlider.get().map(Number);
             const startEntry = findClosestEntry(history, start);
             const endEntry = findClosestEntry(history, end);
-            if (startEntry && endEntry) {
+
+            // ✅ Nur Request senden, wenn sich die Daten wirklich geändert haben
+            if (
+                startEntry &&
+                endEntry &&
+                (startEntry.revid !== lastStartRevid || endEntry.revid !== lastEndRevid)
+            ) {
+                lastStartRevid = startEntry.revid;
+                lastEndRevid = endEntry.revid;
                 updateVisualization(sliderWrapper, articleId, startEntry, endEntry);
+            } else {
+                console.log("Datum gleich geblieben – kein neuer Request.");
             }
-        }, 100); // 50 ms delay
+        }, 100);
     };
 
     slider.noUiSlider.on("change", handleSliderChange);
     setupSliderTooltips(slider, history, articleId, handleSliderChange);
 
+    // 🆕 Direkt initialisieren & merken
     updateVisualization(sliderWrapper, articleId, tenthNewestEntry, lastEntry);
+    lastStartRevid = tenthNewestEntry.revid;
+    lastEndRevid = lastEntry.revid;
 }
 
 function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
-    // Wenn Cooldown aktiv → nicht erneut ausführen
     if (isInCooldown) {
         console.log("Cooldown aktiv – Request blockiert.");
         return;
     }
 
-    // Falls bereits ein Request läuft → abbrechen
     if (currentRequestController) {
         console.log("Vorheriger Request wird abgebrochen.");
         currentRequestController.abort();
     }
 
-    // Neue AbortController-Instanz für diesen Request
     currentRequestController = new AbortController();
     const { signal } = currentRequestController;
 
     removeExistingOutput(sliderWrapper);
     console.log("Request startet...");
 
-    // Cooldown aktivieren
     isInCooldown = true;
     setTimeout(() => {
         isInCooldown = false;
@@ -125,11 +145,12 @@ function removeExistingOutput(wrapper) {
 
 
 
-
 function setupSliderTooltips(slider, history, articleId, onChange) {
     const firstEntryDate = new Date(history[0].timestamp);
     const lastEntryDate = new Date(history[history.length - 1].timestamp);
-    const validDates = history.map(entry => entry.timestamp.split('T')[0]);
+
+    // ✅ Einheitlich mit formatDate arbeiten
+    const validDates = history.map(entry => formatDate(new Date(entry.timestamp)));
 
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
     const calendars = new Array(tooltips.length).fill(null);
@@ -153,14 +174,16 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                 inline: true,
                 clickOpens: false,
                 dateFormat: "Y-m-d",
+
+                // ✅ Datumsvergleich korrekt formatieren
                 disable: [
                     function (date) {
-                        const dateStr = date.toISOString().split('T')[0];
+                        const dateStr = formatDate(date);
                         return !validDates.includes(dateStr);
                     }
                 ],
                 onDayCreate: function (dObj, dStr, fpInstance, dayElem) {
-                    const dateStr = dayElem.dateObj.toISOString().split('T')[0];
+                    const dateStr = formatDate(dayElem.dateObj);
                     if (validDates.includes(dateStr)) {
                         dayElem.classList.add("valid-entry-day");
                     }
@@ -181,7 +204,6 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                     const calendar = instance.calendarContainer;
                     calendar.classList.add("small-flatpickr");
 
-                    // Positionierung prüfen & anpassen
                     setTimeout(() => {
                         const rect = calendar.getBoundingClientRect();
                         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
@@ -223,8 +245,6 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
         });
     });
 }
-
-
 
 
 
