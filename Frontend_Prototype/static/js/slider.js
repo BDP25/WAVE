@@ -363,8 +363,13 @@ function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate
     setupCalendarCloseHandler(fp, tooltip, index, calendars, tooltips);
 }
 
+
 function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, entriesByDate, index, slider, onChange, calendars, tooltips, history) {
     const validDates = Object.keys(entriesByDate);
+
+    // Get years range for dropdown
+    const startYear = firstEntryDate.getFullYear();
+    const endYear = lastEntryDate.getFullYear();
 
     const fp = flatpickr(tooltip, {
         defaultDate: currentDate,
@@ -374,6 +379,7 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
         clickOpens: false,
         dateFormat: "Y-m-d",
         disable: [date => !validDates.includes(formatDate(date))],
+        monthSelectorType: "dropdown",
         onDayCreate: (dObj, dStr, fpInstance, dayElem) => {
             const dateStr = formatDate(dayElem.dateObj);
             if (validDates.includes(dateStr)) {
@@ -397,11 +403,107 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
         onReady: (_, __, instance) => {
             positionCalendarContainer(instance);
             addCalendarTimeSelectionSupport(instance);
+            convertYearNavigationToDropdown(instance, startYear, endYear);
+
+            // Ensure current year and month are selected in the dropdowns after initial rendering
+            setTimeout(() => {
+                const yearDropdown = instance.calendarContainer.querySelector('.flatpickr-yearDropdown');
+                const monthDropdown = instance.calendarContainer.querySelector('.flatpickr-monthDropdown-months');
+
+                if (yearDropdown) {
+                    yearDropdown.value = currentDate.getFullYear();
+                }
+
+                if (monthDropdown) {
+                    monthDropdown.value = currentDate.getMonth();
+                }
+            }, 10);
         }
     });
 
     return fp;
 }
+
+
+function convertYearNavigationToDropdown(instance, startYear, endYear) {
+    // Wait for the flatpickr elements to be fully initialized
+    setTimeout(() => {
+        const calendarContainer = instance.calendarContainer;
+        const currentYearElement = calendarContainer.querySelector('.cur-year');
+        const monthDropdown = calendarContainer.querySelector('.flatpickr-monthDropdown-months');
+
+        if (!currentYearElement || !monthDropdown) return;
+
+        // Get the current selected year
+        const currentYear = parseInt(currentYearElement.textContent);
+
+        // Create select element that matches the month dropdown style
+        const yearSelect = document.createElement('select');
+        yearSelect.className = 'flatpickr-yearDropdown';
+
+        // Copy styles from month dropdown for consistency
+        yearSelect.style.appearance = monthDropdown.style.appearance || 'none';
+        yearSelect.style.border = monthDropdown.style.border || 'none';
+        yearSelect.style.height = monthDropdown.style.height || '16px';
+        yearSelect.style.padding = '0 2px'; // Slight padding for appearance
+        yearSelect.style.outline = 'none';
+        yearSelect.style.fontSize = monthDropdown.style.fontSize || '8px';
+        yearSelect.style.cursor = 'pointer';
+        yearSelect.style.width = '45px'; // Slightly wider for year values
+        yearSelect.style.color = 'inherit';
+        yearSelect.style.backgroundColor = 'transparent';
+        yearSelect.style.verticalAlign = 'middle';
+        yearSelect.style.textAlign = 'center';
+        yearSelect.style.marginLeft = '2px';
+
+        // For scrolling with many years
+        yearSelect.style.overflowY = 'auto';
+        yearSelect.style.maxHeight = '100px';
+
+        // Add CSS to limit height and enable scrolling in dropdown
+        const styleEl = document.createElement('style');
+        styleEl.textContent = `
+            .flatpickr-yearDropdown option {
+                font-size: 8px;
+                padding: 1px 3px;
+            }
+            select.flatpickr-yearDropdown {
+                scrollbar-width: thin;
+            }
+        `;
+        document.head.appendChild(styleEl);
+
+        // Populate with year options
+        for (let year = startYear; year <= endYear; year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            if (year === currentYear) {
+                option.selected = true;
+            }
+            yearSelect.appendChild(option);
+        }
+
+        // Add event listener
+        yearSelect.addEventListener('change', (e) => {
+            const newYear = parseInt(e.target.value);
+            const currentMonth = instance.currentMonth;
+
+            instance.changeYear(newYear);
+
+            // Keep current month selected after year change
+            if (instance.currentMonth !== currentMonth) {
+                instance.changeMonth(currentMonth, false);
+            }
+        });
+
+        // Replace the current year element
+        const yearParent = currentYearElement.parentNode;
+        yearParent.replaceChild(yearSelect, currentYearElement);
+    }, 0);
+}
+
+
 
 function addCalendarTimeSelectionSupport(instance) {
     // Add a time selection container below the calendar
@@ -412,10 +514,12 @@ function addCalendarTimeSelectionSupport(instance) {
     timeSelectionContainer.style.backgroundColor = "#fff";
     timeSelectionContainer.style.border = "none";
     timeSelectionContainer.style.borderTop = "1px solid #e6e6e6";
-    timeSelectionContainer.style.fontSize = "10px"; // Increased font size
-    timeSelectionContainer.style.maxHeight = "90px"; // Increased max height
+    timeSelectionContainer.style.fontSize = "12px"; // Increased font size
+    timeSelectionContainer.style.maxHeight = "100px"; // Increased max height
     timeSelectionContainer.style.marginTop = "-3px";
     timeSelectionContainer.style.width = "100%";
+    timeSelectionContainer.style.overflow = "auto";
+    timeSelectionContainer.style.scrollbarWidth = "thin";
 
     instance.calendarContainer.appendChild(timeSelectionContainer);
     instance._timeSelectionContainer = timeSelectionContainer;
@@ -447,9 +551,10 @@ function handleCalendarDateChange(selectedDates, entriesByDate, index, slider, o
 }
 
 
+
 function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars) {
     const entries = entriesByDate[dateStr];
-    if (!entries || entries.length <= 1) return;
+    if (!entries || entries.length <= 1) return 0;
 
     const timeSelectionContainer = fp._timeSelectionContainer;
     timeSelectionContainer.innerHTML = "";
@@ -477,8 +582,8 @@ function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSlid
 
         const timeButton = document.createElement("button");
         timeButton.className = "time-entry-button";
-        timeButton.style.padding = "2px 0";
-        timeButton.style.fontSize = "10px"; // Larger font size
+        timeButton.style.padding = "3px 0";
+        timeButton.style.fontSize = "12px"; // Larger font size
         timeButton.style.fontWeight = "normal";
         timeButton.style.textAlign = "center";
         timeButton.style.border = "none";
@@ -522,7 +627,10 @@ function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSlid
     });
 
     timeSelectionContainer.appendChild(timeGrid);
+    return entries.length; // Return number of entries
 }
+
+
 
 function applyExactTimestamp(exactEntry, index, slider, onChange) {
     const exactTimestamp = new Date(exactEntry.timestamp).getTime();
@@ -560,6 +668,40 @@ function positionCalendarContainer(instance) {
     const calendar = instance.calendarContainer;
     calendar.classList.add("small-flatpickr");
 
+    // Additional styles for dropdown containers
+    const monthContainer = calendar.querySelector('.flatpickr-month');
+    if (monthContainer) {
+        monthContainer.style.display = 'flex';
+        monthContainer.style.alignItems = 'center';
+        monthContainer.style.justifyContent = 'space-between';
+        monthContainer.style.height = '22px';
+        monthContainer.style.padding = '0 2px';
+    }
+
+    // Style the month dropdown to ensure it's consistent
+    const monthDropdown = calendar.querySelector('.flatpickr-monthDropdown-months');
+    if (monthDropdown) {
+        monthDropdown.style.fontSize = '8px';
+        monthDropdown.style.height = '16px';
+        monthDropdown.style.padding = '0 2px';
+        monthDropdown.style.width = '55px';
+        monthDropdown.style.appearance = 'none';
+        monthDropdown.style.border = 'none';
+        monthDropdown.style.backgroundColor = 'transparent';
+        monthDropdown.style.cursor = 'pointer';
+        monthDropdown.style.textAlign = 'center';
+    }
+
+    // Style the navigation arrows
+    const prevNextButtons = calendar.querySelectorAll('.flatpickr-prev-month, .flatpickr-next-month');
+    prevNextButtons.forEach(button => {
+        button.style.padding = '0 2px';
+        button.style.height = '22px';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+    });
+
     setTimeout(() => {
         const rect = calendar.getBoundingClientRect();
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
@@ -570,6 +712,8 @@ function positionCalendarContainer(instance) {
         }
     }, 0);
 }
+
+
 
 function setupCalendarCloseHandler(fp, tooltip, index, calendars, tooltips) {
     function closeCalendar(event) {
