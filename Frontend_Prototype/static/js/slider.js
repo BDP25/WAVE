@@ -77,6 +77,243 @@ function initializeSlider(slider, fullRangeStart, fullRangeEnd, sliderStart, sli
     createSliderWithOptions(slider, fullRangeStart, fullRangeEnd, sliderStart, sliderEnd);
     configureSliderSnapping(slider, validTimestamps);
     configureSliderTooltipUpdates(slider);
+    configureSliderHandleConstraints(slider, sortedHistory);
+}
+
+function configureSliderHandleConstraints(slider, sortedHistory) {
+    // Sort timestamps chronologically
+    const timestamps = sortedHistory.map(entry => new Date(entry.timestamp).getTime()).sort((a, b) => a - b);
+
+    slider.noUiSlider.on("set", (values, handle) => {
+        const currentValue = Number(values[handle]);
+
+        if (handle === 0) { // Left (start) handle
+            const rightValue = Number(slider.noUiSlider.get()[1]);
+
+            // Find the next valid timestamp that's less than the right handle
+            const validOptions = timestamps.filter(ts => ts < rightValue);
+            if (validOptions.length > 0) {
+                const closestValue = findClosestTimestamp(validOptions, currentValue);
+                if (currentValue !== closestValue) {
+                    setTimeout(() => {
+                        const newValues = [...slider.noUiSlider.get().map(Number)];
+                        newValues[0] = closestValue;
+                        slider.noUiSlider.set(newValues);
+                    }, 0);
+                }
+            }
+        } else { // Right (end) handle
+            const leftValue = Number(slider.noUiSlider.get()[0]);
+
+            // Find the next valid timestamp that's greater than the left handle
+            const validOptions = timestamps.filter(ts => ts > leftValue);
+            if (validOptions.length > 0) {
+                const closestValue = findClosestTimestamp(validOptions, currentValue);
+                if (currentValue !== closestValue) {
+                    setTimeout(() => {
+                        const newValues = [...slider.noUiSlider.get().map(Number)];
+                        newValues[1] = closestValue;
+                        slider.noUiSlider.set(newValues);
+                    }, 0);
+                }
+            }
+        }
+    });
+}
+
+function setupTooltipEventListeners(tooltips, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips2, history) {
+    tooltips.forEach((tooltip, index) => {
+        tooltip.style.cursor = "pointer";
+        tooltip.addEventListener("click", (e) => handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips, history));
+    });
+
+    setupSlideEventHandler(slider, calendars, tooltips);
+}
+
+function handleCalendarDateChange(selectedDates, entriesByDate, index, slider, onChange, tooltip, calendars, tooltips, history) {
+    const selectedDate = selectedDates[0];
+    const dateStr = formatDate(selectedDate);
+
+    if (entriesByDate[dateStr]) {
+        const entries = entriesByDate[dateStr];
+        const fp = calendars[index];
+
+        // Get the current values for both handles
+        const sliderValues = slider.noUiSlider.get().map(Number);
+        const otherHandleIndex = index === 0 ? 1 : 0;
+        const otherHandleValue = sliderValues[otherHandleIndex];
+
+        // Filter entries based on the other handle's constraint
+        const constrainedEntries = entries.filter(entry => {
+            const entryTimestamp = new Date(entry.timestamp).getTime();
+
+            if (index === 0) { // Left handle - must be less than right handle
+                return entryTimestamp < otherHandleValue;
+            } else { // Right handle - must be greater than left handle
+                return entryTimestamp > otherHandleValue;
+            }
+        });
+
+        if (constrainedEntries.length === 0) {
+            // No valid entries after constraint - show message and don't change
+            alert("No valid timestamps available for this date with current constraints");
+            // Revert to current date display
+            fp.setDate(new Date(sliderValues[index]), true);
+            return;
+        }
+
+        if (constrainedEntries.length === 1) {
+            // Only one entry for this date, apply it directly and close
+            applyExactTimestamp(constrainedEntries[0], index, slider, onChange);
+            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
+        } else if (fp && fp._timeSelectionContainer) {
+            // Multiple valid entries, show time selection dropdown
+            showConstrainedTimeSelectionForDate(dateStr, entriesByDate, fp, index, sliderValues[index], slider, onChange, tooltips, tooltip, calendars, otherHandleValue);
+        }
+    } else {
+        handleInvalidDate(selectedDate, index, slider, onChange, history);
+        const fp = calendars[index];
+        if (fp) {
+            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
+        }
+    }
+}
+
+// New function to show time selection with constraints
+function showConstrainedTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars, otherHandleValue) {
+    const entries = entriesByDate[dateStr];
+    if (!entries || entries.length <= 1) return 0;
+
+    const timeSelectionContainer = fp._timeSelectionContainer;
+    timeSelectionContainer.innerHTML = "";
+    timeSelectionContainer.style.display = "block";
+
+    // Time selection grid
+    const timeGrid = document.createElement("div");
+    timeGrid.style.display = "grid";
+    timeGrid.style.gridTemplateColumns = "repeat(3, 1fr)";
+    timeGrid.style.gap = "3px";
+    timeGrid.style.padding = "4px";
+
+    // Get the current handle value and find the closest entry
+    const currentTimestamp = Number(currentSliderValue);
+
+    // Find the currently selected entry for this handle
+    const sliderHandleValue = Number(slider.noUiSlider.get()[index]);
+    const selectedEntry = entries.find(entry =>
+        new Date(entry.timestamp).getTime() === sliderHandleValue
+    );
+
+    // If no exact match, find the closest entry to show as selected
+    let closestEntry = selectedEntry || entries[0];
+    let closestDiff = Math.abs(new Date(closestEntry.timestamp).getTime() - currentTimestamp);
+    let validEntriesCount = 0;
+
+    entries.forEach((entry) => {
+        const entryTime = new Date(entry.timestamp).getTime();
+
+        // Apply constraint based on the handle index
+        const isValidTimestamp = (index === 0) ? entryTime < otherHandleValue : entryTime > otherHandleValue;
+
+        if (!isValidTimestamp) return; // Skip invalid entries
+
+        validEntriesCount++;
+        const diff = Math.abs(entryTime - currentTimestamp);
+
+        // Only update closestEntry if we don't have an exact match already
+        if (!selectedEntry && diff < closestDiff) {
+            closestEntry = entry;
+            closestDiff = diff;
+        }
+
+        const timeButton = document.createElement("button");
+        timeButton.className = "time-entry-button";
+        timeButton.style.padding = "3px 0";
+        timeButton.style.fontSize = "12px";
+        timeButton.style.fontWeight = "normal";
+        timeButton.style.textAlign = "center";
+        timeButton.style.border = "none";
+        timeButton.style.backgroundColor = "#f0f0f0";
+        timeButton.style.cursor = "pointer";
+        timeButton.style.borderRadius = "3px";
+        timeButton.style.width = "100%";
+
+        const dateObj = new Date(entry.timestamp);
+        const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        timeButton.textContent = timeStr;
+
+        // Highlight the currently selected time
+        if (selectedEntry && entry.timestamp === selectedEntry.timestamp) {
+            timeButton.style.backgroundColor = "#e6f7e6";
+            timeButton.style.fontWeight = "bold";
+            timeButton.style.border = "1px solid #4CAF50";
+        } else if (!selectedEntry && entry === closestEntry) {
+            // Highlight the closest entry if no exact match
+            timeButton.style.backgroundColor = "#e6f7e6";
+            timeButton.style.fontWeight = "bold";
+        }
+
+        // Add hover effect
+        timeButton.addEventListener("mouseover", () => {
+            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
+                !(!selectedEntry && entry === closestEntry)) {
+                timeButton.style.backgroundColor = "#e8e8e8";
+            }
+        });
+
+        timeButton.addEventListener("mouseout", () => {
+            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
+                !(!selectedEntry && entry === closestEntry)) {
+                timeButton.style.backgroundColor = "#f0f0f0";
+            }
+        });
+
+        timeButton.addEventListener("click", () => {
+            // Apply the timestamp and close calendar
+            const exactTimestamp = new Date(entry.timestamp).getTime();
+            slider.noUiSlider.setHandle(index, exactTimestamp);
+            onChange();
+            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
+        });
+
+        timeGrid.appendChild(timeButton);
+    });
+
+    // If no valid entries found after filtering
+    if (validEntriesCount === 0) {
+        const noValidTimesMsg = document.createElement("p");
+        noValidTimesMsg.textContent = index === 0
+            ? "No times available before the end date"
+            : "No times available after the start date";
+        noValidTimesMsg.style.padding = "10px";
+        noValidTimesMsg.style.color = "#666";
+        noValidTimesMsg.style.textAlign = "center";
+        timeSelectionContainer.appendChild(noValidTimesMsg);
+        return 0;
+    }
+
+    timeSelectionContainer.appendChild(timeGrid);
+    return validEntriesCount;
+}
+
+// Replace the existing showTimeSelectionForDate with the constrained version
+function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars) {
+    const otherHandleIndex = index === 0 ? 1 : 0;
+    const otherHandleValue = Number(slider.noUiSlider.get()[otherHandleIndex]);
+
+    return showConstrainedTimeSelectionForDate(
+        dateStr,
+        entriesByDate,
+        fp,
+        index,
+        currentSliderValue,
+        slider,
+        onChange,
+        tooltips,
+        tooltip,
+        calendars,
+        otherHandleValue
+    );
 }
 
 function extractValidTimestamps(sortedHistory) {
@@ -330,14 +567,7 @@ function adjustTooltipPositions(tooltips) {
     }
 }
 
-function setupTooltipEventListeners(tooltips, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips2, history) {
-    tooltips.forEach((tooltip, index) => {
-        tooltip.style.cursor = "pointer";
-        tooltip.addEventListener("click", (e) => handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips, history));
-    });
 
-    setupSlideEventHandler(slider, calendars, tooltips);
-}
 
 function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips, history) {
     e.stopImmediatePropagation();
@@ -382,7 +612,6 @@ function closeAllCalendars(calendars, tooltips) {
     });
 }
 
-
 function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, entriesByDate, index, slider, onChange, calendars, tooltips, history) {
     const validDates = Object.keys(entriesByDate);
 
@@ -390,31 +619,94 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
     const startYear = firstEntryDate.getFullYear();
     const endYear = lastEntryDate.getFullYear();
 
+    // Get the other handle's value to enforce constraints
+    const otherHandleIndex = index === 0 ? 1 : 0;
+    const otherHandleValue = Number(slider.noUiSlider.get()[otherHandleIndex]);
+    const otherHandleDate = new Date(otherHandleValue);
+
+    // Determine min and max date constraints based on which handle we're working with
+    let effectiveMinDate = firstEntryDate;
+    let effectiveMaxDate = lastEntryDate;
+
+    if (index === 0) { // Left handle - can't go beyond right handle
+        effectiveMaxDate = otherHandleDate;
+    } else { // Right handle - can't go before left handle
+        effectiveMinDate = otherHandleDate;
+    }
+
     const fp = flatpickr(tooltip, {
         defaultDate: currentDate,
-        minDate: firstEntryDate,
-        maxDate: lastEntryDate,
+        minDate: effectiveMinDate,
+        maxDate: effectiveMaxDate,
         inline: true,
         clickOpens: false,
         dateFormat: "Y-m-d",
-        disable: [date => !validDates.includes(formatDate(date))],
+        disable: [
+            date => {
+                const dateStr = formatDate(date);
+
+                // First check if this is a valid date with entries
+                if (!validDates.includes(dateStr)) {
+                    return true; // Disable dates without entries
+                }
+
+                // Now check if any entries for this date satisfy the constraint
+                const entries = entriesByDate[dateStr];
+                if (!entries || entries.length === 0) {
+                    return true; // No entries, disable the date
+                }
+
+                // Check if any entry for this date meets our constraint
+                return !entries.some(entry => {
+                    const entryTime = new Date(entry.timestamp).getTime();
+                    if (index === 0) { // Left handle
+                        return entryTime < otherHandleValue;
+                    } else { // Right handle
+                        return entryTime > otherHandleValue;
+                    }
+                });
+            }
+        ],
         monthSelectorType: "dropdown",
         onDayCreate: (dObj, dStr, fpInstance, dayElem) => {
             const dateStr = formatDate(dayElem.dateObj);
             if (validDates.includes(dateStr)) {
-                dayElem.classList.add("valid-entry-day");
-                // Add marker for days with multiple entries
-                if (entriesByDate[dateStr] && entriesByDate[dateStr].length > 1) {
-                    const marker = document.createElement("span");
-                    marker.style.position = "absolute";
-                    marker.style.bottom = "2px";
-                    marker.style.right = "2px";
-                    marker.style.width = "3px";
-                    marker.style.height = "3px";
-                    marker.style.backgroundColor = "#0078d7";
-                    marker.style.borderRadius = "50%";
-                    dayElem.appendChild(marker);
-                    dayElem.style.position = "relative";
+                // Check if any entries for this date satisfy the constraint
+                const entries = entriesByDate[dateStr];
+                const hasValidEntries = entries && entries.some(entry => {
+                    const entryTime = new Date(entry.timestamp).getTime();
+                    if (index === 0) { // Left handle
+                        return entryTime < otherHandleValue;
+                    } else { // Right handle
+                        return entryTime > otherHandleValue;
+                    }
+                });
+
+                if (hasValidEntries) {
+                    dayElem.classList.add("valid-entry-day");
+
+                    // Add marker for days with multiple valid entries
+                    const validEntries = entries.filter(entry => {
+                        const entryTime = new Date(entry.timestamp).getTime();
+                        if (index === 0) { // Left handle
+                            return entryTime < otherHandleValue;
+                        } else { // Right handle
+                            return entryTime > otherHandleValue;
+                        }
+                    });
+
+                    if (validEntries.length > 1) {
+                        const marker = document.createElement("span");
+                        marker.style.position = "absolute";
+                        marker.style.bottom = "2px";
+                        marker.style.right = "2px";
+                        marker.style.width = "3px";
+                        marker.style.height = "3px";
+                        marker.style.backgroundColor = "#0078d7";
+                        marker.style.borderRadius = "50%";
+                        dayElem.appendChild(marker);
+                        dayElem.style.position = "relative";
+                    }
                 }
             }
         },
@@ -442,7 +734,6 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
 
     return fp;
 }
-
 
 
 function convertYearNavigationToDropdown(instance, startYear, endYear) {
@@ -574,127 +865,9 @@ function addCalendarTimeSelectionSupport(instance) {
     instance._timeSelectionContainer = timeSelectionContainer;
 }
 
-function handleCalendarDateChange(selectedDates, entriesByDate, index, slider, onChange, tooltip, calendars, tooltips, history) {
-    const selectedDate = selectedDates[0];
-    const dateStr = formatDate(selectedDate);
-
-    if (entriesByDate[dateStr]) {
-        const entries = entriesByDate[dateStr];
-        const fp = calendars[index];
-
-        if (entries.length === 1) {
-            // Only one entry for this date, apply it directly and close
-            applyExactTimestamp(entries[0], index, slider, onChange);
-            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
-        } else if (fp && fp._timeSelectionContainer) {
-            // Multiple entries, show time selection dropdown
-            showTimeSelectionForDate(dateStr, entriesByDate, fp, index, slider.noUiSlider.get()[index], slider, onChange, tooltips, tooltip, calendars);
-        }
-    } else {
-        handleInvalidDate(selectedDate, index, slider, onChange, history);
-        const fp = calendars[index];
-        if (fp) {
-            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
-        }
-    }
-}
 
 
 
-function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars) {
-    const entries = entriesByDate[dateStr];
-    if (!entries || entries.length <= 1) return 0;
-
-    const timeSelectionContainer = fp._timeSelectionContainer;
-    timeSelectionContainer.innerHTML = "";
-    timeSelectionContainer.style.display = "block";
-
-    // Time selection grid
-    const timeGrid = document.createElement("div");
-    timeGrid.style.display = "grid";
-    timeGrid.style.gridTemplateColumns = "repeat(3, 1fr)";
-    timeGrid.style.gap = "3px";
-    timeGrid.style.padding = "4px";
-
-    // Get the current handle value and find the closest entry
-    const currentTimestamp = Number(currentSliderValue);
-
-    // Find the currently selected entry for this handle
-    const sliderHandleValue = Number(slider.noUiSlider.get()[index]);
-    const selectedEntry = entries.find(entry =>
-        new Date(entry.timestamp).getTime() === sliderHandleValue
-    );
-
-    // If no exact match, find the closest entry to show as selected
-    let closestEntry = selectedEntry || entries[0];
-    let closestDiff = Math.abs(new Date(closestEntry.timestamp).getTime() - currentTimestamp);
-
-    entries.forEach((entry) => {
-        const entryTime = new Date(entry.timestamp).getTime();
-        const diff = Math.abs(entryTime - currentTimestamp);
-
-        // Only update closestEntry if we don't have an exact match already
-        if (!selectedEntry && diff < closestDiff) {
-            closestEntry = entry;
-            closestDiff = diff;
-        }
-
-        const timeButton = document.createElement("button");
-        timeButton.className = "time-entry-button";
-        timeButton.style.padding = "3px 0";
-        timeButton.style.fontSize = "12px";
-        timeButton.style.fontWeight = "normal";
-        timeButton.style.textAlign = "center";
-        timeButton.style.border = "none";
-        timeButton.style.backgroundColor = "#f0f0f0";
-        timeButton.style.cursor = "pointer";
-        timeButton.style.borderRadius = "3px";
-        timeButton.style.width = "100%";
-
-        const dateObj = new Date(entry.timestamp);
-        const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        timeButton.textContent = timeStr;
-
-        // Highlight the currently selected time
-        if (selectedEntry && entry.timestamp === selectedEntry.timestamp) {
-            timeButton.style.backgroundColor = "#e6f7e6";
-            timeButton.style.fontWeight = "bold";
-            timeButton.style.border = "1px solid #4CAF50";
-        } else if (!selectedEntry && entry === closestEntry) {
-            // Highlight the closest entry if no exact match
-            timeButton.style.backgroundColor = "#e6f7e6";
-            timeButton.style.fontWeight = "bold";
-        }
-
-        // Add hover effect
-        timeButton.addEventListener("mouseover", () => {
-            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
-                !(!selectedEntry && entry === closestEntry)) {
-                timeButton.style.backgroundColor = "#e8e8e8";
-            }
-        });
-
-        timeButton.addEventListener("mouseout", () => {
-            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
-                !(!selectedEntry && entry === closestEntry)) {
-                timeButton.style.backgroundColor = "#f0f0f0";
-            }
-        });
-
-        timeButton.addEventListener("click", () => {
-            // Apply the timestamp and close calendar
-            const exactTimestamp = new Date(entry.timestamp).getTime();
-            slider.noUiSlider.setHandle(index, exactTimestamp);
-            onChange();
-            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
-        });
-
-        timeGrid.appendChild(timeButton);
-    });
-
-    timeSelectionContainer.appendChild(timeGrid);
-    return entries.length;
-}
 
 
 function applyExactTimestamp(exactEntry, index, slider, onChange) {
