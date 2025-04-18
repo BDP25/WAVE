@@ -352,6 +352,12 @@ function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate
     const currentSliderValue = slider.noUiSlider.get()[index];
     const currentDate = new Date(+currentSliderValue);
 
+    // Find the exact entry that matches the current slider value
+    const exactEntry = history.find(entry =>
+        new Date(entry.timestamp).getTime() === +currentSliderValue
+    );
+
+    // If we have an exact match, use that date, otherwise use the closest date
     const fp = createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, entriesByDate, index, slider, onChange, calendars, tooltips, history);
 
     calendars[index] = fp;
@@ -610,15 +616,25 @@ function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSlid
     timeGrid.style.gap = "3px";
     timeGrid.style.padding = "4px";
 
-    // Find the entry closest to current slider value
+    // Get the current handle value and find the closest entry
     const currentTimestamp = Number(currentSliderValue);
-    let closestEntry = entries[0];
+
+    // Find the currently selected entry for this handle
+    const sliderHandleValue = Number(slider.noUiSlider.get()[index]);
+    const selectedEntry = entries.find(entry =>
+        new Date(entry.timestamp).getTime() === sliderHandleValue
+    );
+
+    // If no exact match, find the closest entry to show as selected
+    let closestEntry = selectedEntry || entries[0];
     let closestDiff = Math.abs(new Date(closestEntry.timestamp).getTime() - currentTimestamp);
 
     entries.forEach((entry) => {
         const entryTime = new Date(entry.timestamp).getTime();
         const diff = Math.abs(entryTime - currentTimestamp);
-        if (diff < closestDiff) {
+
+        // Only update closestEntry if we don't have an exact match already
+        if (!selectedEntry && diff < closestDiff) {
             closestEntry = entry;
             closestDiff = diff;
         }
@@ -626,7 +642,7 @@ function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSlid
         const timeButton = document.createElement("button");
         timeButton.className = "time-entry-button";
         timeButton.style.padding = "3px 0";
-        timeButton.style.fontSize = "12px"; // Larger font size
+        timeButton.style.fontSize = "12px";
         timeButton.style.fontWeight = "normal";
         timeButton.style.textAlign = "center";
         timeButton.style.border = "none";
@@ -639,21 +655,28 @@ function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSlid
         const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         timeButton.textContent = timeStr;
 
-        // Highlight the revision that's currently selected
-        if (entry === closestEntry) {
+        // Highlight the currently selected time
+        if (selectedEntry && entry.timestamp === selectedEntry.timestamp) {
+            timeButton.style.backgroundColor = "#e6f7e6";
+            timeButton.style.fontWeight = "bold";
+            timeButton.style.border = "1px solid #4CAF50";
+        } else if (!selectedEntry && entry === closestEntry) {
+            // Highlight the closest entry if no exact match
             timeButton.style.backgroundColor = "#e6f7e6";
             timeButton.style.fontWeight = "bold";
         }
 
         // Add hover effect
         timeButton.addEventListener("mouseover", () => {
-            if (entry !== closestEntry) {
+            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
+                !(!selectedEntry && entry === closestEntry)) {
                 timeButton.style.backgroundColor = "#e8e8e8";
             }
         });
 
         timeButton.addEventListener("mouseout", () => {
-            if (entry !== closestEntry) {
+            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
+                !(!selectedEntry && entry === closestEntry)) {
                 timeButton.style.backgroundColor = "#f0f0f0";
             }
         });
@@ -670,9 +693,8 @@ function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSlid
     });
 
     timeSelectionContainer.appendChild(timeGrid);
-    return entries.length; // Return number of entries
+    return entries.length;
 }
-
 
 
 function applyExactTimestamp(exactEntry, index, slider, onChange) {
