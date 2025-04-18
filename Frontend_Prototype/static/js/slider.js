@@ -175,12 +175,21 @@ function removeExistingOutput(wrapper) {
     wrapper.querySelectorAll(".output-container, .error-container").forEach(el => el.remove());
 }
 
+
+
 function setupSliderTooltips(slider, history, articleId, onChange) {
     const firstEntryDate = new Date(history[0].timestamp);
     const lastEntryDate = new Date(history[history.length - 1].timestamp);
 
     // UTC-formatierte gültige Datumsangaben
     const validDates = history.map(entry => formatDate(new Date(entry.timestamp)));
+
+    // Create lookup map of dates to entries for faster access
+    const dateToEntryMap = {};
+    history.forEach(entry => {
+        const dateStr = formatDate(new Date(entry.timestamp));
+        dateToEntryMap[dateStr] = entry;
+    });
 
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
     const calendars = new Array(tooltips.length).fill(null);
@@ -205,33 +214,46 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                 inline: true,
                 clickOpens: false,
                 dateFormat: "Y-m-d",
-                time_zone: "UTC",  // Wichtig für UTC-Behandlung
 
-                enable: validDates.map(dateStr => new Date(dateStr)),
-
+                disable: [
+                    function (date) {
+                        const dateStr = formatDate(date);
+                        return !validDates.includes(dateStr);
+                    }
+                ],
                 onDayCreate: function (dObj, dStr, fpInstance, dayElem) {
                     const dateStr = formatDate(dayElem.dateObj);
                     if (validDates.includes(dateStr)) {
                         dayElem.classList.add("valid-entry-day");
-                    } else {
-                        dayElem.classList.add("invalid-entry-day");
                     }
                 },
                 onChange: function (selectedDates) {
-                    // Konvertiere ausgewähltes Datum zu UTC
+                    // Get the selected date and format it as YYYY-MM-DD
                     const selectedDate = selectedDates[0];
-                    const utcDate = new Date(Date.UTC(
-                        selectedDate.getFullYear(),
-                        selectedDate.getMonth(),
-                        selectedDate.getDate()
-                    ));
+                    const dateStr = formatDate(selectedDate);
 
                     console.log("Selected date (local):", selectedDate);
-                    console.log("Converted to UTC:", utcDate);
+                    console.log("Formatted date string:", dateStr);
 
-                    const newDate = utcDate.getTime();
-                    if (newDate !== +currentSliderValue) {
-                        slider.noUiSlider.setHandle(index, newDate);
+                    // Find the matching entry for this exact date string
+                    if (dateToEntryMap[dateStr]) {
+                        // Use the exact timestamp from the entry
+                        const exactEntry = dateToEntryMap[dateStr];
+                        const exactTimestamp = new Date(exactEntry.timestamp).getTime();
+
+                        console.log("Found matching entry with timestamp:", new Date(exactTimestamp).toISOString());
+
+                        // Update the slider with this exact timestamp
+                        slider.noUiSlider.setHandle(index, exactTimestamp);
+                        onChange();
+                    } else {
+                        // This shouldn't happen with properly disabled dates,
+                        // but handle it just in case
+                        console.log("No matching entry found for date:", dateStr);
+                        const nearestEntry = findClosestEntry(history, selectedDate.getTime());
+                        const nearestTime = new Date(nearestEntry.timestamp).getTime();
+
+                        slider.noUiSlider.setHandle(index, nearestTime);
                         onChange();
                     }
 
@@ -285,6 +307,11 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
         });
     });
 }
+
+
+
+
+
 
 function formatDate(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
