@@ -4,11 +4,8 @@ let debounceTimeout;
 let currentRequestController = null;
 let isInCooldown = false;
 
-// 🆕 Neue Variablen zur Vermeidung redundanter Requests
 let lastStartRevid = null;
 let lastEndRevid = null;
-
-
 
 
 
