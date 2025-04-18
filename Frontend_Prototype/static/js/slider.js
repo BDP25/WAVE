@@ -8,6 +8,10 @@ let isInCooldown = false;
 let lastStartRevid = null;
 let lastEndRevid = null;
 
+
+
+
+
 export function createDateSliderWithPicker(container, history, articleId) {
     container.innerHTML = "";
 
@@ -60,27 +64,40 @@ export function createDateSliderWithPicker(container, history, articleId) {
     });
 
     const handleSliderChange = () => {
-        clearTimeout(debounceTimeout);
+    clearTimeout(debounceTimeout);
 
-        debounceTimeout = setTimeout(() => {
-            const [start, end] = slider.noUiSlider.get().map(Number);
-            const startEntry = findClosestEntry(history, start);
-            const endEntry = findClosestEntry(history, end);
+    debounceTimeout = setTimeout(() => {
+        const [start, end] = slider.noUiSlider.get().map(Number);
+        const nearestStart = findClosestEntry(history, start);
+        const nearestEnd = findClosestEntry(history, end);
 
-            // ✅ Nur Request senden, wenn sich die Daten wirklich geändert haben
-            if (
-                startEntry &&
-                endEntry &&
-                (startEntry.revid !== lastStartRevid || endEntry.revid !== lastEndRevid)
-            ) {
-                lastStartRevid = startEntry.revid;
-                lastEndRevid = endEntry.revid;
-                updateVisualization(sliderWrapper, articleId, startEntry, endEntry);
-            } else {
-                console.log("Datum gleich geblieben – kein neuer Request.");
-            }
-        }, 100);
-    };
+        const nearestStartTime = new Date(nearestStart.timestamp).getTime();
+        const nearestEndTime = new Date(nearestEnd.timestamp).getTime();
+
+        // Nur wenn sich die Revisionen geändert haben
+        if (
+            nearestStart &&
+            nearestEnd &&
+            (nearestStart.revid !== lastStartRevid || nearestEnd.revid !== lastEndRevid)
+        ) {
+            lastStartRevid = nearestStart.revid;
+            lastEndRevid = nearestEnd.revid;
+
+            // Sanft verschieben
+            smoothSliderSet(slider, start, nearestStartTime, end, nearestEndTime);
+
+            updateVisualization(sliderWrapper, articleId, nearestStart, nearestEnd);
+        } else {
+            console.log("Datum gleich geblieben – kein neuer Request.");
+            // Slider trotzdem auf gerundete Werte setzen (auch wenn keine neuen Daten)
+            smoothSliderSet(slider, start, nearestStartTime, end, nearestEndTime);
+        }
+
+    }, 100); // 500ms nachdem man aufhört zu schieben
+};
+
+
+
 
     slider.noUiSlider.on("change", handleSliderChange);
     setupSliderTooltips(slider, history, articleId, handleSliderChange);
@@ -90,6 +107,27 @@ export function createDateSliderWithPicker(container, history, articleId) {
     lastStartRevid = tenthNewestEntry.revid;
     lastEndRevid = lastEntry.revid;
 }
+
+
+function smoothSliderSet(slider, currentStart, targetStart, currentEnd, targetEnd, steps = 10) {
+    const startDiff = (targetStart - currentStart) / steps;
+    const endDiff = (targetEnd - currentEnd) / steps;
+
+    let step = 0;
+
+    function animateStep() {
+        if (step <= steps) {
+            const newStart = currentStart + step * startDiff;
+            const newEnd = currentEnd + step * endDiff;
+            slider.noUiSlider.set([newStart, newEnd]);
+            step++;
+            requestAnimationFrame(animateStep);
+        }
+    }
+
+    animateStep();
+}
+
 
 function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
     if (isInCooldown) {
@@ -144,12 +182,11 @@ function removeExistingOutput(wrapper) {
 
 
 
-
 function setupSliderTooltips(slider, history, articleId, onChange) {
     const firstEntryDate = new Date(history[0].timestamp);
     const lastEntryDate = new Date(history[history.length - 1].timestamp);
 
-    // ✅ Einheitlich mit formatDate arbeiten
+    // UTC-formatierte gültige Datumsangaben
     const validDates = history.map(entry => formatDate(new Date(entry.timestamp)));
 
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
@@ -166,16 +203,17 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
             tooltip.classList.add("calendar-open");
 
             const currentSliderValue = slider.noUiSlider.get()[index];
+            const currentDate = new Date(+currentSliderValue);
 
             const fp = flatpickr(tooltip, {
-                defaultDate: new Date(+currentSliderValue),
+                defaultDate: currentDate,
                 minDate: firstEntryDate,
                 maxDate: lastEntryDate,
                 inline: true,
                 clickOpens: false,
                 dateFormat: "Y-m-d",
+                time_zone: "UTC",  // Wichtig für UTC-Behandlung
 
-                // ✅ Datumsvergleich korrekt formatieren
                 disable: [
                     function (date) {
                         const dateStr = formatDate(date);
@@ -189,7 +227,18 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                     }
                 },
                 onChange: function (selectedDates) {
-                    const newDate = selectedDates[0].getTime();
+                    // Konvertiere ausgewähltes Datum zu UTC
+                    const selectedDate = selectedDates[0];
+                    const utcDate = new Date(Date.UTC(
+                        selectedDate.getFullYear(),
+                        selectedDate.getMonth(),
+                        selectedDate.getDate()
+                    ));
+
+                    console.log("Selected date (local):", selectedDate);
+                    console.log("Converted to UTC:", utcDate);
+
+                    const newDate = utcDate.getTime();
                     if (newDate !== +currentSliderValue) {
                         slider.noUiSlider.setHandle(index, newDate);
                         onChange();
@@ -217,7 +266,7 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
             });
 
             calendars[index] = fp;
-            fp.jumpToDate(new Date(+currentSliderValue));
+            fp.jumpToDate(currentDate);
 
             function closeCalendar(event) {
                 const calendarElement = fp.calendarContainer;
@@ -245,9 +294,6 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
         });
     });
 }
-
-
-
 
 
 
