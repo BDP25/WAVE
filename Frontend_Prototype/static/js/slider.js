@@ -343,6 +343,9 @@ function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate
     e.stopImmediatePropagation();
     e.preventDefault();
 
+    // Close any currently open calendars first
+    closeAllCalendars(calendars, tooltips);
+
     if (tooltip.classList.contains("calendar-open")) return;
     tooltip.classList.add("calendar-open");
 
@@ -361,6 +364,16 @@ function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate
     }
 
     setupCalendarCloseHandler(fp, tooltip, index, calendars, tooltips);
+}
+
+// Add this new helper function to close all open calendars
+function closeAllCalendars(calendars, tooltips) {
+    calendars.forEach((calendar, i) => {
+        if (calendar) {
+            const tooltip = tooltips[i];
+            closeAndCleanupCalendar(calendar, tooltip, i, calendars, tooltips);
+        }
+    });
 }
 
 
@@ -425,6 +438,7 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
 }
 
 
+
 function convertYearNavigationToDropdown(instance, startYear, endYear) {
     setTimeout(() => {
         const calendarContainer = instance.calendarContainer;
@@ -453,7 +467,7 @@ function convertYearNavigationToDropdown(instance, startYear, endYear) {
         yearSelect.style.height = '18px';
         yearSelect.style.padding = '0 2px';
         yearSelect.style.outline = 'none';
-        yearSelect.style.fontSize = '10px';
+        yearSelect.style.fontSize = '12px'; // Match time selection font size
         yearSelect.style.fontWeight = 'bold';
         yearSelect.style.cursor = 'pointer';
         yearSelect.style.width = '35px'; // Smaller width
@@ -464,7 +478,7 @@ function convertYearNavigationToDropdown(instance, startYear, endYear) {
         yearSelect.style.marginLeft = '2px';
 
         // Apply same enhanced styles to month dropdown
-        monthDropdown.style.fontSize = '10px';
+        monthDropdown.style.fontSize = '12px'; // Match time selection font size
         monthDropdown.style.fontWeight = 'bold';
         monthDropdown.style.height = '18px';
 
@@ -479,14 +493,14 @@ function convertYearNavigationToDropdown(instance, startYear, endYear) {
                 scrollbar-width: thin;
             }
             .flatpickr-yearDropdown option {
-                font-size: 9px;
+                font-size: 11px;
                 padding: 1px 3px;
             }
             .flatpickr-yearDropdown:focus {
                 outline: none;
             }
             .flatpickr-monthDropdown-months option {
-                font-size: 9px;
+                font-size: 11px;
                 padding: 1px 3px;
             }
             /* Hide default arrow */
@@ -694,7 +708,6 @@ function closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips) {
 }
 
 
-
 function positionCalendarContainer(instance) {
     const calendar = instance.calendarContainer;
     calendar.classList.add("small-flatpickr");
@@ -705,7 +718,7 @@ function positionCalendarContainer(instance) {
         monthContainer.style.display = 'flex';
         monthContainer.style.alignItems = 'center';
         monthContainer.style.justifyContent = 'space-between';
-        monthContainer.style.height = '24px';
+        monthContainer.style.height = '26px'; // Slightly taller to accommodate larger font
         monthContainer.style.padding = '0';
         monthContainer.style.margin = '0';
     }
@@ -713,7 +726,7 @@ function positionCalendarContainer(instance) {
     // Style the month dropdown to fit well
     const monthDropdown = calendar.querySelector('.flatpickr-monthDropdown-months');
     if (monthDropdown) {
-        monthDropdown.style.fontSize = '10px';
+        monthDropdown.style.fontSize = '12px'; // Match time selection font size
         monthDropdown.style.fontWeight = 'bold';
         monthDropdown.style.height = '18px';
         monthDropdown.style.padding = '0 2px';
@@ -722,14 +735,14 @@ function positionCalendarContainer(instance) {
         monthDropdown.style.backgroundColor = 'transparent';
         monthDropdown.style.cursor = 'pointer';
         monthDropdown.style.textAlign = 'center';
-        monthDropdown.style.width = '55px';
+        monthDropdown.style.width = '65px'; // Increased from 55px to 65px
     }
 
     // Style the month navigation arrows
     const prevNextButtons = calendar.querySelectorAll('.flatpickr-prev-month, .flatpickr-next-month');
     prevNextButtons.forEach(button => {
         button.style.padding = '0 2px';
-        button.style.height = '22px';
+        button.style.height = '24px'; // Slightly taller
         button.style.display = 'flex';
         button.style.alignItems = 'center';
         button.style.justifyContent = 'center';
@@ -746,7 +759,6 @@ function positionCalendarContainer(instance) {
         }
     }, 0);
 }
-
 
 
 function setupCalendarCloseHandler(fp, tooltip, index, calendars, tooltips) {
