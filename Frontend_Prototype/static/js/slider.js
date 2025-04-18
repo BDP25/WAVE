@@ -426,49 +426,79 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
 
 
 function convertYearNavigationToDropdown(instance, startYear, endYear) {
-    // Wait for the flatpickr elements to be fully initialized
     setTimeout(() => {
         const calendarContainer = instance.calendarContainer;
         const currentYearElement = calendarContainer.querySelector('.cur-year');
         const monthDropdown = calendarContainer.querySelector('.flatpickr-monthDropdown-months');
+
+        // Find the year navigation arrow buttons inside the year element's parent
+        const yearParent = currentYearElement.parentNode;
+        const yearArrows = yearParent.querySelectorAll('.arrowUp, .arrowDown');
+
+        // Remove the year arrow buttons
+        yearArrows.forEach(arrow => arrow.remove());
 
         if (!currentYearElement || !monthDropdown) return;
 
         // Get the current selected year
         const currentYear = parseInt(currentYearElement.textContent);
 
-        // Create select element that matches the month dropdown style
+        // Create select element
         const yearSelect = document.createElement('select');
         yearSelect.className = 'flatpickr-yearDropdown';
 
-        // Copy styles from month dropdown for consistency
-        yearSelect.style.appearance = monthDropdown.style.appearance || 'none';
-        yearSelect.style.border = monthDropdown.style.border || 'none';
-        yearSelect.style.height = monthDropdown.style.height || '16px';
-        yearSelect.style.padding = '0 2px'; // Slight padding for appearance
+        // Apply enhanced styles - making it smaller
+        yearSelect.style.appearance = 'none';
+        yearSelect.style.border = 'none';
+        yearSelect.style.height = '18px';
+        yearSelect.style.padding = '0 2px';
         yearSelect.style.outline = 'none';
-        yearSelect.style.fontSize = monthDropdown.style.fontSize || '8px';
+        yearSelect.style.fontSize = '10px';
+        yearSelect.style.fontWeight = 'bold';
         yearSelect.style.cursor = 'pointer';
-        yearSelect.style.width = '45px'; // Slightly wider for year values
+        yearSelect.style.width = '35px'; // Smaller width
         yearSelect.style.color = 'inherit';
         yearSelect.style.backgroundColor = 'transparent';
         yearSelect.style.verticalAlign = 'middle';
         yearSelect.style.textAlign = 'center';
         yearSelect.style.marginLeft = '2px';
 
-        // For scrolling with many years
-        yearSelect.style.overflowY = 'auto';
-        yearSelect.style.maxHeight = '100px';
+        // Apply same enhanced styles to month dropdown
+        monthDropdown.style.fontSize = '10px';
+        monthDropdown.style.fontWeight = 'bold';
+        monthDropdown.style.height = '18px';
 
-        // Add CSS to limit height and enable scrolling in dropdown
+        // Enable scrolling for year dropdown
+        yearSelect.style.overflowY = 'auto';
+        yearSelect.size = 1; // Show only one option at a time
+
+        // Add CSS for dropdown styling
         const styleEl = document.createElement('style');
         styleEl.textContent = `
+            .flatpickr-yearDropdown {
+                scrollbar-width: thin;
+            }
             .flatpickr-yearDropdown option {
-                font-size: 8px;
+                font-size: 9px;
                 padding: 1px 3px;
             }
-            select.flatpickr-yearDropdown {
-                scrollbar-width: thin;
+            .flatpickr-yearDropdown:focus {
+                outline: none;
+            }
+            .flatpickr-monthDropdown-months option {
+                font-size: 9px;
+                padding: 1px 3px;
+            }
+            /* Hide default arrow */
+            .flatpickr-yearDropdown::-ms-expand {
+                display: none;
+            }
+            .flatpickr-yearDropdown::-webkit-scrollbar {
+                width: 4px;
+            }
+            .flatpickr-yearDropdown::-webkit-scrollbar-thumb {
+                background-color: #aaa;
+                border-radius: 2px;
             }
         `;
         document.head.appendChild(styleEl);
@@ -498,7 +528,6 @@ function convertYearNavigationToDropdown(instance, startYear, endYear) {
         });
 
         // Replace the current year element
-        const yearParent = currentYearElement.parentNode;
         yearParent.replaceChild(yearSelect, currentYearElement);
     }, 0);
 }
@@ -664,6 +693,8 @@ function closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips) {
     setTimeout(() => adjustTooltipPositions(tooltips), 0);
 }
 
+
+
 function positionCalendarContainer(instance) {
     const calendar = instance.calendarContainer;
     calendar.classList.add("small-flatpickr");
@@ -674,25 +705,27 @@ function positionCalendarContainer(instance) {
         monthContainer.style.display = 'flex';
         monthContainer.style.alignItems = 'center';
         monthContainer.style.justifyContent = 'space-between';
-        monthContainer.style.height = '22px';
-        monthContainer.style.padding = '0 2px';
+        monthContainer.style.height = '24px';
+        monthContainer.style.padding = '0';
+        monthContainer.style.margin = '0';
     }
 
-    // Style the month dropdown to ensure it's consistent
+    // Style the month dropdown to fit well
     const monthDropdown = calendar.querySelector('.flatpickr-monthDropdown-months');
     if (monthDropdown) {
-        monthDropdown.style.fontSize = '8px';
-        monthDropdown.style.height = '16px';
+        monthDropdown.style.fontSize = '10px';
+        monthDropdown.style.fontWeight = 'bold';
+        monthDropdown.style.height = '18px';
         monthDropdown.style.padding = '0 2px';
-        monthDropdown.style.width = '55px';
         monthDropdown.style.appearance = 'none';
         monthDropdown.style.border = 'none';
         monthDropdown.style.backgroundColor = 'transparent';
         monthDropdown.style.cursor = 'pointer';
         monthDropdown.style.textAlign = 'center';
+        monthDropdown.style.width = '55px';
     }
 
-    // Style the navigation arrows
+    // Style the month navigation arrows
     const prevNextButtons = calendar.querySelectorAll('.flatpickr-prev-month, .flatpickr-next-month');
     prevNextButtons.forEach(button => {
         button.style.padding = '0 2px';
@@ -700,6 +733,7 @@ function positionCalendarContainer(instance) {
         button.style.display = 'flex';
         button.style.alignItems = 'center';
         button.style.justifyContent = 'center';
+        button.style.width = '20px';
     });
 
     setTimeout(() => {
