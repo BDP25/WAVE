@@ -2,12 +2,8 @@ import { fetchVisualization } from "./api.js";
 
 let debounceTimeout;
 let currentRequestController = null;
-let isInCooldown = false;
-
 let lastStartRevid = null;
 let lastEndRevid = null;
-
-
 
 export function createDateSliderWithPicker(container, history, articleId) {
     container.innerHTML = "";
@@ -41,11 +37,14 @@ export function createDateSliderWithPicker(container, history, articleId) {
 
     if (slider.noUiSlider) slider.noUiSlider.destroy();
 
+    // Get timestamps for valid dates only
+    const validTimestamps = sortedHistory.map(entry => new Date(entry.timestamp).getTime());
+
     noUiSlider.create(slider, {
         start: [sliderStart, sliderEnd],
         connect: true,
         range: { min: fullRangeStart, max: fullRangeEnd },
-        step: 24 * 60 * 60 * 1000,
+        step: null, // Remove fixed step to allow snapping to exact dates
         tooltips: [
             { to: value => formatDate(new Date(+value)), from: Number },
             { to: value => formatDate(new Date(+value)), from: Number }
@@ -56,45 +55,55 @@ export function createDateSliderWithPicker(container, history, articleId) {
         }
     });
 
+    // Configure slider to snap to valid timestamps
+    slider.noUiSlider.on("set", (values, handle) => {
+        const value = Number(values[handle]);
+        const closestTimestamp = findClosestTimestamp(validTimestamps, value);
+
+        if (value !== closestTimestamp) {
+            // Update slider without triggering another event
+            const newValues = [...slider.noUiSlider.get().map(Number)];
+            newValues[handle] = closestTimestamp;
+            slider.noUiSlider.set(newValues);
+        }
+    });
+
     slider.noUiSlider.on("update", (values, handle) => {
         slider.querySelectorAll(".noUi-tooltip")[handle].textContent = formatDate(new Date(+values[handle]));
     });
 
     const handleSliderChange = () => {
-    clearTimeout(debounceTimeout);
+        clearTimeout(debounceTimeout);
 
-    debounceTimeout = setTimeout(() => {
-        const [start, end] = slider.noUiSlider.get().map(Number);
-        const nearestStart = findClosestEntry(history, start);
-        const nearestEnd = findClosestEntry(history, end);
+        debounceTimeout = setTimeout(() => {
+            const [start, end] = slider.noUiSlider.get().map(Number);
+            const nearestStart = findClosestEntry(history, start);
+            const nearestEnd = findClosestEntry(history, end);
 
-        const nearestStartTime = new Date(nearestStart.timestamp).getTime();
-        const nearestEndTime = new Date(nearestEnd.timestamp).getTime();
+            const nearestStartTime = new Date(nearestStart.timestamp).getTime();
+            const nearestEndTime = new Date(nearestEnd.timestamp).getTime();
 
-        // Nur wenn sich die Revisionen geändert haben
-        if (
-            nearestStart &&
-            nearestEnd &&
-            (nearestStart.revid !== lastStartRevid || nearestEnd.revid !== lastEndRevid)
-        ) {
-            lastStartRevid = nearestStart.revid;
-            lastEndRevid = nearestEnd.revid;
+            // Nur wenn sich die Revisionen geändert haben
+            if (
+                nearestStart &&
+                nearestEnd &&
+                (nearestStart.revid !== lastStartRevid || nearestEnd.revid !== lastEndRevid)
+            ) {
+                lastStartRevid = nearestStart.revid;
+                lastEndRevid = nearestEnd.revid;
 
-            // Sanft verschieben
-            smoothSliderSet(slider, start, nearestStartTime, end, nearestEndTime);
+                // Sanft verschieben
+                smoothSliderSet(slider, start, nearestStartTime, end, nearestEndTime);
 
-            updateVisualization(sliderWrapper, articleId, nearestStart, nearestEnd);
-        } else {
-            console.log("Datum gleich geblieben – kein neuer Request.");
-            // Slider trotzdem auf gerundete Werte setzen (auch wenn keine neuen Daten)
-            smoothSliderSet(slider, start, nearestStartTime, end, nearestEndTime);
-        }
+                updateVisualization(sliderWrapper, articleId, nearestStart, nearestEnd);
+            } else {
+                console.log("Datum gleich geblieben – kein neuer Request.");
+                // Slider trotzdem auf gerundete Werte setzen (auch wenn keine neuen Daten)
+                smoothSliderSet(slider, start, nearestStartTime, end, nearestEndTime);
+            }
 
-    }, 100); // 500ms nachdem man aufhört zu schieben
-};
-
-
-
+        }, 100);
+    };
 
     slider.noUiSlider.on("change", handleSliderChange);
     setupSliderTooltips(slider, history, articleId, handleSliderChange);
@@ -104,7 +113,6 @@ export function createDateSliderWithPicker(container, history, articleId) {
     lastStartRevid = tenthNewestEntry.revid;
     lastEndRevid = lastEntry.revid;
 }
-
 
 function smoothSliderSet(slider, currentStart, targetStart, currentEnd, targetEnd, steps = 10) {
     const startDiff = (targetStart - currentStart) / steps;
@@ -125,13 +133,8 @@ function smoothSliderSet(slider, currentStart, targetStart, currentEnd, targetEn
     animateStep();
 }
 
-
 function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
-    if (isInCooldown) {
-        console.log("Cooldown aktiv – Request blockiert.");
-        return;
-    }
-
+    // Cancel any existing request
     if (currentRequestController) {
         console.log("Vorheriger Request wird abgebrochen.");
         currentRequestController.abort();
@@ -142,11 +145,6 @@ function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
 
     removeExistingOutput(sliderWrapper);
     console.log("Request startet...");
-
-    isInCooldown = true;
-    setTimeout(() => {
-        isInCooldown = false;
-    }, 1500);
 
     fetchVisualization(articleId, endEntry.revid, startEntry.revid, signal)
         .then(data => {
@@ -176,8 +174,6 @@ function updateVisualization(sliderWrapper, articleId, startEntry, endEntry) {
 function removeExistingOutput(wrapper) {
     wrapper.querySelectorAll(".output-container, .error-container").forEach(el => el.remove());
 }
-
-
 
 function setupSliderTooltips(slider, history, articleId, onChange) {
     const firstEntryDate = new Date(history[0].timestamp);
@@ -211,16 +207,14 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                 dateFormat: "Y-m-d",
                 time_zone: "UTC",  // Wichtig für UTC-Behandlung
 
-                disable: [
-                    function (date) {
-                        const dateStr = formatDate(date);
-                        return !validDates.includes(dateStr);
-                    }
-                ],
+                enable: validDates.map(dateStr => new Date(dateStr)),
+
                 onDayCreate: function (dObj, dStr, fpInstance, dayElem) {
                     const dateStr = formatDate(dayElem.dateObj);
                     if (validDates.includes(dateStr)) {
                         dayElem.classList.add("valid-entry-day");
+                    } else {
+                        dayElem.classList.add("invalid-entry-day");
                     }
                 },
                 onChange: function (selectedDates) {
@@ -292,8 +286,6 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
     });
 }
 
-
-
 function formatDate(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -304,6 +296,12 @@ function findClosestEntry(history, timestamp) {
         const closestTime = new Date(closest.timestamp).getTime();
         return Math.abs(entryTime - timestamp) < Math.abs(closestTime - timestamp) ? entry : closest;
     });
+}
+
+function findClosestTimestamp(timestamps, target) {
+    return timestamps.reduce((prev, curr) =>
+        Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev
+    );
 }
 
 function createTimelineAxis(startDate, endDate) {
