@@ -228,13 +228,13 @@ function removeExistingOutput(wrapper) {
 }
 
 function setupSliderTooltips(slider, history, articleId, onChange) {
-    const { firstEntryDate, lastEntryDate, validDates, dateToEntryMap } = prepareTooltipData(history);
+    const { firstEntryDate, lastEntryDate, entriesByDate } = prepareTooltipData(history);
 
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
     const calendars = new Array(tooltips.length).fill(null);
 
     configureTooltipPositioning(slider, tooltips);
-    setupTooltipEventListeners(tooltips, slider, calendars, firstEntryDate, lastEntryDate, validDates, dateToEntryMap, onChange);
+    setupTooltipEventListeners(tooltips, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips, history);
 
     // Initialize tooltip positions
     setTimeout(() => adjustTooltipPositions(tooltips), 0);
@@ -243,15 +243,23 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
 function prepareTooltipData(history) {
     const firstEntryDate = new Date(history[0].timestamp);
     const lastEntryDate = new Date(history[history.length - 1].timestamp);
-    const validDates = history.map(entry => formatDate(new Date(entry.timestamp)));
 
-    const dateToEntryMap = {};
+    // Group entries by date to handle multiple entries per day
+    const entriesByDate = {};
     history.forEach(entry => {
         const dateStr = formatDate(new Date(entry.timestamp));
-        dateToEntryMap[dateStr] = entry;
+        if (!entriesByDate[dateStr]) {
+            entriesByDate[dateStr] = [];
+        }
+        entriesByDate[dateStr].push(entry);
     });
 
-    return { firstEntryDate, lastEntryDate, validDates, dateToEntryMap };
+    // Sort entries within each day by timestamp
+    Object.keys(entriesByDate).forEach(dateStr => {
+        entriesByDate[dateStr].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    });
+
+    return { firstEntryDate, lastEntryDate, entriesByDate };
 }
 
 function configureTooltipPositioning(slider, tooltips) {
@@ -264,146 +272,74 @@ function adjustTooltipPositions(tooltips) {
     const tooltip1 = tooltips[0];
     const tooltip2 = tooltips[1];
 
-    resetTooltipPositions(tooltip1, tooltip2);
-    const { rect1, rect2, viewportWidth } = getTooltipMeasurements(tooltip1, tooltip2);
-    const { rightEdgeMargin, minSpace } = getTooltipSpacingSettings();
-
-    handleRightEdgeCase(tooltip1, tooltip2, rect1, rect2, viewportWidth, rightEdgeMargin, minSpace);
-}
-
-function resetTooltipPositions(tooltip1, tooltip2) {
+    // Reset positions to get true measurements
     tooltip1.style.transform = '';
     tooltip2.style.transform = '';
 
-    // Force layout recalculation
+    // Force reflow to ensure measurements are updated
     void tooltip1.offsetWidth;
     void tooltip2.offsetWidth;
-}
 
-function getTooltipMeasurements(tooltip1, tooltip2) {
     const rect1 = tooltip1.getBoundingClientRect();
     const rect2 = tooltip2.getBoundingClientRect();
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
 
-    return { rect1, rect2, viewportWidth };
-}
+    const rightEdgeMargin = 20; // Margin from the right edge of viewport
+    const minSpace = 15; // Minimum space between tooltips
 
-function getTooltipSpacingSettings() {
-    return {
-        rightEdgeMargin: 50, // Margin from right edge
-        minSpace: 25 // Minimum space between tooltips
-    };
-}
+    // First calculate if the right tooltip is out of bounds
+    const rightTooltipOverflow = rect2.right > (viewportWidth - rightEdgeMargin);
 
-function handleRightEdgeCase(tooltip1, tooltip2, rect1, rect2, viewportWidth, rightEdgeMargin, minSpace) {
-    if (rect2.right > viewportWidth - rightEdgeMargin) {
-        handleRightEdgeOverflow(tooltip1, tooltip2, rect1, rect2, viewportWidth, rightEdgeMargin, minSpace);
-    } else {
-        handleNormalOverlapCase(tooltip1, tooltip2, rect1, rect2, viewportWidth, rightEdgeMargin, minSpace);
-    }
+    // Then calculate if the tooltips are overlapping
+    const tooltipsOverlap = rect1.right + minSpace > rect2.left;
 
-    performFinalRightEdgeCheck(tooltip1, tooltip2, rect1, viewportWidth, rightEdgeMargin, minSpace);
-}
+    // Handle both cases
+    if (rightTooltipOverflow) {
+        // First fix the right tooltip's position
+        const rightOverflow = rect2.right - (viewportWidth - rightEdgeMargin);
+        tooltip2.style.transform = `translateX(-${rightOverflow}px)`;
 
-function handleRightEdgeOverflow(tooltip1, tooltip2, rect1, rect2, viewportWidth, rightEdgeMargin, minSpace) {
-    const moveLeft2 = rect2.right - (viewportWidth - rightEdgeMargin);
+        // Force reflow again for updated measurements
+        void tooltip2.offsetWidth;
+        const updatedRect2 = tooltip2.getBoundingClientRect();
 
-    tooltip2.style.transform = `translateX(-${moveLeft2}px)`;
+        // Check if we now have an overlap after adjusting the right tooltip
+        if (rect1.right + minSpace > updatedRect2.left) {
+            const overlapAfterRightFix = rect1.right + minSpace - updatedRect2.left;
+            tooltip1.style.transform = `translateX(-${overlapAfterRightFix}px)`;
+        }
+    } else if (tooltipsOverlap) {
+        // Handle just the overlap when right tooltip is in bounds
+        const overlap = rect1.right + minSpace - rect2.left;
 
-    void tooltip2.offsetWidth;
-    const updatedRect2 = tooltip2.getBoundingClientRect();
+        // Move both tooltips away from each other
+        tooltip1.style.transform = `translateX(-${overlap / 2}px)`;
+        tooltip2.style.transform = `translateX(${overlap / 2}px)`;
 
-    if (rect1.right + minSpace > updatedRect2.left) {
-        const overlapAmount = rect1.right + minSpace - updatedRect2.left;
-        tooltip1.style.transform = `translateX(-${overlapAmount}px)`;
-    }
-}
+        // Check again that right tooltip doesn't go out of bounds
+        void tooltip2.offsetWidth;
+        const updatedRect2 = tooltip2.getBoundingClientRect();
 
-function handleNormalOverlapCase(tooltip1, tooltip2, rect1, rect2, viewportWidth, rightEdgeMargin, minSpace) {
-    const overlap = rect1.right + minSpace > rect2.left;
-
-    if (overlap) {
-        const overlapAmount = rect1.right + minSpace - rect2.left;
-        const availableRightSpace = viewportWidth - rightEdgeMargin - rect2.right;
-
-        if (availableRightSpace >= overlapAmount/2) {
-            distributeOverlapEvenly(tooltip1, tooltip2, overlapAmount);
-        } else {
-            handleLimitedRightSpace(tooltip1, tooltip2, overlapAmount, availableRightSpace);
+        if (updatedRect2.right > (viewportWidth - rightEdgeMargin)) {
+            const secondaryRightOverflow = updatedRect2.right - (viewportWidth - rightEdgeMargin);
+            // Adjust both tooltips to compensate
+            const currentLeftShift = parseFloat(tooltip2.style.transform.match(/translateX\(([^)]+)\)/)[1]);
+            tooltip2.style.transform = `translateX(${currentLeftShift - secondaryRightOverflow}px)`;
+            tooltip1.style.transform = `translateX(-${(overlap / 2) + secondaryRightOverflow}px)`;
         }
     }
 }
 
-function distributeOverlapEvenly(tooltip1, tooltip2, overlapAmount) {
-    tooltip1.style.transform = `translateX(-${overlapAmount/2}px)`;
-    tooltip2.style.transform = `translateX(${overlapAmount/2}px)`;
-}
-
-function handleLimitedRightSpace(tooltip1, tooltip2, overlapAmount, availableRightSpace) {
-    const moveRight2 = availableRightSpace > 0 ? availableRightSpace : 0;
-    const moveLeft1 = overlapAmount - moveRight2;
-
-    tooltip1.style.transform = `translateX(-${moveLeft1}px)`;
-
-    if (moveRight2 > 0) {
-        tooltip2.style.transform = `translateX(${moveRight2}px)`;
-    }
-}
-
-function performFinalRightEdgeCheck(tooltip1, tooltip2, rect1, viewportWidth, rightEdgeMargin, minSpace) {
-    void tooltip2.offsetWidth;
-    const finalRect2 = tooltip2.getBoundingClientRect();
-
-    if (finalRect2.right > viewportWidth - rightEdgeMargin) {
-        const additionalAdjustment = finalRect2.right - (viewportWidth - rightEdgeMargin);
-        applyAdditionalRightAdjustment(tooltip1, tooltip2, rect1, additionalAdjustment, minSpace);
-    }
-}
-
-function applyAdditionalRightAdjustment(tooltip1, tooltip2, rect1, additionalAdjustment, minSpace) {
-    const currentLeftShift = extractCurrentTransformValue(tooltip2);
-
-    tooltip2.style.transform = `translateX(-${currentLeftShift + additionalAdjustment}px)`;
-
-    void tooltip2.offsetWidth;
-    const adjustedRect2 = tooltip2.getBoundingClientRect();
-
-    if (rect1.right + minSpace > adjustedRect2.left) {
-        applyAdditionalTooltip1Adjustment(tooltip1, rect1, adjustedRect2, minSpace);
-    }
-}
-
-function extractCurrentTransformValue(tooltip) {
-    let currentShift = 0;
-    const currentTransform = tooltip.style.transform;
-
-    if (currentTransform.includes('translateX(-')) {
-        currentShift = parseFloat(currentTransform.match(/translateX\(-([^)]+)\)/)[1]);
-    } else if (currentTransform.includes('translateX(')) {
-        tooltip.style.transform = '';
-        void tooltip.offsetWidth;
-    }
-
-    return currentShift;
-}
-
-function applyAdditionalTooltip1Adjustment(tooltip1, rect1, adjustedRect2, minSpace) {
-    const newOverlap = rect1.right + minSpace - adjustedRect2.left;
-    const currentTooltip1Shift = extractCurrentTransformValue(tooltip1);
-
-    tooltip1.style.transform = `translateX(-${currentTooltip1Shift + newOverlap}px)`;
-}
-
-function setupTooltipEventListeners(tooltips, slider, calendars, firstEntryDate, lastEntryDate, validDates, dateToEntryMap, onChange) {
+function setupTooltipEventListeners(tooltips, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips2, history) {
     tooltips.forEach((tooltip, index) => {
         tooltip.style.cursor = "pointer";
-        tooltip.addEventListener("click", (e) => handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, validDates, dateToEntryMap, onChange, tooltips));
+        tooltip.addEventListener("click", (e) => handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips, history));
     });
 
     setupSlideEventHandler(slider, calendars, tooltips);
 }
 
-function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, validDates, dateToEntryMap, onChange, tooltips) {
+function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips, history) {
     e.stopImmediatePropagation();
     e.preventDefault();
 
@@ -413,16 +349,24 @@ function handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate
     const currentSliderValue = slider.noUiSlider.get()[index];
     const currentDate = new Date(+currentSliderValue);
 
-    const fp = createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, validDates, dateToEntryMap, index, slider, onChange, calendars, tooltips);
+    const fp = createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, entriesByDate, index, slider, onChange, calendars, tooltips, history);
 
     calendars[index] = fp;
     fp.jumpToDate(currentDate);
 
+    // Create and show time selection for the current date immediately
+    const dateStr = formatDate(currentDate);
+    if (entriesByDate[dateStr] && entriesByDate[dateStr].length > 1) {
+        showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars);
+    }
+
     setupCalendarCloseHandler(fp, tooltip, index, calendars, tooltips);
 }
 
-function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, validDates, dateToEntryMap, index, slider, onChange, calendars, tooltips) {
-    return flatpickr(tooltip, {
+function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, entriesByDate, index, slider, onChange, calendars, tooltips, history) {
+    const validDates = Object.keys(entriesByDate);
+
+    const fp = flatpickr(tooltip, {
         defaultDate: currentDate,
         minDate: firstEntryDate,
         maxDate: lastEntryDate,
@@ -434,33 +378,151 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
             const dateStr = formatDate(dayElem.dateObj);
             if (validDates.includes(dateStr)) {
                 dayElem.classList.add("valid-entry-day");
+                // Add marker for days with multiple entries
+                if (entriesByDate[dateStr] && entriesByDate[dateStr].length > 1) {
+                    const marker = document.createElement("span");
+                    marker.style.position = "absolute";
+                    marker.style.bottom = "2px";
+                    marker.style.right = "2px";
+                    marker.style.width = "3px";
+                    marker.style.height = "3px";
+                    marker.style.backgroundColor = "#0078d7";
+                    marker.style.borderRadius = "50%";
+                    dayElem.appendChild(marker);
+                    dayElem.style.position = "relative";
+                }
             }
         },
-        onChange: selectedDates => handleCalendarDateChange(selectedDates, dateToEntryMap, index, slider, onChange, tooltip, calendars, tooltips),
-        onReady: (_, __, instance) => positionCalendarContainer(instance)
+        onChange: selectedDates => handleCalendarDateChange(selectedDates, entriesByDate, index, slider, onChange, tooltip, calendars, tooltips, history),
+        onReady: (_, __, instance) => {
+            positionCalendarContainer(instance);
+            addCalendarTimeSelectionSupport(instance);
+        }
     });
+
+    return fp;
 }
 
-function handleCalendarDateChange(selectedDates, dateToEntryMap, index, slider, onChange, tooltip, calendars, tooltips) {
+function addCalendarTimeSelectionSupport(instance) {
+    // Add a time selection container below the calendar
+    const timeSelectionContainer = document.createElement("div");
+    timeSelectionContainer.className = "flatpickr-time-selection";
+    timeSelectionContainer.style.display = "none";
+    timeSelectionContainer.style.padding = "0";
+    timeSelectionContainer.style.backgroundColor = "#fff";
+    timeSelectionContainer.style.border = "none";
+    timeSelectionContainer.style.borderTop = "1px solid #e6e6e6";
+    timeSelectionContainer.style.fontSize = "10px"; // Increased font size
+    timeSelectionContainer.style.maxHeight = "90px"; // Increased max height
+    timeSelectionContainer.style.marginTop = "-3px";
+    timeSelectionContainer.style.width = "100%";
+
+    instance.calendarContainer.appendChild(timeSelectionContainer);
+    instance._timeSelectionContainer = timeSelectionContainer;
+}
+
+function handleCalendarDateChange(selectedDates, entriesByDate, index, slider, onChange, tooltip, calendars, tooltips, history) {
     const selectedDate = selectedDates[0];
     const dateStr = formatDate(selectedDate);
 
-    console.log("Selected date (local):", selectedDate);
-    console.log("Formatted date string:", dateStr);
+    if (entriesByDate[dateStr]) {
+        const entries = entriesByDate[dateStr];
+        const fp = calendars[index];
 
-    if (dateToEntryMap[dateStr]) {
-        applyExactTimestamp(dateToEntryMap[dateStr], index, slider, onChange);
+        if (entries.length === 1) {
+            // Only one entry for this date, apply it directly and close
+            applyExactTimestamp(entries[0], index, slider, onChange);
+            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
+        } else if (fp && fp._timeSelectionContainer) {
+            // Multiple entries, show time selection dropdown
+            showTimeSelectionForDate(dateStr, entriesByDate, fp, index, slider.noUiSlider.get()[index], slider, onChange, tooltips, tooltip, calendars);
+        }
     } else {
         handleInvalidDate(selectedDate, index, slider, onChange, history);
-    }
-
-    // Get the flatpickr instance before calling closeAndCleanupCalendar
-    const fp = calendars[index];
-    if (fp) {
-        closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
+        const fp = calendars[index];
+        if (fp) {
+            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
+        }
     }
 }
 
+
+function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars) {
+    const entries = entriesByDate[dateStr];
+    if (!entries || entries.length <= 1) return;
+
+    const timeSelectionContainer = fp._timeSelectionContainer;
+    timeSelectionContainer.innerHTML = "";
+    timeSelectionContainer.style.display = "block";
+
+    // Time selection grid
+    const timeGrid = document.createElement("div");
+    timeGrid.style.display = "grid";
+    timeGrid.style.gridTemplateColumns = "repeat(3, 1fr)";
+    timeGrid.style.gap = "3px";
+    timeGrid.style.padding = "4px";
+
+    // Find the entry closest to current slider value
+    const currentTimestamp = Number(currentSliderValue);
+    let closestEntry = entries[0];
+    let closestDiff = Math.abs(new Date(closestEntry.timestamp).getTime() - currentTimestamp);
+
+    entries.forEach((entry) => {
+        const entryTime = new Date(entry.timestamp).getTime();
+        const diff = Math.abs(entryTime - currentTimestamp);
+        if (diff < closestDiff) {
+            closestEntry = entry;
+            closestDiff = diff;
+        }
+
+        const timeButton = document.createElement("button");
+        timeButton.className = "time-entry-button";
+        timeButton.style.padding = "2px 0";
+        timeButton.style.fontSize = "10px"; // Larger font size
+        timeButton.style.fontWeight = "normal";
+        timeButton.style.textAlign = "center";
+        timeButton.style.border = "none";
+        timeButton.style.backgroundColor = "#f0f0f0";
+        timeButton.style.cursor = "pointer";
+        timeButton.style.borderRadius = "3px";
+        timeButton.style.width = "100%";
+
+        const dateObj = new Date(entry.timestamp);
+        const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        timeButton.textContent = timeStr;
+
+        // Highlight the revision that's currently selected
+        if (entry === closestEntry) {
+            timeButton.style.backgroundColor = "#e6f7e6";
+            timeButton.style.fontWeight = "bold";
+        }
+
+        // Add hover effect
+        timeButton.addEventListener("mouseover", () => {
+            if (entry !== closestEntry) {
+                timeButton.style.backgroundColor = "#e8e8e8";
+            }
+        });
+
+        timeButton.addEventListener("mouseout", () => {
+            if (entry !== closestEntry) {
+                timeButton.style.backgroundColor = "#f0f0f0";
+            }
+        });
+
+        timeButton.addEventListener("click", () => {
+            // Apply the timestamp and close calendar
+            const exactTimestamp = new Date(entry.timestamp).getTime();
+            slider.noUiSlider.setHandle(index, exactTimestamp);
+            onChange();
+            closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips);
+        });
+
+        timeGrid.appendChild(timeButton);
+    });
+
+    timeSelectionContainer.appendChild(timeGrid);
+}
 
 function applyExactTimestamp(exactEntry, index, slider, onChange) {
     const exactTimestamp = new Date(exactEntry.timestamp).getTime();
@@ -470,7 +532,7 @@ function applyExactTimestamp(exactEntry, index, slider, onChange) {
     onChange();
 }
 
-function handleInvalidDate(selectedDate, index, slider, onChange) {
+function handleInvalidDate(selectedDate, index, slider, onChange, history) {
     console.log("No matching entry found for date:", formatDate(selectedDate));
     const nearestEntry = findClosestEntry(history, selectedDate.getTime());
     const nearestTime = new Date(nearestEntry.timestamp).getTime();
