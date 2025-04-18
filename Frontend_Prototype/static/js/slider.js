@@ -193,7 +193,6 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
     const calendars = new Array(tooltips.length).fill(null);
 
-    // Add a function to adjust tooltip positions when they overlap
     function adjustTooltipPositions() {
     if (tooltips.length < 2) return;
 
@@ -204,24 +203,111 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
     tooltip1.style.transform = '';
     tooltip2.style.transform = '';
 
+    // Force layout recalculation
+    void tooltip1.offsetWidth;
+    void tooltip2.offsetWidth;
+
     // Get positions after reset
     const rect1 = tooltip1.getBoundingClientRect();
     const rect2 = tooltip2.getBoundingClientRect();
 
-    // Check if the tooltips overlap or are too close (within 10px)
-    const minSpace = 10;
-    const overlap = rect1.right + minSpace > rect2.left;
+    // Calculate viewport boundaries
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const rightEdgeMargin = 50; // Significantly increased margin from right edge
+    const minSpace = 25; // Increased minimum space between tooltips
 
-    if (overlap) {
-        // Calculate how much they overlap plus the minimum space we want between them
-        const overlapAmount = rect1.right + minSpace - rect2.left;
-        const halfOverlap = overlapAmount / 2;
+    // First priority: Fix right edge visibility
+    let moveLeft2 = 0;
 
-        // Move both tooltips in opposite directions by the same amount
-        tooltip1.style.transform = `translateX(-${halfOverlap}px)`;
-        tooltip2.style.transform = `translateX(${halfOverlap}px)`;
+    if (rect2.right > viewportWidth - rightEdgeMargin) {
+        // Move tooltip2 left to fit within viewport with extra margin
+        moveLeft2 = rect2.right - (viewportWidth - rightEdgeMargin);
+
+        // Apply right edge fix immediately
+        tooltip2.style.transform = `translateX(-${moveLeft2}px)`;
+
+        // Force layout recalculation to get updated position
+        void tooltip2.offsetWidth;
+        const updatedRect2 = tooltip2.getBoundingClientRect();
+
+        // Check for overlap with the updated position
+        if (rect1.right + minSpace > updatedRect2.left) {
+            // Calculate how much tooltip1 needs to move to avoid overlap
+            const overlapAmount = rect1.right + minSpace - updatedRect2.left;
+            tooltip1.style.transform = `translateX(-${overlapAmount}px)`;
+        }
+    } else {
+        // Normal case: handle overlap when right edge is not an issue
+        const overlap = rect1.right + minSpace > rect2.left;
+
+        if (overlap) {
+            const overlapAmount = rect1.right + minSpace - rect2.left;
+
+            // Check if moving tooltip2 right would push it off screen
+            const availableRightSpace = viewportWidth - rightEdgeMargin - rect2.right;
+
+            if (availableRightSpace >= overlapAmount/2) {
+                // Split the overlap evenly
+                tooltip1.style.transform = `translateX(-${overlapAmount/2}px)`;
+                tooltip2.style.transform = `translateX(${overlapAmount/2}px)`;
+            } else {
+                // Not enough space right - move tooltip1 more
+                const moveRight2 = availableRightSpace > 0 ? availableRightSpace : 0;
+                const moveLeft1 = overlapAmount - moveRight2;
+
+                tooltip1.style.transform = `translateX(-${moveLeft1}px)`;
+
+                if (moveRight2 > 0) {
+                    tooltip2.style.transform = `translateX(${moveRight2}px)`;
+                }
+            }
+        }
+    }
+
+    // Additional safety check for right edge - run it again to be sure
+    void tooltip2.offsetWidth;
+    const finalRect2 = tooltip2.getBoundingClientRect();
+
+    if (finalRect2.right > viewportWidth - rightEdgeMargin) {
+        const additionalAdjustment = finalRect2.right - (viewportWidth - rightEdgeMargin);
+
+        // Extract current transform value if any
+        let currentLeftShift = 0;
+        const currentTransform = tooltip2.style.transform;
+
+        if (currentTransform.includes('translateX(-')) {
+            currentLeftShift = parseFloat(currentTransform.match(/translateX\(-([^)]+)\)/)[1]);
+        } else if (currentTransform.includes('translateX(')) {
+            // If moving right, first reset that
+            tooltip2.style.transform = '';
+            void tooltip2.offsetWidth;
+        }
+
+        // Apply final adjustment
+        tooltip2.style.transform = `translateX(-${currentLeftShift + additionalAdjustment}px)`;
+
+        // Check for resulting overlap
+        void tooltip2.offsetWidth;
+        const adjustedRect2 = tooltip2.getBoundingClientRect();
+
+        if (rect1.right + minSpace > adjustedRect2.left) {
+            const newOverlap = rect1.right + minSpace - adjustedRect2.left;
+
+            // Extract current transform value for tooltip1 if any
+            let currentTooltip1Shift = 0;
+            const tooltip1Transform = tooltip1.style.transform;
+
+            if (tooltip1Transform.includes('translateX(-')) {
+                currentTooltip1Shift = parseFloat(tooltip1Transform.match(/translateX\(-([^)]+)\)/)[1]);
+            }
+
+            // Apply additional adjustment to tooltip1
+            tooltip1.style.transform = `translateX(-${currentTooltip1Shift + newOverlap}px)`;
+        }
     }
 }
+
+
 
     // Call adjustTooltipPositions whenever the slider updates
     slider.noUiSlider.on('update', adjustTooltipPositions);
