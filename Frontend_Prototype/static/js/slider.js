@@ -176,7 +176,6 @@ function removeExistingOutput(wrapper) {
 }
 
 
-
 function setupSliderTooltips(slider, history, articleId, onChange) {
     const firstEntryDate = new Date(history[0].timestamp);
     const lastEntryDate = new Date(history[history.length - 1].timestamp);
@@ -193,6 +192,39 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
 
     const tooltips = slider.querySelectorAll(".noUi-tooltip");
     const calendars = new Array(tooltips.length).fill(null);
+
+    // Add a function to adjust tooltip positions when they overlap
+    function adjustTooltipPositions() {
+    if (tooltips.length < 2) return;
+
+    const tooltip1 = tooltips[0];
+    const tooltip2 = tooltips[1];
+
+    // Reset transformations first to measure natural positions
+    tooltip1.style.transform = '';
+    tooltip2.style.transform = '';
+
+    // Get positions after reset
+    const rect1 = tooltip1.getBoundingClientRect();
+    const rect2 = tooltip2.getBoundingClientRect();
+
+    // Check if the tooltips overlap or are too close (within 10px)
+    const minSpace = 10;
+    const overlap = rect1.right + minSpace > rect2.left;
+
+    if (overlap) {
+        // Calculate how much they overlap plus the minimum space we want between them
+        const overlapAmount = rect1.right + minSpace - rect2.left;
+        const halfOverlap = overlapAmount / 2;
+
+        // Move both tooltips in opposite directions by the same amount
+        tooltip1.style.transform = `translateX(-${halfOverlap}px)`;
+        tooltip2.style.transform = `translateX(${halfOverlap}px)`;
+    }
+}
+
+    // Call adjustTooltipPositions whenever the slider updates
+    slider.noUiSlider.on('update', adjustTooltipPositions);
 
     tooltips.forEach((tooltip, index) => {
         tooltip.style.cursor = "pointer";
@@ -261,6 +293,9 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                     tooltip.classList.remove("calendar-open");
                     calendars[index] = null;
                     document.removeEventListener("mousedown", closeCalendar);
+
+                    // Readjust tooltip positions after calendar closes
+                    setTimeout(adjustTooltipPositions, 0);
                 },
                 onReady: function (_, __, instance) {
                     const calendar = instance.calendarContainer;
@@ -288,6 +323,9 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
                     tooltip.classList.remove("calendar-open");
                     calendars[index] = null;
                     document.removeEventListener("mousedown", closeCalendar);
+
+                    // Readjust tooltip positions after calendar closes
+                    setTimeout(adjustTooltipPositions, 0);
                 }
             }
 
@@ -306,8 +344,10 @@ function setupSliderTooltips(slider, history, articleId, onChange) {
             }
         });
     });
-}
 
+    // Initialize tooltip positions
+    setTimeout(adjustTooltipPositions, 0);
+}
 
 
 
