@@ -340,16 +340,43 @@ function createSliderWithOptions(slider, fullRangeStart, fullRangeEnd, sliderSta
 function configureSliderSnapping(slider, validTimestamps) {
     slider.noUiSlider.on("set", (values, handle) => {
         const value = Number(values[handle]);
-        const closestTimestamp = findClosestTimestamp(validTimestamps, value);
 
-        if (value !== closestTimestamp) {
+        // Find the closest timestamp based on the handle direction
+        let targetTimestamp;
+        if (handle === 0) { // Left handle - snap to next higher timestamp
+            // Find the nearest timestamp that is greater than or equal to value
+            targetTimestamp = validTimestamps
+                .filter(ts => ts >= value)
+                .sort((a, b) => a - b)[0];
+
+            // If no higher timestamp found, use the closest lower timestamp
+            if (!targetTimestamp) {
+                targetTimestamp = validTimestamps
+                    .filter(ts => ts < value)
+                    .sort((a, b) => b - a)[0];
+            }
+        } else { // Right handle - snap to next lower timestamp
+            // Find the nearest timestamp that is less than or equal to value
+            targetTimestamp = validTimestamps
+                .filter(ts => ts <= value)
+                .sort((a, b) => b - a)[0];
+
+            // If no lower timestamp found, use the closest higher timestamp
+            if (!targetTimestamp) {
+                targetTimestamp = validTimestamps
+                    .filter(ts => ts > value)
+                    .sort((a, b) => a - b)[0];
+            }
+        }
+
+        // If we found a target timestamp and it's different from current value
+        if (targetTimestamp && value !== targetTimestamp) {
             const newValues = [...slider.noUiSlider.get().map(Number)];
-            newValues[handle] = closestTimestamp;
+            newValues[handle] = targetTimestamp;
             slider.noUiSlider.set(newValues);
         }
     });
 }
-
 function configureSliderTooltipUpdates(slider) {
     slider.noUiSlider.on("update", (values, handle) => {
         slider.querySelectorAll(".noUi-tooltip")[handle].textContent = formatDate(new Date(+values[handle]));
@@ -880,9 +907,36 @@ function applyExactTimestamp(exactEntry, index, slider, onChange) {
 
 function handleInvalidDate(selectedDate, index, slider, onChange, history) {
     console.log("No matching entry found for date:", formatDate(selectedDate));
-    const nearestEntry = findClosestEntry(history, selectedDate.getTime());
-    const nearestTime = new Date(nearestEntry.timestamp).getTime();
 
+    const selectedTime = selectedDate.getTime();
+    const sortedHistory = [...history].sort((a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    let nearestEntry;
+
+    if (index === 0) { // Left handle - snap to next higher timestamp
+        nearestEntry = sortedHistory.find(entry =>
+            new Date(entry.timestamp).getTime() >= selectedTime
+        );
+
+        // If no higher timestamp found, use the highest available
+        if (!nearestEntry) {
+            nearestEntry = sortedHistory[sortedHistory.length - 1];
+        }
+    } else { // Right handle - snap to next lower timestamp
+        // Find entries with timestamps less than or equal to the selected time
+        const lowerEntries = sortedHistory.filter(entry =>
+            new Date(entry.timestamp).getTime() <= selectedTime
+        );
+
+        // Get the highest of these lower entries
+        nearestEntry = lowerEntries.length > 0
+            ? lowerEntries[lowerEntries.length - 1]
+            : sortedHistory[0]; // If no lower entry, use the earliest
+    }
+
+    const nearestTime = new Date(nearestEntry.timestamp).getTime();
     slider.noUiSlider.setHandle(index, nearestTime);
     onChange();
 }
