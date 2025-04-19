@@ -5,13 +5,13 @@ let currentRequestController = null;
 let lastStartRevid = null;
 let lastEndRevid = null;
 
+
 export function createDateSliderWithPicker(container, history, articleId) {
     container.innerHTML = "";
     const { sliderWrapper, slider } = createSliderElements(container);
     const sortedHistory = [...history].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-    console.log("✅ Sortierte History:");
-    console.table(sortedHistory);
+
 
     const { firstEntry, lastEntry, tenthNewestEntry } = getKeyEntries(sortedHistory);
     const { fullRangeStart, fullRangeEnd, sliderStart, sliderEnd } = calculateTimeRanges(firstEntry, lastEntry, tenthNewestEntry);
@@ -123,12 +123,28 @@ function configureSliderHandleConstraints(slider, sortedHistory) {
 
 function setupTooltipEventListeners(tooltips, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips2, history) {
     tooltips.forEach((tooltip, index) => {
-        tooltip.style.cursor = "pointer";
-        tooltip.addEventListener("click", (e) => handleTooltipClick(e, tooltip, index, slider, calendars, firstEntryDate, lastEntryDate, entriesByDate, onChange, tooltips, history));
+        tooltip.classList.add("tooltip-clickable");
+
+        tooltip.addEventListener("click", (e) =>
+            handleTooltipClick(
+                e,
+                tooltip,
+                index,
+                slider,
+                calendars,
+                firstEntryDate,
+                lastEntryDate,
+                entriesByDate,
+                onChange,
+                tooltips,
+                history
+            )
+        );
     });
 
     setupSlideEventHandler(slider, calendars, tooltips);
 }
+
 
 function handleCalendarDateChange(selectedDates, entriesByDate, index, slider, onChange, tooltip, calendars, tooltips, history) {
     const selectedDate = selectedDates[0];
@@ -179,7 +195,8 @@ function handleCalendarDateChange(selectedDates, entriesByDate, index, slider, o
     }
 }
 
-// New function to show time selection with constraints
+
+
 function showConstrainedTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars, otherHandleValue) {
     const entries = entriesByDate[dateStr];
     if (!entries || entries.length <= 1) return 0;
@@ -188,39 +205,26 @@ function showConstrainedTimeSelectionForDate(dateStr, entriesByDate, fp, index, 
     timeSelectionContainer.innerHTML = "";
     timeSelectionContainer.style.display = "block";
 
-    // Time selection grid
     const timeGrid = document.createElement("div");
-    timeGrid.style.display = "grid";
-    timeGrid.style.gridTemplateColumns = "repeat(3, 1fr)";
-    timeGrid.style.gap = "3px";
-    timeGrid.style.padding = "4px";
+    timeGrid.className = "time-grid";
 
-    // Get the current handle value and find the closest entry
     const currentTimestamp = Number(currentSliderValue);
-
-    // Find the currently selected entry for this handle
     const sliderHandleValue = Number(slider.noUiSlider.get()[index]);
     const selectedEntry = entries.find(entry =>
         new Date(entry.timestamp).getTime() === sliderHandleValue
     );
 
-    // If no exact match, find the closest entry to show as selected
     let closestEntry = selectedEntry || entries[0];
     let closestDiff = Math.abs(new Date(closestEntry.timestamp).getTime() - currentTimestamp);
     let validEntriesCount = 0;
 
     entries.forEach((entry) => {
         const entryTime = new Date(entry.timestamp).getTime();
-
-        // Apply constraint based on the handle index
         const isValidTimestamp = (index === 0) ? entryTime < otherHandleValue : entryTime > otherHandleValue;
-
-        if (!isValidTimestamp) return; // Skip invalid entries
+        if (!isValidTimestamp) return;
 
         validEntriesCount++;
         const diff = Math.abs(entryTime - currentTimestamp);
-
-        // Only update closestEntry if we don't have an exact match already
         if (!selectedEntry && diff < closestDiff) {
             closestEntry = entry;
             closestDiff = diff;
@@ -228,48 +232,25 @@ function showConstrainedTimeSelectionForDate(dateStr, entriesByDate, fp, index, 
 
         const timeButton = document.createElement("button");
         timeButton.className = "time-entry-button";
-        timeButton.style.padding = "3px 0";
-        timeButton.style.fontSize = "12px";
-        timeButton.style.fontWeight = "normal";
-        timeButton.style.textAlign = "center";
-        timeButton.style.border = "none";
-        timeButton.style.backgroundColor = "#f0f0f0";
-        timeButton.style.cursor = "pointer";
-        timeButton.style.borderRadius = "3px";
-        timeButton.style.width = "100%";
-
         const dateObj = new Date(entry.timestamp);
-        const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        timeButton.textContent = timeStr;
+        timeButton.textContent = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-        // Highlight the currently selected time
-        if (selectedEntry && entry.timestamp === selectedEntry.timestamp) {
-            timeButton.style.backgroundColor = "#e6f7e6";
-            timeButton.style.fontWeight = "bold";
-            timeButton.style.border = "1px solid #4CAF50";
-        } else if (!selectedEntry && entry === closestEntry) {
-            // Highlight the closest entry if no exact match
-            timeButton.style.backgroundColor = "#e6f7e6";
-            timeButton.style.fontWeight = "bold";
+        const isSelected = selectedEntry && entry.timestamp === selectedEntry.timestamp;
+        const isClosest = !selectedEntry && entry === closestEntry;
+
+        if (isSelected || isClosest) {
+            timeButton.classList.add("selected");
         }
 
-        // Add hover effect
         timeButton.addEventListener("mouseover", () => {
-            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
-                !(!selectedEntry && entry === closestEntry)) {
-                timeButton.style.backgroundColor = "#e8e8e8";
-            }
+            if (!isSelected && !isClosest) timeButton.classList.add("hovered");
         });
 
         timeButton.addEventListener("mouseout", () => {
-            if (!(selectedEntry && entry.timestamp === selectedEntry.timestamp) &&
-                !(!selectedEntry && entry === closestEntry)) {
-                timeButton.style.backgroundColor = "#f0f0f0";
-            }
+            timeButton.classList.remove("hovered");
         });
 
         timeButton.addEventListener("click", () => {
-            // Apply the timestamp and close calendar
             const exactTimestamp = new Date(entry.timestamp).getTime();
             slider.noUiSlider.setHandle(index, exactTimestamp);
             onChange();
@@ -279,15 +260,12 @@ function showConstrainedTimeSelectionForDate(dateStr, entriesByDate, fp, index, 
         timeGrid.appendChild(timeButton);
     });
 
-    // If no valid entries found after filtering
     if (validEntriesCount === 0) {
         const noValidTimesMsg = document.createElement("p");
+        noValidTimesMsg.className = "no-valid-times";
         noValidTimesMsg.textContent = index === 0
             ? "No times available before the end date"
             : "No times available after the start date";
-        noValidTimesMsg.style.padding = "10px";
-        noValidTimesMsg.style.color = "#666";
-        noValidTimesMsg.style.textAlign = "center";
         timeSelectionContainer.appendChild(noValidTimesMsg);
         return 0;
     }
@@ -295,6 +273,7 @@ function showConstrainedTimeSelectionForDate(dateStr, entriesByDate, fp, index, 
     timeSelectionContainer.appendChild(timeGrid);
     return validEntriesCount;
 }
+
 
 // Replace the existing showTimeSelectionForDate with the constrained version
 function showTimeSelectionForDate(dateStr, entriesByDate, fp, index, currentSliderValue, slider, onChange, tooltips, tooltip, calendars) {
@@ -530,6 +509,7 @@ function configureTooltipPositioning(slider, tooltips) {
     slider.noUiSlider.on('update', () => adjustTooltipPositions(tooltips));
 }
 
+
 function adjustTooltipPositions(tooltips) {
     if (tooltips.length < 2) return;
 
@@ -548,8 +528,8 @@ function adjustTooltipPositions(tooltips) {
     const rect2 = tooltip2.getBoundingClientRect();
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
 
-    const rightEdgeMargin = 20; // Margin from the right edge of viewport
-    const minSpace = 15; // Minimum space between tooltips
+    const rightEdgeMargin = 140; // Increased from 70 to 120
+    const minSpace = 60; // Increased from 20 to 40
 
     // First calculate if the right tooltip is out of bounds
     const rightTooltipOverflow = rect2.right > (viewportWidth - rightEdgeMargin);
@@ -639,25 +619,24 @@ function closeAllCalendars(calendars, tooltips) {
     });
 }
 
-function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntryDate, entriesByDate, index, slider, onChange, calendars, tooltips, history) {
+function createFlatpickrInstance(
+    tooltip, currentDate, firstEntryDate, lastEntryDate,
+    entriesByDate, index, slider, onChange, calendars, tooltips, history
+) {
     const validDates = Object.keys(entriesByDate);
-
-    // Get years range for dropdown
     const startYear = firstEntryDate.getFullYear();
     const endYear = lastEntryDate.getFullYear();
 
-    // Get the other handle's value to enforce constraints
     const otherHandleIndex = index === 0 ? 1 : 0;
     const otherHandleValue = Number(slider.noUiSlider.get()[otherHandleIndex]);
     const otherHandleDate = new Date(otherHandleValue);
 
-    // Determine min and max date constraints based on which handle we're working with
     let effectiveMinDate = firstEntryDate;
     let effectiveMaxDate = lastEntryDate;
 
-    if (index === 0) { // Left handle - can't go beyond right handle
+    if (index === 0) {
         effectiveMaxDate = otherHandleDate;
-    } else { // Right handle - can't go before left handle
+    } else {
         effectiveMinDate = otherHandleDate;
     }
 
@@ -671,26 +650,16 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
         disable: [
             date => {
                 const dateStr = formatDate(date);
+                if (!validDates.includes(dateStr)) return true;
 
-                // First check if this is a valid date with entries
-                if (!validDates.includes(dateStr)) {
-                    return true; // Disable dates without entries
-                }
-
-                // Now check if any entries for this date satisfy the constraint
                 const entries = entriesByDate[dateStr];
-                if (!entries || entries.length === 0) {
-                    return true; // No entries, disable the date
-                }
+                if (!entries || entries.length === 0) return true;
 
-                // Check if any entry for this date meets our constraint
                 return !entries.some(entry => {
                     const entryTime = new Date(entry.timestamp).getTime();
-                    if (index === 0) { // Left handle
-                        return entryTime < otherHandleValue;
-                    } else { // Right handle
-                        return entryTime > otherHandleValue;
-                    }
+                    return index === 0
+                        ? entryTime < otherHandleValue
+                        : entryTime > otherHandleValue;
                 });
             }
         ],
@@ -698,63 +667,49 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
         onDayCreate: (dObj, dStr, fpInstance, dayElem) => {
             const dateStr = formatDate(dayElem.dateObj);
             if (validDates.includes(dateStr)) {
-                // Check if any entries for this date satisfy the constraint
                 const entries = entriesByDate[dateStr];
                 const hasValidEntries = entries && entries.some(entry => {
                     const entryTime = new Date(entry.timestamp).getTime();
-                    if (index === 0) { // Left handle
-                        return entryTime < otherHandleValue;
-                    } else { // Right handle
-                        return entryTime > otherHandleValue;
-                    }
+                    return index === 0
+                        ? entryTime < otherHandleValue
+                        : entryTime > otherHandleValue;
                 });
 
                 if (hasValidEntries) {
                     dayElem.classList.add("valid-entry-day");
 
-                    // Add marker for days with multiple valid entries
                     const validEntries = entries.filter(entry => {
                         const entryTime = new Date(entry.timestamp).getTime();
-                        if (index === 0) { // Left handle
-                            return entryTime < otherHandleValue;
-                        } else { // Right handle
-                            return entryTime > otherHandleValue;
-                        }
+                        return index === 0
+                            ? entryTime < otherHandleValue
+                            : entryTime > otherHandleValue;
                     });
 
                     if (validEntries.length > 1) {
                         const marker = document.createElement("span");
-                        marker.style.position = "absolute";
-                        marker.style.bottom = "2px";
-                        marker.style.right = "2px";
-                        marker.style.width = "3px";
-                        marker.style.height = "3px";
-                        marker.style.backgroundColor = "#0078d7";
-                        marker.style.borderRadius = "50%";
+                        marker.classList.add("calendar-marker");
                         dayElem.appendChild(marker);
-                        dayElem.style.position = "relative";
+                        dayElem.classList.add("relative-day");
                     }
                 }
             }
         },
-        onChange: selectedDates => handleCalendarDateChange(selectedDates, entriesByDate, index, slider, onChange, tooltip, calendars, tooltips, history),
+        onChange: selectedDates =>
+            handleCalendarDateChange(
+                selectedDates, entriesByDate, index,
+                slider, onChange, tooltip, calendars, tooltips, history
+            ),
         onReady: (_, __, instance) => {
             positionCalendarContainer(instance);
             addCalendarTimeSelectionSupport(instance);
             convertYearNavigationToDropdown(instance, startYear, endYear);
 
-            // Ensure current year and month are selected in the dropdowns after initial rendering
             setTimeout(() => {
                 const yearDropdown = instance.calendarContainer.querySelector('.flatpickr-yearDropdown');
                 const monthDropdown = instance.calendarContainer.querySelector('.flatpickr-monthDropdown-months');
 
-                if (yearDropdown) {
-                    yearDropdown.value = currentDate.getFullYear();
-                }
-
-                if (monthDropdown) {
-                    monthDropdown.value = currentDate.getMonth();
-                }
+                if (yearDropdown) yearDropdown.value = currentDate.getFullYear();
+                if (monthDropdown) monthDropdown.value = currentDate.getMonth();
             }, 10);
         }
     });
@@ -762,86 +717,26 @@ function createFlatpickrInstance(tooltip, currentDate, firstEntryDate, lastEntry
     return fp;
 }
 
-
 function convertYearNavigationToDropdown(instance, startYear, endYear) {
     setTimeout(() => {
         const calendarContainer = instance.calendarContainer;
         const currentYearElement = calendarContainer.querySelector('.cur-year');
         const monthDropdown = calendarContainer.querySelector('.flatpickr-monthDropdown-months');
 
-        // Find the year navigation arrow buttons inside the year element's parent
-        const yearParent = currentYearElement.parentNode;
-        const yearArrows = yearParent.querySelectorAll('.arrowUp, .arrowDown');
-
-        // Remove the year arrow buttons
-        yearArrows.forEach(arrow => arrow.remove());
+        const yearParent = currentYearElement?.parentNode;
+        const yearArrows = yearParent?.querySelectorAll('.arrowUp, .arrowDown');
+        yearArrows?.forEach(arrow => arrow.remove());
 
         if (!currentYearElement || !monthDropdown) return;
 
-        // Get the current selected year
         const currentYear = parseInt(currentYearElement.textContent);
 
-        // Create select element
         const yearSelect = document.createElement('select');
         yearSelect.className = 'flatpickr-yearDropdown';
 
-        // Apply enhanced styles - making it smaller
-        yearSelect.style.appearance = 'none';
-        yearSelect.style.border = 'none';
-        yearSelect.style.height = '18px';
-        yearSelect.style.padding = '0 2px';
-        yearSelect.style.outline = 'none';
-        yearSelect.style.fontSize = '12px'; // Match time selection font size
-        yearSelect.style.fontWeight = 'bold';
-        yearSelect.style.cursor = 'pointer';
-        yearSelect.style.width = '35px'; // Smaller width
-        yearSelect.style.color = 'inherit';
-        yearSelect.style.backgroundColor = 'transparent';
-        yearSelect.style.verticalAlign = 'middle';
-        yearSelect.style.textAlign = 'center';
-        yearSelect.style.marginLeft = '2px';
+        // CSS-Klassen werden genutzt statt Inline-Styles
+        monthDropdown.classList.add('flatpickr-monthDropdown-enhanced');
 
-        // Apply same enhanced styles to month dropdown
-        monthDropdown.style.fontSize = '12px'; // Match time selection font size
-        monthDropdown.style.fontWeight = 'bold';
-        monthDropdown.style.height = '18px';
-
-        // Enable scrolling for year dropdown
-        yearSelect.style.overflowY = 'auto';
-        yearSelect.size = 1; // Show only one option at a time
-
-        // Add CSS for dropdown styling
-        const styleEl = document.createElement('style');
-        styleEl.textContent = `
-            .flatpickr-yearDropdown {
-                scrollbar-width: thin;
-            }
-            .flatpickr-yearDropdown option {
-                font-size: 11px;
-                padding: 1px 3px;
-            }
-            .flatpickr-yearDropdown:focus {
-                outline: none;
-            }
-            .flatpickr-monthDropdown-months option {
-                font-size: 11px;
-                padding: 1px 3px;
-            }
-            /* Hide default arrow */
-            .flatpickr-yearDropdown::-ms-expand {
-                display: none;
-            }
-            .flatpickr-yearDropdown::-webkit-scrollbar {
-                width: 4px;
-            }
-            .flatpickr-yearDropdown::-webkit-scrollbar-thumb {
-                background-color: #aaa;
-                border-radius: 2px;
-            }
-        `;
-        document.head.appendChild(styleEl);
-
-        // Populate with year options
         for (let year = startYear; year <= endYear; year++) {
             const option = document.createElement('option');
             option.value = year;
@@ -852,45 +747,31 @@ function convertYearNavigationToDropdown(instance, startYear, endYear) {
             yearSelect.appendChild(option);
         }
 
-        // Add event listener
         yearSelect.addEventListener('change', (e) => {
             const newYear = parseInt(e.target.value);
             const currentMonth = instance.currentMonth;
-
             instance.changeYear(newYear);
-
-            // Keep current month selected after year change
             if (instance.currentMonth !== currentMonth) {
                 instance.changeMonth(currentMonth, false);
             }
         });
 
-        // Replace the current year element
         yearParent.replaceChild(yearSelect, currentYearElement);
     }, 0);
 }
 
 
 
+
 function addCalendarTimeSelectionSupport(instance) {
-    // Add a time selection container below the calendar
     const timeSelectionContainer = document.createElement("div");
     timeSelectionContainer.className = "flatpickr-time-selection";
-    timeSelectionContainer.style.display = "none";
-    timeSelectionContainer.style.padding = "0";
-    timeSelectionContainer.style.backgroundColor = "#fff";
-    timeSelectionContainer.style.border = "none";
-    timeSelectionContainer.style.borderTop = "1px solid #e6e6e6";
-    timeSelectionContainer.style.fontSize = "12px"; // Increased font size
-    timeSelectionContainer.style.maxHeight = "100px"; // Increased max height
-    timeSelectionContainer.style.marginTop = "-3px";
-    timeSelectionContainer.style.width = "100%";
-    timeSelectionContainer.style.overflow = "auto";
-    timeSelectionContainer.style.scrollbarWidth = "thin";
+    timeSelectionContainer.classList.add("flatpickr-time-selection-enhanced");
 
     instance.calendarContainer.appendChild(timeSelectionContainer);
     instance._timeSelectionContainer = timeSelectionContainer;
 }
+
 
 
 
@@ -957,59 +838,6 @@ function closeAndCleanupCalendar(fp, tooltip, index, calendars, tooltips) {
 }
 
 
-function positionCalendarContainer(instance) {
-    const calendar = instance.calendarContainer;
-    calendar.classList.add("small-flatpickr");
-
-    // Additional styles for dropdown containers
-    const monthContainer = calendar.querySelector('.flatpickr-month');
-    if (monthContainer) {
-        monthContainer.style.display = 'flex';
-        monthContainer.style.alignItems = 'center';
-        monthContainer.style.justifyContent = 'space-between';
-        monthContainer.style.height = '26px'; // Slightly taller to accommodate larger font
-        monthContainer.style.padding = '0';
-        monthContainer.style.margin = '0';
-    }
-
-    // Style the month dropdown to fit well
-    const monthDropdown = calendar.querySelector('.flatpickr-monthDropdown-months');
-    if (monthDropdown) {
-        monthDropdown.style.fontSize = '12px'; // Match time selection font size
-        monthDropdown.style.fontWeight = 'bold';
-        monthDropdown.style.height = '18px';
-        monthDropdown.style.padding = '0 2px';
-        monthDropdown.style.appearance = 'none';
-        monthDropdown.style.border = 'none';
-        monthDropdown.style.backgroundColor = 'transparent';
-        monthDropdown.style.cursor = 'pointer';
-        monthDropdown.style.textAlign = 'center';
-        monthDropdown.style.width = '65px'; // Increased from 55px to 65px
-    }
-
-    // Style the month navigation arrows
-    const prevNextButtons = calendar.querySelectorAll('.flatpickr-prev-month, .flatpickr-next-month');
-    prevNextButtons.forEach(button => {
-        button.style.padding = '0 2px';
-        button.style.height = '24px'; // Slightly taller
-        button.style.display = 'flex';
-        button.style.alignItems = 'center';
-        button.style.justifyContent = 'center';
-        button.style.width = '20px';
-    });
-
-    setTimeout(() => {
-        const rect = calendar.getBoundingClientRect();
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-
-        if (rect.right > viewportWidth) {
-            const overflow = rect.right - viewportWidth + 80;
-            calendar.style.left = `${calendar.offsetLeft - overflow}px`;
-        }
-    }, 0);
-}
-
-
 function setupCalendarCloseHandler(fp, tooltip, index, calendars, tooltips) {
     function closeCalendar(event) {
         const calendarElement = fp.calendarContainer;
@@ -1031,6 +859,44 @@ function setupCalendarCloseHandler(fp, tooltip, index, calendars, tooltips) {
         document.addEventListener("mousedown", closeCalendar);
     }, 0);
 }
+
+
+
+function positionCalendarContainer(instance) {
+    const calendar = instance.calendarContainer;
+    calendar.classList.add("small-flatpickr");
+
+    // Additional styles for dropdown containers
+    const monthContainer = calendar.querySelector('.flatpickr-month');
+    if (monthContainer) {
+        monthContainer.classList.add('flatpickr-month-container');
+    }
+
+    // Style the month dropdown to fit well
+    const monthDropdown = calendar.querySelector('.flatpickr-monthDropdown-months');
+    if (monthDropdown) {
+        monthDropdown.classList.add('flatpickr-month-dropdown');
+    }
+
+    // Style the month navigation arrows
+    const prevNextButtons = calendar.querySelectorAll('.flatpickr-prev-month, .flatpickr-next-month');
+    prevNextButtons.forEach(button => {
+        button.classList.add('flatpickr-month-nav-button');
+    });
+
+    setTimeout(() => {
+        const rect = calendar.getBoundingClientRect();
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+
+        if (rect.right > viewportWidth) {
+            const overflow = rect.right - viewportWidth + 80;
+            calendar.style.left = `${calendar.offsetLeft - overflow}px`;
+        }
+    }, 0);
+}
+
+
+
 
 function setupSlideEventHandler(slider, calendars, tooltips) {
     slider.noUiSlider.on("slide", () => {
