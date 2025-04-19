@@ -132,6 +132,26 @@
     color: black;
 }
 
+/* Für Tage mit mindestens einem gültigen Eintrag */
+.valid-entry-day {
+  background-color: #e6f7ff; /* optionales Highlight */
+}
+
+/* Marker für mehrere gültige Einträge */
+.calendar-marker {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 3px;
+  height: 3px;
+  background-color: #0078d7;
+  border-radius: 50%;
+}
+
+/* Damit der Marker relativ zu dayElem positioniert ist */
+.relative-day {
+  position: relative;
+}
 
 
 .small-flatpickr {
@@ -162,14 +182,212 @@
     font-size: 8px; /* Sehr kleine Schrift für Pfeile */
 }
 
-/* Optional: Verkleinern der Navigationspfeile */
-.small-flatpickr .flatpickr-prev-month,
-.small-flatpickr .flatpickr-next-month {
-    font-size: 10px; /* Kleiner für die Pfeile */
+
+
+
+
+/* Make flatpickr navigation arrows visible but simple */
+.small-flatpickr .flatpickr-months .flatpickr-prev-month,
+.small-flatpickr .flatpickr-months .flatpickr-next-month {
+    font-size: 16px; /* Increased size for better visibility */
+    padding: 0;
+    color: #000; /* Black color */
+    background-color: transparent; /* No background */
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    position: absolute;
+    top: 2px;
+}
+
+.small-flatpickr .flatpickr-months .flatpickr-prev-month {
+    left: 2px;
+}
+
+.small-flatpickr .flatpickr-months .flatpickr-next-month {
+    right: 2px;
+}
+
+.small-flatpickr .flatpickr-months .flatpickr-prev-month:hover,
+.small-flatpickr .flatpickr-months .flatpickr-next-month:hover {
+    color: #555; /* Light grey on hover instead of red */
+    background-color: transparent; /* No background on hover */
+}
+
+/* Ensure the arrow icons themselves are visible */
+.small-flatpickr .flatpickr-months .flatpickr-prev-month svg,
+.small-flatpickr .flatpickr-months .flatpickr-next-month svg {
+    fill: currentColor;
+    width: 14px;
+    height: 14px;
+}
+
+/* Jahr-Dropdown */
+.flatpickr-yearDropdown {
+  appearance: none;
+  border: none;
+  height: 18px;
+  padding: 0 2px;
+  outline: none;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 35px;
+  color: inherit;
+  background-color: transparent;
+  vertical-align: middle;
+  text-align: center;
+  margin-left: 2px;
+
+  scrollbar-width: thin;
+  overflow-y: auto;
+}
+
+.flatpickr-yearDropdown option {
+  font-size: 11px;
+  padding: 1px 3px;
+}
+
+.flatpickr-yearDropdown:focus {
+  outline: none;
+}
+
+.flatpickr-yearDropdown::-ms-expand {
+  display: none;
+}
+
+.flatpickr-yearDropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+.flatpickr-yearDropdown::-webkit-scrollbar-thumb {
+  background-color: #aaa;
+  border-radius: 2px;
+}
+
+/* Monat-Dropdown anpassen */
+.flatpickr-monthDropdown-enhanced {
+  font-size: 12px !important;
+  font-weight: bold !important;
+  height: 18px !important;
+}
+
+.flatpickr-monthDropdown-enhanced option {
+  font-size: 11px;
+  padding: 1px 3px;
+}
+
+.flatpickr-time-selection-enhanced {
+  display: none;
+  padding: 0;
+  background-color: #fff;
+  border: none;
+  border-top: 1px solid #e6e6e6;
+  font-size: 12px;
+  max-height: 100px;
+  margin-top: -3px;
+  width: 100%;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.flatpickr-time-selection-enhanced::-webkit-scrollbar {
+  width: 6px;
+}
+
+.flatpickr-time-selection-enhanced::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
 }
 
 
 
+/* Additional styles for the month container */
+.flatpickr-month-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 26px; /* Slightly taller to accommodate larger font */
+    padding: 0;
+    margin: 0;
+}
+
+/* Styling for the month dropdown */
+.flatpickr-month-dropdown {
+    font-size: 12px; /* Match time selection font size */
+    font-weight: bold;
+    height: 18px;
+    padding: 0 2px;
+    appearance: none;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    text-align: center;
+    width: 65px; /* Increased from 55px to 65px */
+}
+
+/* Styling for the month navigation arrows */
+.flatpickr-month-nav-button {
+    padding: 0 2px;
+    height: 24px; /* Slightly taller */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+}
+
+
+
+
+/* Container für Zeit-Auswahl */
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 4px;
+}
+
+/* Zeit-Button */
+.time-entry-button {
+  padding: 3px 0;
+  font-size: 12px;
+  font-weight: normal;
+  text-align: center;
+  border: none;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  border-radius: 3px;
+  width: 100%;
+}
+
+/* Aktive oder gewählte Zeit */
+.time-entry-button.selected {
+  background-color: #e6f7e6;
+  font-weight: bold;
+  border: 1px solid #4CAF50;
+}
+
+/* Hover-Effekt */
+.time-entry-button.hovered:not(.selected) {
+  background-color: #e8e8e8;
+}
+
+/* Kein Zeit-Slot Hinweis */
+.no-valid-times {
+  padding: 10px;
+  color: #666;
+  text-align: center;
+}
+
+
+
+/* Tooltip: macht Tooltip klickbar */
+.tooltip-clickable {
+  cursor: pointer;
+}
 
 
 
