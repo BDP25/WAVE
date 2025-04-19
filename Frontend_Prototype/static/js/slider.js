@@ -528,8 +528,8 @@ function adjustTooltipPositions(tooltips) {
     const rect2 = tooltip2.getBoundingClientRect();
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
 
-    const rightEdgeMargin = 140; // Increased from 70 to 120
-    const minSpace = 60; // Increased from 20 to 40
+    const rightEdgeMargin = 105; // Margin from the right edge of viewport
+    const minSpace = 60; // Minimum space between tooltips
 
     // First calculate if the right tooltip is out of bounds
     const rightTooltipOverflow = rect2.right > (viewportWidth - rightEdgeMargin);
