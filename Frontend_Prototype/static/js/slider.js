@@ -618,7 +618,6 @@ function closeAllCalendars(calendars, tooltips) {
         }
     });
 }
-
 function createFlatpickrInstance(
     tooltip, currentDate, firstEntryDate, lastEntryDate,
     entriesByDate, index, slider, onChange, calendars, tooltips, history
@@ -702,7 +701,7 @@ function createFlatpickrInstance(
         onReady: (_, __, instance) => {
             positionCalendarContainer(instance);
             addCalendarTimeSelectionSupport(instance);
-            convertYearNavigationToDropdown(instance, startYear, endYear);
+            convertYearNavigationToDropdown(instance, startYear, endYear, index, otherHandleDate);
 
             setTimeout(() => {
                 const yearDropdown = instance.calendarContainer.querySelector('.flatpickr-yearDropdown');
@@ -717,7 +716,8 @@ function createFlatpickrInstance(
     return fp;
 }
 
-function convertYearNavigationToDropdown(instance, startYear, endYear) {
+
+function convertYearNavigationToDropdown(instance, startYear, endYear, index, otherHandleDate) {
     setTimeout(() => {
         const calendarContainer = instance.calendarContainer;
         const currentYearElement = calendarContainer.querySelector('.cur-year');
@@ -730,14 +730,26 @@ function convertYearNavigationToDropdown(instance, startYear, endYear) {
         if (!currentYearElement || !monthDropdown) return;
 
         const currentYear = parseInt(currentYearElement.textContent);
-
         const yearSelect = document.createElement('select');
         yearSelect.className = 'flatpickr-yearDropdown';
 
         // CSS-Klassen werden genutzt statt Inline-Styles
         monthDropdown.classList.add('flatpickr-monthDropdown-enhanced');
 
-        for (let year = startYear; year <= endYear; year++) {
+        // Determine valid years based on the other handle
+        let effectiveStartYear = startYear;
+        let effectiveEndYear = endYear;
+
+        if (otherHandleDate) {
+            const otherHandleYear = otherHandleDate.getFullYear();
+            if (index === 0) { // Left handle - must be <= otherHandleYear
+                effectiveEndYear = Math.min(endYear, otherHandleYear);
+            } else { // Right handle - must be >= otherHandleYear
+                effectiveStartYear = Math.max(startYear, otherHandleYear);
+            }
+        }
+
+        for (let year = effectiveStartYear; year <= effectiveEndYear; year++) {
             const option = document.createElement('option');
             option.value = year;
             option.textContent = year;
