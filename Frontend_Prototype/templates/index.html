@@ -1,73 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WAVE </title>
+    <title>WAVE</title>
 
-    <!--Favicon -->
+    <!-- Favicon -->
     <link rel="icon" href="{{ url_for('static', filename='images/Logo.svg') }}" type="image/svg+xml">
 
-
-
-
     <!-- Style -->
-    <link rel="stylesheet" href="../static/css/style.css">
-    <link rel="stylesheet" href="../static/css/home.css">
-    <link rel="stylesheet" href="../static/css/sidebar.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
 
-
-    <!-- Im <head> -->
+    <!-- NoUISlider for date slider -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
     <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
 
-
-    <!-- Im <head> deines HTML -->
+    <!-- Flatpickr for enhanced date picking -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
-
-
-
-
-
-
 </head>
 
 <body>
-
     <!-- Static Sidebar -->
     <div class="sidebar">
-    <div class="top">
-        <div class="logo">
-            <img src="{{ url_for('static', filename='images/Logo.svg') }}" class="logo" style="filter: brightness(0) invert(1);">
+        <div class="top">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/Logo.svg') }}" class="logo" style="filter: brightness(0) invert(1);">
+            </div>
+
+
+            <div>
+                <label for="date-picker">Datum wählen:</label>
+                <input type="text"
+                       id="date-picker"
+                       name="date"
+                       data-min-date="{{ min_date }}"
+                       data-max-date="{{ vorgestern }}"
+                       required />
+            </div>
+
+
         </div>
 
-        <div class="date-picker-container">
-            <label for="date-picker">Datum wählen:</label>
-            <input type="date"
-                   class="date-picker"
-                   id="date-picker"
-                   name="date"
-                   min="{{ min_date }}"
-                   max="{{ vorgestern }}"
-                   value="{{ vorgestern }}"
-                   required />
+        <div id="cluster-container">
+            <!-- Cluster information will be populated dynamically here -->
         </div>
     </div>
 
-    <!-- !!! WICHTIG: Cluster-Container jetzt außerhalb von .top !!! -->
-    <div id="cluster-container">
-        <!-- Cluster information will be populated dynamically here -->
-    </div>
-</div>
-
-
-
-
-    <!-- container to the right of the sidebar -->
+    <!-- Container to the right of the sidebar -->
     <div class="main-container">
         <div id="home" class="home">
             <div id="chart-container">
@@ -76,27 +59,12 @@
             <div id="wiki-article">
                 <!-- Wikipedia article details will be shown here -->
             </div>
-
-
-
-
         </div>
     </div>
 
-
-
-
-
-        <script type="module" src="static/js/main.js"></script>
-        <script type="module" src="static/js/api.js"></script>
-        <script type="module" src="static/js/slider.js"></script>
-
-
-
-
-
-
+    <!-- JavaScript modules with proper paths -->
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/slider.js') }}"></script>
 </body>
-
-
 </html>
