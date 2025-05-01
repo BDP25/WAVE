@@ -26,7 +26,7 @@ API_URL_DOWNLOAD = f"{API_BASE_URL}/download"
 
 # Calculate the date range for the last week
 end_date = datetime.date.today() - datetime.timedelta(days=3)
-start_date = end_date - datetime.timedelta(days=5)
+start_date = end_date - datetime.timedelta(days=7)
 
 
 # Format the dates in the desired format (YYYY-MM-DD)
