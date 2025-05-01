@@ -152,7 +152,7 @@ if __name__ == "__main__":
     # Run this file directly to test database connection
     test_db_connection()
 
-    article_title = "Refugiados"
+    article_title = "Nintendo"
     history = get_article_history_by_title(article_title)
 
     print(json.dumps(history, indent=4, ensure_ascii=False))
