@@ -11,6 +11,7 @@ app = Flask(__name__)
 def index():
 
     min_date, max_date = get_min_max_date()
+
     return render_template("index.html", vorgestern=max_date, min_date=min_date)
 
 
@@ -54,7 +55,7 @@ def api_visualize():
         print("Start Revid:", start_revid)
         print("End Revid:", end_revid)
         # TODO delete after Testing
-
+        article_id = 50810
 
 
 
