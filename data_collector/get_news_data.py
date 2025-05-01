@@ -35,6 +35,7 @@ USED_SOURCES = [
 ]
 
 
+
 def build_query_yaml(start_date: str, end_date: str) -> str:
     """Builds the YAML query string to send to the Swissdox API."""
     return f"""
