@@ -10,7 +10,6 @@ from cluster_data_to_db_json import generate_cluster_json
 from get_wiki_article import validate_wikipedia_titles
 
 
-
 db_params = {
         "dbname": os.getenv("DB_NAME", "your_database"),
         "user": os.getenv("DB_USER", "your_username"),

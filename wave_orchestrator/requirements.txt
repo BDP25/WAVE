@@ -1,0 +1,5 @@
+docker
+flask
+apscheduler
+python-dotenv
+werkzeug>=2.2.0

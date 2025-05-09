@@ -6,12 +6,12 @@ from datetime import datetime, timedelta
 from db_utils import create_db_connection
 
 from wikipedia_histories import get_history, to_df
-from wikipedia_histories import to_df
 import pandas as pd
 import io
 import csv
 import re
 import requests
+from bs4 import BeautifulSoup  # Add this import for HTML parsing
 
 
 def get_page_id(article_title, language_code):
@@ -44,117 +44,107 @@ def get_page_id(article_title, language_code):
         return None
 
 
+def remove_edit_sections(raw_html):
+    """Remove elements with specific classes, IDs, or tags from raw HTML."""
+    try:
+        soup = BeautifulSoup(raw_html, 'html.parser')
+
+        # Classes to remove
+        classes_to_remove = ['mw-editsection', 'sisterproject', 'coordinates plainlinks-print', 'references', "NavFrame erweiterte-navigationsleiste navigation-not-searchable erw-nav-farbschema-blau"]
+        for class_name in classes_to_remove:
+            for element in soup.find_all(class_=class_name):
+                element.decompose()  # Remove the element
+
+        # IDs to remove
+        ids_to_remove = ['Weblinks', 'Einzelnachweise', 'Vorlage_Begriffsklärungshinweis', "Literatur", "normdaten"]
+        for id_name in ids_to_remove:
+            element = soup.find(id=id_name)
+            if element:
+                element.decompose()  # Remove the element
+
+        # Tags to remove
+        tags_to_remove = ['li']
+        for tag_name in tags_to_remove:
+            for element in soup.find_all(tag_name):
+                element.decompose()  # Remove the element
+
+        return str(soup)
+    except Exception as e:
+        print(f"Error removing sections: {e}")
+        return raw_html
+
+def remove_source_notes(raw_html):
+    """Remove source notes from raw HTML."""
+    try:
+        soup = BeautifulSoup(raw_html, 'html.parser')
+        # Find and remove all <sup> tags
+        for sup in soup.find_all('sup'):
+            sup.decompose()  # Remove the <sup> tag
+
+        return str(soup)
+    except Exception as e:
+        print(f"Error removing source notes: {e}")
+        return raw_html
+
 def download_wiki_history(article_title, language_code):
-    """Download Wikipedia history and return history dataframe and page ID."""
+    """Download Wikipedia history with raw HTML and return history dataframe and page ID."""
     # Get the Wikipedia page ID
     page_id = get_page_id(article_title, language_code)
-    
+
     if page_id is None:
         print(f"Warning: Could not retrieve page ID for {article_title}")
-    
-    history = get_history(article_title, domain=f"{language_code}.wikipedia.org")
 
-    def fix_unterminated_quotes(text):
-        """Fix unterminated quotes in CSV data."""
-        # Count quotes in each line
-        lines = text.split('\n')
-        fixed_lines = []
-
-        for line in lines:
-            # Count non-escaped quotes
-            quote_count = line.count('"') - line.count('\\"')
-
-            # If odd number of quotes, add a closing quote
-            if quote_count % 2 != 0:
-                line += '"'
-
-            fixed_lines.append(line)
-
-        return '\n'.join(fixed_lines)
-
-    def preprocess_history_data(history_data):
-        """Preprocess history data to fix common CSV parsing issues."""
-        # Convert to string format if it's a list of objects
-        if isinstance(history_data, list):
-            # Join with newlines to create a CSV-like string
-            history_str = "\n".join([str(entry) for entry in history_data])
-        else:
-            history_str = str(history_data)
-
-        # Fix quote issues
-        history_str = history_str.replace('""', '\\"')  # Handle escaped quotes
-        history_str = re.sub(r'(?<!")("(?!")|(?<!\\)")', r'""', history_str)  # Properly escape quotes
-
-        # Fix unterminated quotes
-        history_str = fix_unterminated_quotes(history_str)
-
-        return history_str
+    # Fetch history with raw HTML
+    history = get_history(article_title, domain=f"{language_code}.wikipedia.org", raw_html=True)
 
     try:
-        # Try with default settings
-        print("Attempting default parsing...")
-        history_df = to_df(history)
-        # Ensure column is named 'time' if it exists as 'timestamp'
-        if 'timestamp' in history_df.columns and 'time' not in history_df.columns:
-            history_df = history_df.rename(columns={'timestamp': 'time'})
-        print("Default parsing succeeded")
-    except Exception as e:
-        print(f"Error with default parsing: {e}")
-
-        try:
-            # Try with custom parameters
-            print("Attempting custom parsing...")
-            history_df = to_df(history, quoting=csv.QUOTE_ALL, escapechar='\\', doublequote=True)
-            # Ensure column is named 'time' if it exists as 'timestamp'
-            if 'timestamp' in history_df.columns and 'time' not in history_df.columns:
-                history_df = history_df.rename(columns={'timestamp': 'time'})
-        except Exception as e:
-            print(f"Error with custom parsing: {e}")
-
+        # Extract data directly from the history objects
+        print("Extracting raw HTML data...")
+        data = []
+        for item in history:
             try:
-                # Preprocess the data to handle quote issues
-                print("Preprocessing and parsing data...")
-                history_str = preprocess_history_data(history)
+                raw_html = getattr(item, 'raw_html', '').replace('\n', '')
+                raw_html_cleaned = remove_edit_sections(raw_html)  # Remove edit sections
+                raw_html_cleaned = remove_source_notes(raw_html_cleaned)  # Remove source notes
+                entry = {
+                    'revid': getattr(item, 'revid', ''),
+                    'time': getattr(item, 'time', ''),  # Use 'time' consistently
+                    'user': getattr(item, 'user', ''),
+                    'comment': getattr(item, 'comment', ''),
+                    'raw_html': raw_html_cleaned
+                }
+                data.append(entry)
+            except Exception as inner_e:
+                print(f"Error extracting item: {inner_e}")
 
-                # Try parsing with more flexible options
-                history_df = pd.read_csv(
-                    io.StringIO(history_str),
-                    quoting=csv.QUOTE_NONE,  # Try with no quoting
-                    escapechar='\\',
-                    doublequote=False,
-                    on_bad_lines='warn'  # Warn but don't fail on bad lines
-                )
-            except Exception as e:
-                print(f"Advanced parsing failed: {e}")
-
-                # Try one more approach - directly extract the data
-                try:
-                    print("Attempting direct extraction...")
-                    # Extract data directly from the history objects
-                    data = []
-                    for item in history:
-                        try:
-                            # Assuming each history item has these attributes
-                            # Adjust these based on the actual structure
-                            entry = {
-                                'revid': getattr(item, 'revid', ''),
-                                'time': getattr(item, 'time', ''),  # Use 'time' consistently
-                                'user': getattr(item, 'user', ''),
-                                'comment': getattr(item, 'comment', ''),
-                                'text': getattr(item, 'text', '')
-                            }
-                            data.append(entry)
-                        except Exception as inner_e:
-                            print(f"Error extracting item: {inner_e}")
-
-                    history_df = pd.DataFrame(data)
-                except Exception as e:
-                    print(f"All parsing methods failed: {e}")
-                    # Create empty DataFrame with expected columns as last resort
-                    history_df = pd.DataFrame(columns=["revid", "time", "user", "comment", 'text'])
+        history_df = pd.DataFrame(data)
+    except Exception as e:
+        print(f"Error extracting raw HTML data: {e}")
+        # Create empty DataFrame with expected columns as last resort
+        history_df = pd.DataFrame(columns=["revid", "time", "user", "comment", "raw_html"])
 
     # Return both the history dataframe and the page ID
     return history_df, page_id
+
+
+def preprocess_history_data(history_data):
+    """Preprocess history data to fix common CSV parsing issues."""
+    # Convert to string format if it's a list of objects
+    if isinstance(history_data, list):
+        # Join with newlines to create a CSV-like string
+        history_str = "\n".join([str(entry) for entry in history_data])
+    else:
+        history_str = str(history_data)
+
+    # Fix quote issues
+    history_str = history_str.replace('""', '\\"')  # Handle escaped quotes
+    history_str = re.sub(r'(?<!")("(?!")|(?<!\\)")', r'""', history_str)  # Properly escape quotes
+
+    # Fix unterminated quotes
+    # Note: This function isn't defined - you may need to implement it
+    # history_str = fix_unterminated_quotes(history_str)
+
+    return history_str
 
 
 def get_or_update_article(article_title, language_code, max_age_days=7, db_config=None):
@@ -220,11 +210,21 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
         else:
             print(f"Article '{article_title}' not found in database")
 
-        # If update needed, download and save new data
+        # Download history data only once if needed
+        history_df = None
         if needs_update:
+            history_df, page_id = download_wiki_history(article_title, language_code)
             success = update_article_history(article_title, language_code, db_config)
             if not success:
                 print("Warning: Failed to update article history")
+
+            # Update the 'content' column with raw HTML from the site
+            for _, row in history_df.iterrows():
+                cursor.execute(
+                    "UPDATE history SET content = %s WHERE article_id = %s AND revid = %s",
+                    (row['raw_html'], page_id, row['revid'])
+                )
+            conn.commit()
 
             # Get the article ID (it should be the Wikipedia page_id now)
             article_id = page_id
@@ -243,6 +243,16 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
                 print("Error: Article not found after update attempt")
                 conn.close()
                 return None, None
+        else:
+            # Retrieve history data if no update is needed
+            cursor.execute("""
+                SELECT revid, timestamp, user_name, comment, content as raw_html
+                FROM history
+                WHERE article_id = %s
+                ORDER BY timestamp DESC
+            """, (article_id,))
+            history_rows = cursor.fetchall()
+            history_df = pd.DataFrame(history_rows, columns=["revid", "time", "user", "comment", "raw_html"])
 
         # Retrieve article data
         article_data = {
@@ -252,22 +262,10 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
             "last_updated": last_updated
         }
 
-        # Retrieve history data
-        cursor.execute("""
-            SELECT revid, timestamp, user_name, comment
-            FROM history
-            WHERE article_id = %s
-            ORDER BY timestamp DESC
-        """, (article_id,))
-
-        history_rows = cursor.fetchall()
-        # Use 'time' for the column name instead of 'timestamp'
-        history_data = pd.DataFrame(history_rows, columns=["revid", "time", "user", "comment", "text"])
-
         cursor.close()
         conn.close()
 
-        return article_data, history_data
+        return article_data, history_df
 
     except Exception as e:
         print(f"Error in get_or_update_article: {e}")
@@ -276,8 +274,85 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
 
         # Fallback: Download data directly if DB operations fail
         print("Falling back to direct download")
-        history_df, page_id = download_wiki_history(article_title, language_code)
+        if history_df is None:  # Ensure history is only downloaded once
+            history_df, page_id = download_wiki_history(article_title, language_code)
         return {"title": article_title, "language": language_code, "article_id": page_id}, history_df
+
+def delete_article(article_title, language_code, db_config=None):
+    """
+    Delete an article and its history from the database.
+
+    Args:
+        article_title (str): Title of the Wikipedia article.
+        language_code (str): Language code of the article (e.g., 'en', 'de').
+        db_config (dict, optional): Database connection parameters.
+
+    Returns:
+        bool: True if deletion was successful, False otherwise.
+    """
+    # Set default db_config if not provided
+    if db_config is None:
+        db_config = {
+            "host": "localhost",
+            "database": "wikipedia_db",
+            "user": "postgres",
+            "password": "postgres",
+            "port": 5432
+        }
+
+    from db_utils import create_db_connection
+    try:
+        # Connect to database
+        conn = create_db_connection(**db_config)
+        if not conn:
+            print("Database connection failed.")
+            return False
+
+        page_id = get_page_id(article_title, language_code)
+        if not page_id:
+            print(f"Article '{article_title}' not found (invalid page_id).")
+            conn.close()
+            return False
+
+        cursor = conn.cursor()
+        # Delete article history first (if it exists)
+        cursor.execute("DELETE FROM history WHERE article_id = %s", (page_id,))
+        # Delete article record
+        cursor.execute("DELETE FROM WP_article WHERE article_id = %s", (page_id,))
+        conn.commit()
+        print(f"Article '{article_title}' and its history deleted successfully.")
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error deleting article: {e}")
+        if conn:
+            conn.close()
+        return False
+
+def download_latest_revision(article_title, language_code):
+    """Download only the latest Wikipedia revision to check raw HTML content.
+
+    Returns a dict with revision info or None if no revisions found.
+    """
+    try:
+        history = get_history(article_title, domain=f"{language_code}.wikipedia.org", raw_html=True)
+        if not history:
+            print("No revisions found for", article_title)
+            return None
+        # Pick the revision with the latest time. Assume item.time is a datetime object.
+        latest_revision = max(history, key=lambda item: getattr(item, 'time', datetime.min))
+        revision_data = {
+            'revid': getattr(latest_revision, 'revid', ''),
+            'time': getattr(latest_revision, 'time', ''),
+            'user': getattr(latest_revision, 'user', ''),
+            'comment': getattr(latest_revision, 'comment', ''),
+            'raw_html': getattr(latest_revision, 'raw_html', '').replace('\n', '')
+        }
+        return revision_data
+    except Exception as e:
+        print(f"Error downloading latest revision: {e}")
+        return None
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
@@ -295,10 +370,24 @@ if __name__ == "__main__":
     }
 
     # Example usage
-    article_title = "Refugiados"
+    article_title = "Wilhelm Tell"
     language_code = "de"
-    article_data, history_data = get_or_update_article(article_title, language_code, db_config= db_config)
 
-    print("Article Data:", article_data)
-    print("History Data:", history_data.head(1))
+    task = "get" # can be "del", "get" or "get-latest"
+
+    if task == "get":
+        article_data, history_data = get_or_update_article(article_title, language_code, db_config=db_config)
+
+        print("Article Data:", article_data)
+        print("History Data:", history_data.head(5))
+
+    # Example use of download_latest_revision function
+    if task == "get-latest":
+        latest_revision = download_latest_revision(article_title, language_code)
+        print("Latest Revision Data:", latest_revision)
+
+    # Deletion example
+    if task == "del":
+        deletion_success = delete_article(article_title, language_code, db_config=db_config)
+        print(f"Deletion of article '{article_title}' successful: {deletion_success}")
 
