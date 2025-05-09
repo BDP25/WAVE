@@ -1,31 +1,41 @@
-import nltk
-import os
-import re
-import groq
+"""
+Extract Wikipedia article titles from text clusters using the Groq API.
+"""
+
+import concurrent.futures
 import json
+import os
+import random
+import re
 from collections import Counter
+
+import groq
+import nltk
 from dotenv import load_dotenv
 
+# Constants
+MAX_WORKERS = 3
+CHUNK_SIZE = 1000
+MAX_TEXTS_PER_CLUSTER = 25
+MIN_TITLES = 3
+MAX_TITLES = 4
+MODEL_NAME = "llama3-8b-8192"
+RETRY_TEXT_LENGTH = 1500
 
-# Load environment variables from .env file
+# Environment setup
 load_dotenv(dotenv_path='../../WAVE/.env')
-groq_key = os.getenv("GROQ_API_KEY")
-client = groq.Groq(api_key=groq_key)
-
+client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
+nltk.download('punkt')
 
 
-def split_text_sentencewise(text, max_length=1000):
-    """Split the text into sentence-wise chunks that do not exceed max_length"""
-    sentences = nltk.sent_tokenize(text)  # Tokenize into sentences
-    chunks = []
-    current_chunk = []
-    current_length = 0
+def split_text_sentencewise(text, max_length=CHUNK_SIZE):
+    """Split text into sentence-wise chunks within word count limit."""
+    sentences = nltk.sent_tokenize(text)
+    chunks, current_chunk, current_length = [], [], 0
 
     for sentence in sentences:
-        sentence_length = len(sentence.split())  # Count words (approximate tokens)
-
-        # If adding this sentence exceeds the max length, start a new chunk
+        sentence_length = len(sentence.split())
         if current_length + sentence_length > max_length:
             if current_chunk:
                 chunks.append(' '.join(current_chunk))
@@ -35,100 +45,236 @@ def split_text_sentencewise(text, max_length=1000):
             current_chunk.append(sentence)
             current_length += sentence_length
 
-    # Add the last chunk if any
     if current_chunk:
         chunks.append(' '.join(current_chunk))
-
     return chunks
 
+
+def call_groq_api(prompt, system_content, model=MODEL_NAME, temperature=0.4, max_tokens=300, json_format=True):
+    """Make a standardized call to the Groq API."""
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"} if json_format else None
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"API Fehler: {e}")
+        return ""
+
+
 def parse_json_response(response):
-    """Extract JSON from Groq response"""
+    """Extract JSON data from API response string."""
     try:
         json_str = re.search(r'\{.*\}', response, re.DOTALL)
-        if json_str:
-            return json.loads(json_str.group())
-        return {}
+        return json.loads(json_str.group()) if json_str else {}
     except json.JSONDecodeError:
         return {}
 
 
-def get_wikipedia_suggestions(text):
-    """Get Wikipedia suggestions from Groq for a single text, ensuring the titles exist on Wikipedia"""
-
-    # Split the text into chunks sentence-wise to avoid exceeding LLM input size limit
-    chunks = split_text_sentencewise(text)
-
-    all_titles = []
-
-    for chunk in chunks:
-        prompt = (
-            "Gib 3-5 relevante Wikipedia-Artikel-Titel für diesen Text als JSON. "
-            "Die Titel müssen echte Wikipedia-Artikel sein, d.h. sie müssen genau übereinstimmen. "
-            "Format: {'titles': ['Artikel1', 'Artikel2']}. Nur exakte Artikelnamen, keine Vermutungen oder Platzhalter:\n\n"
-            f"{chunk}"  # Each chunk of the text
+def create_prompt(chunk, title_focus=False):
+    """Create analysis prompt based on focus type."""
+    if title_focus:
+        return (
+            "Analysiere diesen Text und finde exakt passende Wikipedia-Artikeltitel.\n\n"
+            "Wichtig: Die Titel MÜSSEN existierenden Wikipedia-Artikeln entsprechen. "
+            "Verwende nur Eigennamen, Konzepte oder Ereignisse, die mit hoher Wahrscheinlichkeit als Wikipedia-Artikel existieren.\n\n"
+            "Formatiere deine Antwort als JSON: {'titles': ['Titel1', 'Titel2', 'Titel3', 'Titel4', 'Titel5']}\n\n"
+            f"{chunk}"
+        )
+    else:
+        return (
+            "Führe zwei Aufgaben für diesen Textabschnitt durch:\n\n"
+            "1. Erstelle eine prägnante Zusammenfassung der Hauptpunkte in 1-2 Sätzen.\n"
+            "2. Identifiziere 2-3 relevante Wikipedia-Artikeltitel, die genau zu diesem Inhalt passen.\n\n"
+            "Formatiere deine Antwort als JSON: {'summary': 'Deine Zusammenfassung hier', 'titles': ['Titel1', 'Titel2']}\n\n"
+            f"{chunk}"
         )
 
-        try:
-            completion = client.chat.completions.create(
-                model="llama3-70b-8192",
-                messages=[
-                    {"role": "system", "content": "Du bist ein hilfreicher Assistent für Wikipedia-Recherche."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.5,
-                max_tokens=200,
-                response_format={"type": "json_object"}
-            )
-            response = completion.choices[0].message.content
-            titles = parse_json_response(response).get('titles', [])
+
+def process_text_chunk(chunk, title_focus=False):
+    """Process text chunk to extract summary and Wikipedia titles."""
+    system_content = "Du bist ein präziser Analyst, der Texte zusammenfasst und relevante Wikipedia-Artikel findet."
+    prompt = create_prompt(chunk, title_focus)
+
+    response = call_groq_api(prompt, system_content)
+    result = parse_json_response(response)
+
+    return ("", result.get('titles', [])) if title_focus else (result.get('summary', ''), result.get('titles', []))
+
+
+def process_text_chunks_batch(chunks, max_workers=MAX_WORKERS, title_focus=False):
+    """Process multiple text chunks in parallel."""
+    summaries, titles = [], []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_chunk = {executor.submit(process_text_chunk, chunk, title_focus): chunk for chunk in chunks}
+
+        for future in concurrent.futures.as_completed(future_to_chunk):
+            try:
+                summary, chunk_titles = future.result()
+                if summary:
+                    summaries.append(summary)
+                if chunk_titles:
+                    titles.extend(chunk_titles)
+            except Exception as e:
+                print(f"Fehler bei der Verarbeitung eines Chunks: {e}")
+
+    return summaries, titles
+
+
+def retry_title_extraction(texts, max_attempts=1):
+    """Extract titles with shorter text snippets when initial attempt fails."""
+    all_titles = []
+
+    for attempt in range(max_attempts):
+        print(f"Versuch {attempt + 1} für Wikipedia-Titel...")
+        chunks = [text[:min(len(text), RETRY_TEXT_LENGTH)] for text in texts]
+        if chunks:
+            _, titles = process_text_chunks_batch(chunks, title_focus=True)
             all_titles.extend(titles)
-        except Exception as e:
-            print(f"API Fehler bei Chunk: {str(e)}")
+            if len(set(all_titles)) >= MIN_TITLES:
+                break
 
     return all_titles
 
 
-def get_common_suggestions(cluster_texts):
-    """Analyze multiple texts to find common Wikipedia articles as a list"""
-    all_articles = []
+def is_similar(title, accepted_title):
+    """Check if two titles are similar enough to be considered duplicates."""
+    base_title = title.split(" (")[0]
+    base_accepted = accepted_title.split(" (")[0]
+    return base_title == base_accepted or title in accepted_title or accepted_title in title
 
-    for text in cluster_texts:
-        articles = get_wikipedia_suggestions(text)
-        if articles:
-            all_articles.extend(articles)
 
-    if not all_articles:
+def deduplicate_titles(titles):
+    """Remove similar titles while keeping at least the first 3 entries."""
+    if len(titles) <= MIN_TITLES:
+        return titles
+
+    # Always keep the first 3 titles (most frequent ones)
+    result = titles[:MIN_TITLES]
+    processed_titles = set(result)
+
+    # Process remaining titles, avoiding duplicates
+    for title in titles[MIN_TITLES:]:
+        if title in processed_titles:
+            continue
+
+        if any(is_similar(title, existing) for existing in result):
+            processed_titles.add(title)
+            continue
+
+        result.append(title)
+        processed_titles.add(title)
+
+        if len(result) >= MAX_TITLES:
+            break
+
+    return result
+
+
+def generate_final_summary(summaries):
+    """Create final summary from multiple chunk summaries."""
+    if not summaries:
+        return "Keine Zusammenfassung verfügbar."
+
+    selected_summaries = random.sample(summaries, min(50, len(summaries)))
+    combined_input = "\n".join(selected_summaries)
+
+    system_content = "Du bist ein erfahrener Analyst, der aus mehreren kurzen Abschnitten ein stimmiges Gesamtbild erstellt."
+    prompt = (
+        "Hier sind mehrere Zusammenfassungen von Nachrichtenartikeln zum gleichen Thema. "
+        "Erstelle eine präzise Gesamtzusammenfassung in genau 4 Sätzen, die alle wichtigen Aspekte abdeckt. "
+        "Beginne die Zusammenfassung direkt mit dem Inhalt, ohne eine Einleitung oder Floskel wie 'Hier ist eine präzise Gesamtzusammenfassung...' zu verwenden.\n\n"
+        f"{combined_input}"
+    )
+
+    response = call_groq_api(prompt, system_content, temperature=0.3, json_format=False)
+    return response.strip()
+
+
+def process_cluster_texts(texts, chunk_size=CHUNK_SIZE, max_texts=MAX_TEXTS_PER_CLUSTER):
+    """Process texts from a cluster to extract summaries and Wikipedia titles."""
+    sampled_texts = random.sample(texts, min(len(texts), max_texts))
+
+    # Extract titles from full texts
+    _, wiki_titles = process_text_chunks_batch(sampled_texts)
+
+    # Process text chunks for summaries and more titles
+    all_chunks = []
+    for text in sampled_texts:
+        chunks = split_text_sentencewise(text, max_length=chunk_size)
+        if len(chunks) > 5:
+            selected_chunks = chunks[:2] + random.sample(chunks[2:], min(3, len(chunks) - 2))
+            all_chunks.extend(selected_chunks)
+        else:
+            all_chunks.extend(chunks)
+
+    chunk_summaries, chunk_titles = process_text_chunks_batch(all_chunks)
+    all_titles = wiki_titles + chunk_titles
+
+    # Try again if not enough titles
+    if len(set(all_titles)) < MIN_TITLES:
+        print("Zu wenige Wikipedia-Titel gefunden, starte letzten Versuch...")
+        extra_titles = retry_title_extraction(sampled_texts)
+        all_titles.extend(extra_titles)
+
+    final_summary = generate_final_summary(chunk_summaries)
+    return final_summary, all_titles
+
+
+def filter_common_titles(all_titles, total_texts):
+    """Filter titles by frequency across texts."""
+    if not all_titles:
         return []
 
-    # Count and filter articles
-    counter = Counter(all_articles)
-    min_occurrences = max(2, len(cluster_texts) // 3)
+    # Changed from // 3 to // 4 to make threshold more than 1/4
+    min_occurrences = max(3, total_texts // 4 + 1)
+    counter = Counter(all_titles)
+    print(f"Title occurrences: {counter.most_common(10)}")
+    print(f"Using minimum occurrence threshold: {min_occurrences}")
 
-    # Only keep article titles that appear often enough
-    common_articles = [
-        art for art, cnt in counter.most_common()
-        if cnt >= min_occurrences
-    ]
+    qualified_titles = [title for title, count in counter.most_common(15) if count >= min_occurrences]
 
-    return common_articles[:5]  # return top 5 if available
+    if not qualified_titles:
+        print(f"Keine Titel erreichen den Schwellenwert von {min_occurrences} Vorkommen.")
+        return []
+
+    return deduplicate_titles(qualified_titles)
 
 
 def collect_wikipedia_candidates_per_cluster(filtered_df):
-    """Collects potential Wikipedia article titles per cluster for later validation"""
-    cluster_candidates = {}
+    """Process all clusters to extract Wikipedia titles and summaries."""
+    cluster_candidates, cluster_summaries = {}, {}
 
     for cluster_id in sorted(filtered_df["dbscan_cluster"].unique()):
         cluster_data = filtered_df[filtered_df["dbscan_cluster"] == cluster_id]
         print(f"\nCluster {cluster_id} (Size: {len(cluster_data)})")
 
-        suggestions = get_common_suggestions(
-            cluster_data["combined_text"].str[:1000].tolist()
-        )
-        print("\nSuggested Wikipedia titles:")
-        print(suggestions)
+        cluster_texts = cluster_data["combined_text"].tolist()
+        final_summary, all_titles = process_cluster_texts(cluster_texts)
+        cluster_summaries[cluster_id] = final_summary
 
-        cluster_candidates[cluster_id] = suggestions
+        print("\nCluster Summary:")
+        print(final_summary)
 
-    return cluster_candidates
+        common_titles = filter_common_titles(all_titles, len(cluster_texts))
 
+        if not common_titles:
+            print("Keine Wikipedia-Titel nach Filterung gefunden, letzter Versuch...")
+            focused_titles = retry_title_extraction(cluster_texts)
+            common_titles = focused_titles[:5]
 
+        if common_titles:
+            cluster_candidates[cluster_id] = common_titles
+            print(f"\nSuggested Wikipedia titles: {common_titles}")
+        else:
+            print("\nKeine Wikipedia-Titel für diesen Cluster gefunden.")
+
+    return cluster_candidates, cluster_summaries
