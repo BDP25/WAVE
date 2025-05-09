@@ -48,14 +48,16 @@ fetch_swissdox_data(date_of_interest, date_of_interest)
 cleaned_data = clean_and_process_data()
 
 
-# clustering
+#
+# TODO nur relevante Spalten
 df_relevant_articles = dbscan_clustering_get_relevant_articles(cleaned_data, target_clusters=(4, 6))
 
 
 # TODO content to wikipedia titles
-df_cluster_topics = collect_wikipedia_candidates_per_cluster(df_relevant_articles)
+df_cluster_topics, summary = collect_wikipedia_candidates_per_cluster(df_relevant_articles)
 print("Common")
 print(df_cluster_topics)
+print(summary)
 # TODO
 # validate titles with wikpedia articles
 wikipedia_articles_cluster = validate_wikipedia_titles(df_cluster_topics)
@@ -63,7 +65,7 @@ wikipedia_articles_cluster = validate_wikipedia_titles(df_cluster_topics)
 
 
 # convert relevant context to json format
-json_data = generate_cluster_json(df_relevant_articles, wikipedia_articles_cluster)
+json_data = generate_cluster_json(df_relevant_articles, wikipedia_articles_cluster, summary)
 
 
 
