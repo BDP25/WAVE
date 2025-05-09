@@ -95,12 +95,43 @@ document.addEventListener('DOMContentLoaded', () => {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ docker_command: command })
     })
-    .then(response => response.json())
-    .then(data => {
-      alert(`Command executed: ${data.message}`);
-      fetchContainers(); // Refresh container list
+    .then(response => {
+      if (!response.body) {
+        throw new Error('ReadableStream not yet supported in this browser.');
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      const outputEl = document.getElementById('commandOutput');
+      outputEl.textContent = "";
+      function read() {
+        reader.read().then(({ done, value }) => {
+          if (done) return;
+          outputEl.textContent += decoder.decode(value);
+          read();
+        });
+      }
+      read();
     })
     .catch(err => console.error('Error executing command:', err));
+  }
+
+  // New function to delete a command preset
+  function deletePreset(presetId) {
+    if (confirm('Are you sure you want to delete this preset?')) {
+      fetch(`${basePath}/api/presets/${presetId}`, {
+        method: 'DELETE'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          alert(data.error);
+        } else {
+          alert(data.message);
+          fetchPresets();
+        }
+      })
+      .catch(err => console.error('Error deleting preset:', err));
+    }
   }
 
   // Function to fetch and display command presets
@@ -129,16 +160,24 @@ document.addEventListener('DOMContentLoaded', () => {
           const command = document.createElement('p');
           command.textContent = preset.command;
 
+          presetInfo.appendChild(name);
+          presetInfo.appendChild(command);
+
+          // Execute button
           const executeBtn = document.createElement('button');
           executeBtn.className = 'execute-preset-btn';
           executeBtn.textContent = 'Execute';
           executeBtn.onclick = () => executePreset(preset.id);
 
-          presetInfo.appendChild(name);
-          presetInfo.appendChild(command);
+          // Delete button
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-preset-btn';
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.onclick = () => deletePreset(preset.id);
 
           presetEl.appendChild(presetInfo);
           presetEl.appendChild(executeBtn);
+          presetEl.appendChild(deleteBtn);
 
           presetsList.appendChild(presetEl);
         });
@@ -179,7 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.error) {
         alert(data.error);
       } else {
-        alert(data.message);
+        // Display response in the command output panel
+        document.getElementById('commandOutput').textContent = data.result ? data.result : data.message;
         fetchContainers(); // Refresh containers list if needed
       }
     })
@@ -231,6 +271,24 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .catch(err => console.error('Error saving .env file:', err));
     });
+  }
+
+  // Add listener for .env editor "Load" button
+  const loadEnvBtn = document.getElementById('loadEnv');
+  if (loadEnvBtn) {
+      loadEnvBtn.addEventListener('click', function() {
+          const filename = document.getElementById('env_filename').value;
+          fetch(`${basePath}/api/env?filename=${encodeURIComponent(filename)}`)
+            .then(response => response.json())
+            .then(data => {
+               if (data.error) {
+                   alert(data.error);
+               } else {
+                   document.getElementById('env_content').value = data.content;
+               }
+            })
+            .catch(err => console.error('Error loading .env file:', err));
+      });
   }
 
   // Add event listener for refresh button

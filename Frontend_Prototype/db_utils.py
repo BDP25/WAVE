@@ -147,6 +147,28 @@ def get_article_history_by_title(article_title: str):
         logger.error(f"Database error: {e}")
         return {"error": str(e)}
 
+def get_min_max_date():
+    try:
+        conn = psycopg2.connect(**db_params)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get the oldest and newest date from the cluster table
+        cursor.execute(
+            "SELECT MIN(date) AS oldest_date, MAX(date) AS newest_date FROM cluster"
+        )
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result and result['oldest_date'] and result['newest_date']:
+            return result['oldest_date'].isoformat(), result['newest_date'].isoformat()
+        else:
+            # Return default tuple to avoid unpacking error
+            return "", ""
+    except Exception as e:
+        print(f"Database error: {e}")
+        return "", ""
 
 if __name__ == "__main__":
     # Run this file directly to test database connection

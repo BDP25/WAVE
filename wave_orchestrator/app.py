@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_for, render_template, Blueprint
+from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_for, render_template, Blueprint, Response, stream_with_context
 import docker
 from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
@@ -10,7 +10,7 @@ import threading
 from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
 import json
-from utils import execute_docker_command, monitor_docker_events
+from utils import execute_docker_command, monitor_docker_events, stream_docker_command
 
 # Load environment variables
 DOMAIN = os.getenv('DOMAIN', 'localhost:5000')
@@ -91,11 +91,10 @@ def execute_command_immediately():
         else:
             return jsonify(error="Env file not found"), 404
 
-    try:
-        result = execute_docker_command(client, None, docker_command, None, env_vars)
-        return jsonify(message="Command executed", result=result)
-    except Exception as e:
-        return jsonify(error=str(e)), 500
+    return Response(
+        stream_with_context(stream_docker_command(client, None, docker_command, None, env_vars)),
+        mimetype='text/plain'
+    )
 
 @bp.route('/api/presets', methods=['GET'])
 def get_presets():
@@ -289,4 +288,3 @@ threading.Thread(target=monitor_docker_events, args=(client, chained_containers)
 if __name__ == "__main__":
     print(f"Flask app running on {DOMAIN} with prefix '{APPLICATION_ROOT}'")
     app.run(host='0.0.0.0', port=5050, debug=False)
-

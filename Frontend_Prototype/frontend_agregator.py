@@ -136,26 +136,22 @@ def get_min_max_date():
     try:
         conn = psycopg2.connect(**db_params)
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        # Get the oldest and newest date from the cluster table
         cursor.execute(
             "SELECT MIN(date) AS oldest_date, MAX(date) AS newest_date FROM cluster"
         )
         result = cursor.fetchone()
-
         cursor.close()
         conn.close()
 
         if result and result['oldest_date'] and result['newest_date']:
             return result['oldest_date'].isoformat(), result['newest_date'].isoformat()
-
         else:
-            return {"error": "No dates found in the database"}
-
+            # Return empty strings instead of a dictionary for consistent tuple unpacking
+            return "", ""
     except Exception as e:
         print(f"Database error: {e}")
-        return {"error": str(e)}
-
+        # Return empty strings on exception
+        return "", ""
 
 
 
