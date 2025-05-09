@@ -25,12 +25,14 @@ def create_schema(db_params=None):
         }
 
     # Define the SQL commands for creating tables
+    # TODO summary
     commands = [
         """
         CREATE TABLE IF NOT EXISTS Cluster (
             cluster_id VARCHAR(255) PRIMARY KEY,
             wikipedia_article_names TEXT,
-            date DATE
+            date DATE,
+            summary_text TEXT
         )
         """,
         """
@@ -99,14 +101,15 @@ def load_data(json_input, db_params):
         for cluster in cluster_records:
             cur.execute(
                 """
-                INSERT INTO Cluster (cluster_id, wikipedia_article_names, date)
-                VALUES (%s, %s, %s)
+                INSERT INTO Cluster (cluster_id, wikipedia_article_names, date, summary_text)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT (cluster_id) DO NOTHING;
                 """,
                 (
                     cluster["cluster_id"],
                     cluster["wikipedia_article_names"],
-                    cluster["date"]
+                    cluster["date"],
+                    cluster.get("summary_text", None)  # Use .get in case the key is missing
                 )
             )
             print(f"Inserted Cluster with cluster_id: {cluster['cluster_id']}")
@@ -142,7 +145,9 @@ def load_data(json_input, db_params):
         conn.close()
 
 if __name__ == "__main__":
-    # Define your PostgreSQL connection parameters
+    # Define your PostgreSQL connection
+
+
 
     db_params = {
         "dbname": os.getenv("DB_NAME", "your_database"),
@@ -210,25 +215,30 @@ if __name__ == "__main__":
             {
                 "cluster_id": "2025-04-09T08:30:00",
                 "wikipedia_article_names": "Example_Event,Community_Event",
-                "date": "2025-04-09"
+                "date": "2025-04-09",
+                "summary_text": "This is a summary for the first cluster."
             },
             {
                 "cluster_id": "2025-04-09T09:15:00",
                 "wikipedia_article_names": "Innovative_Tech,Startups",
-                "date": "2025-04-09"
+                "date": "2025-04-09",
+                "summary_text": "This is a summary for the second cluster."
             },
             {
                 "cluster_id": "2025-04-10T10:00:00",
                 "wikipedia_article_names": "International_Summit,Diplomacy",
-                "date": "2025-04-10"
+                "date": "2025-04-10",
+                "summary_text": "This is a summary for the third cluster."
             },
             {
                 "cluster_id": "2025-04-11T12:30:00",
                 "wikipedia_article_names": "Health_Alert,Medical_Guidelines",
-                "date": "2025-04-11"
+                "date": "2025-04-11",
+                "summary_text": "This is a summary for the fourth cluster."
             }
         ]
     }
+
 
     # Pass the JSON data directly
     load_data(json_data, db_params)
