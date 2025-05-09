@@ -15,7 +15,7 @@ def generate_cluster_id(cluster_number: str, date: str) -> str:
     return hashlib.sha256(raw_id.encode()).hexdigest()
 
 
-def generate_cluster_json(filtered_df, cluster_topics) -> str:
+def generate_cluster_json(filtered_df, cluster_topics, cluster_summaries) -> str:
     """
     Transforms the filtered DataFrame into a structured JSON format for clustering data.
 
@@ -28,45 +28,39 @@ def generate_cluster_json(filtered_df, cluster_topics) -> str:
 
 
 
-
-    # Process each unique cluster
     for cluster_id in sorted(filtered_df["dbscan_cluster"].unique()):
         hashed_cluster_id = generate_cluster_id(str(cluster_id), str(publication_date))
-
-        # Filter DataFrame for current cluster
         cluster_entries = filtered_df[filtered_df['dbscan_cluster'] == cluster_id]
-
-        # Placeholder for actual article names (to be replaced later)
         wikipedia_article_names = cluster_topics.get(cluster_id, [])
-        print(wikipedia_article_names)
+        summary_text = cluster_summaries.get(cluster_id, None)  # Get summary for this cluster
 
-        # Create cluster data entries
         cluster_data[hashed_cluster_id] = {
             "cluster_id": hashed_cluster_id,
             "wikipedia_article_names": wikipedia_article_names,
             "date": publication_date,
+            "summary_text": summary_text
         }
 
-        # Create article data entries for each row in the cluster
         for _, row in cluster_entries.iterrows():
-            article_entry = {
+            artikel_data.append({
                 "article_id": str(row["id"]),
                 "cluster_id": hashed_cluster_id,
                 "pubtime": row["pubtime"].strftime('%Y-%m-%dT%H:%M:%S'),
                 "medium_name": row["medium_name"],
                 "head": row["head"],
                 "article_link": row.get("article_link", "")
-            }
-            artikel_data.append(article_entry)
+            })
 
-    # Final JSON structure
     json_data = {
         "artikel": artikel_data,
         "cluster": list(cluster_data.values())
     }
-
-    # Return the formatted JSON string without Unicode escapes
     return json.dumps(json_data, indent=4, ensure_ascii=False)
+
+
+
+
+
 
 if __name__ == "__main__":
     print(generate_cluster_id("1", "2023-10-01"))
