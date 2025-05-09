@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WAVE Orchestrator Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+  <a href="{{ url_for('bp.logout') }}" class="logout-btn">Logout</a>
+  <h1>WAVE Orchestrator Dashboard</h1>
+
+  <div class="dashboard-container">
+    <div class="dashboard-panel">
+      <h2>Running Containers</h2>
+      <ul id="containerList" class="container-list"></ul>
+      <button id="refreshContainers" class="refresh-btn">Refresh</button>
+    </div>
+
+    <div class="dashboard-panel">
+      <h2>Run Docker Command Now</h2>
+      <form id="immediateCommandForm" class="command-form">
+        <div class="form-group">
+          <label for="immediate_command">Docker Command:</label>
+          <input type="text" id="immediate_command" name="immediate_command" placeholder="run nginx:latest" required>
+          <div class="help-text">Start with: run, stop, etc. Example: run --name my-nginx nginx:latest</div>
+        </div>
+        <button type="submit" class="execute-btn">Execute Now</button>
+      </form>
+      
+      <div class="presets-container">
+        <h3>Command Presets</h3>
+        <div id="presetsList" class="presets-list">
+          <!-- Presets will be listed here -->
+        </div>
+        
+        <form id="addPresetForm" class="preset-form">
+          <div class="form-group">
+            <label for="preset_name">Preset Name:</label>
+            <input type="text" id="preset_name" name="preset_name" required placeholder="PostgreSQL">
+          </div>
+          <div class="form-group">
+            <label for="preset_command">Docker Command:</label>
+            <input type="text" id="preset_command" name="preset_command" required placeholder="run postgres:latest">
+          </div>
+          <button type="submit" class="add-btn">Add Preset</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="dashboard-panel">
+      <h2>Schedule a Docker Job</h2>
+      <form id="jobForm" class="job-form">
+        <!-- Job scheduling form -->
+        <div class="form-group">
+          <label for="job_command">Docker Command:</label>
+          <input type="text" id="job_command" name="job_command" placeholder="run nginx:latest" required>
+        </div>
+        <div class="form-group">
+          <label for="job_delay">Delay (in seconds):</label>
+          <input type="number" id="job_delay" name="job_delay" placeholder="0" required>
+        </div>
+        <div class="form-group">
+          <label for="job_chain">Chain Command (Optional):</label>
+          <input type="text" id="job_chain" name="job_chain" placeholder="run another_command">
+        </div>
+        <button type="submit" class="schedule-btn">Schedule Job</button>
+      </form>
+      <div id="scheduledJobs" class="jobs-list">
+        <!-- Scheduled jobs will be listed here -->
+      </div>
+    </div>
+
+    <!-- New .env Editor Panel -->
+    <div class="dashboard-panel">
+      <h2>Edit .env File</h2>
+      <form id="envForm" class="env-form">
+        <div class="form-group">
+          <label for="env_filename">Filename:</label>
+          <input type="text" id="env_filename" name="env_filename" value=".env" required>
+        </div>
+        <div class="form-group">
+          <label for="env_content">Content:</label>
+          <textarea id="env_content" name="env_content" rows="10" placeholder="Enter .env file content here"></textarea>
+        </div>
+        <div class="form-group">
+          <button type="button" id="loadEnv">Load</button>
+          <button type="submit" class="save-btn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
