@@ -86,6 +86,25 @@ def remove_source_notes(raw_html):
         print(f"Error removing source notes: {e}")
         return raw_html
 
+# New function to compute diffs wrapping inserted text with a custom tag using the revision id.
+def clean_internal_links(html):
+    """Remove internal same-page links (<a> tags with href starting with '/wiki/' or '/w/')
+       but keep image links and external links.
+    """
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        for a in soup.find_all('a', href=True):
+            # Only remove internal links if no image is contained
+            if a.find('img'):
+                continue
+            if (a['href'].startswith("/wiki/") and not a['href'].startswith("/wiki/File:")) \
+               or (a['href'].startswith("/w/") and "File:" not in a['href']):
+                a.replace_with(a.get_text())
+        return str(soup)
+    except Exception as e:
+        print(f"Error cleaning internal links: {e}")
+        return html
+
 def download_wiki_history(article_title, language_code):
     """Download Wikipedia history with raw HTML and return history dataframe and page ID."""
     # Get the Wikipedia page ID
@@ -106,6 +125,7 @@ def download_wiki_history(article_title, language_code):
                 raw_html = getattr(item, 'raw_html', '').replace('\n', '')
                 raw_html_cleaned = remove_edit_sections(raw_html)  # Remove edit sections
                 raw_html_cleaned = remove_source_notes(raw_html_cleaned)  # Remove source notes
+                raw_html_cleaned = clean_internal_links(raw_html_cleaned)  # Remove links
                 entry = {
                     'revid': getattr(item, 'revid', ''),
                     'time': getattr(item, 'time', ''),  # Use 'time' consistently
@@ -370,10 +390,10 @@ if __name__ == "__main__":
     }
 
     # Example usage
-    article_title = "Wilhelm Tell"
+    article_title = "Bundesamt für Informatik und Telekommunikation"
     language_code = "de"
 
-    task = "get" # can be "del", "get" or "get-latest"
+    task = ("del") # can be "del", "get" or "get-latest"
 
     if task == "get":
         article_data, history_data = get_or_update_article(article_title, language_code, db_config=db_config)

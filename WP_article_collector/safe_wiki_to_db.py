@@ -4,7 +4,10 @@ nest_asyncio.apply()
 import pandas as pd
 from psycopg2.extras import execute_batch
 from datetime import datetime
-
+import difflib
+import re  # added to check for HTML tags
+from bs4 import BeautifulSoup  # added import for HTML cleaning
+import hashlib  # added for user color generation
 
 # Import from new db_utils module instead of defining locally
 from db_utils import create_db_connection, db_params
@@ -35,6 +38,7 @@ def initialize_tables(conn):
                 user_name TEXT,
                 comment TEXT,
                 content TEXT,
+                diff_content TEXT,
                 UNIQUE(article_id, revid)
             )
         """)
@@ -47,6 +51,55 @@ def initialize_tables(conn):
         conn.rollback()
         return False
 
+# New function to compute diffs wrapping inserted text with a custom tag using the revision id.
+def clean_internal_links(html):
+    """Remove internal same-page links (<a> tags with href starting with '/wiki/' or '/w/')
+       but keep image links and external links.
+    """
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        for a in soup.find_all('a', href=True):
+            # Skip altering if the link contains an image
+            if a.find('img'):
+                continue
+            if (a['href'].startswith("/wiki/") and not a['href'].startswith("/wiki/File:")) \
+               or (a['href'].startswith("/w/") and "File:" not in a['href']):
+                a.replace_with(a.get_text())
+        return str(soup)
+    except Exception as e:
+        print(f"Error cleaning internal links: {e}")
+        return html
+
+# New helper: assign a hex color based on user name.
+def get_user_color(user):
+    # Use first six characters of md5 hash for color code.
+    return f"#{hashlib.md5(user.encode()).hexdigest()[:6]}"
+
+# Updated diff function: now accepts a 'user' parameter.
+def compute_diff(old_html, new_html, user):
+    old_html = clean_internal_links(old_html)
+    new_html = clean_internal_links(new_html)
+    color = get_user_color(user)  # color now solely based on the editor
+    matcher = difflib.SequenceMatcher(None, old_html, new_html)
+    result = []
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == 'equal':
+            result.append(new_html[j1:j2])
+        elif tag == 'insert':
+            # Addition: highlight with background using the editor's color.
+            segment = new_html[j1:j2]
+            result.append(f"<span style='background-color: {color}'>{segment}</span>")
+        elif tag == 'delete':
+            # Deletion: strike-through with the editor's color.
+            segment = old_html[i1:i2]
+            result.append(f"<span style='text-decoration: line-through; text-decoration-color: {color};'>{segment}</span>")
+        elif tag == 'replace':
+            # Replacement: show deletion then addition, both styled by the editor's color.
+            del_segment = old_html[i1:i2]
+            add_segment = new_html[j1:j2]
+            result.append(f"<span style='text-decoration: line-through; text-decoration-color: {color};'>{del_segment}</span>")
+            result.append(f"<span style='background-color: {color}'>{add_segment}</span>")
+    return ''.join(result)
 
 def save_article_to_db(conn, article_title, language_code, page_id):
     """Save article to WP_article table and return the article_id."""
@@ -98,10 +151,9 @@ def save_article_history_to_db(conn, article_id, history_df):
         history_data = []
         for _, row in history_df.iterrows():
             # Convert timestamp string to datetime if needed
-            timestamp = row.get('time')  # Look for 'time' instead of 'timestamp'
+            timestamp = row.get('time')
             if isinstance(timestamp, str):
                 try:
-                    # Attempt to parse timestamp (adjust format as needed)
                     timestamp = pd.to_datetime(timestamp)
                 except:
                     timestamp = None
@@ -112,10 +164,10 @@ def save_article_history_to_db(conn, article_id, history_df):
                 timestamp,
                 row.get('user'),
                 row.get('comment'),
-                row.get('text')  # Add content field
+                row.get('raw_html')  # Changed: use raw_html column instead of text
             ))
 
-        # Batch insert using execute_batch with content field
+        # Batch insert with content field
         execute_batch(cursor, """
             INSERT INTO history (article_id, revid, timestamp, user_name, comment, content)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -174,9 +226,36 @@ def update_article_history(article_title, language_code, db_config=None):
 
         # Save history data
         success = save_article_history_to_db(conn, article_id, history_df)
+        if not success:
+            conn.close()
+            return False
 
+        # --- New: Calculate and update diffs for consecutive revisions ---
+        # Modify SQL to also retrieve user_name.
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT revid, content, user_name, timestamp FROM history
+            WHERE article_id = %s
+            ORDER BY timestamp ASC
+        """, (article_id,))
+        revisions = cursor.fetchall()  # Each row: (revid, content, user_name, timestamp)
+        prev_content = None
+        for rev in revisions:
+            current_revid, current_content, current_user, _ = rev
+            if prev_content is None:
+                diff_result = current_content
+            else:
+                diff_result = compute_diff(prev_content, current_content, current_user)
+            cursor.execute("""
+                UPDATE history SET diff_content = %s
+                WHERE article_id = %s AND revid = %s
+            """, (diff_result, article_id, current_revid))
+            prev_content = current_content
+
+        conn.commit()
+        cursor.close()
         conn.close()
-        return success
+        return True
     except Exception as e:
         print(f"Error in update_article_history: {e}")
         if conn:
