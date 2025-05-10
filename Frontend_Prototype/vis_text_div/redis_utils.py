@@ -2,7 +2,7 @@
 Utilities for connecting to and interacting with Redis.
 """
 import redis
-from logger_utils import setup_logger
+from .logger_utils import setup_logger
 
 logger = setup_logger("redis_utils")
 

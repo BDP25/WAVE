@@ -3,7 +3,7 @@ Utilities for cleaning and post-processing HTML content.
 """
 import re
 from bs4 import BeautifulSoup
-from logger_utils import setup_logger
+from .logger_utils import setup_logger
 
 logger = setup_logger("html_utils")
 

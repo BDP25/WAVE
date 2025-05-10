@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request
 from frontend_agregator import get_clusters_per_date, get_min_max_date
 from db_utils import get_article_history_by_title
 from db_utils import db_params, redis_params
-from vis_text_diff import visualize_wiki_versions_with_deletions
+from vis_text_div.visualization import visualize_wiki_versions_with_deletions
 
 app = Flask(__name__)
 
@@ -34,7 +34,6 @@ def api_article_history():
         article_title = request.args.get("title")
         # TODO debug
         print(article_title)
-        article_title = "Nintendo"
         if not article_title:
             return jsonify({"error": "Kein Artikel angegeben"}), 400
         history = get_article_history_by_title(article_title)
@@ -54,13 +53,6 @@ def api_visualize():
         print("Article ID:", article_id)
         print("Start Revid:", start_revid)
         print("End Revid:", end_revid)
-        # TODO delete after Testing
-        article_id = 50810
-
-
-
-
-        print(article_id, start_revid, end_revid)
 
         # Validate parameters
         if not article_id or not start_revid or not end_revid:
@@ -72,20 +64,36 @@ def api_visualize():
             start_revid=start_revid,
             end_revid=end_revid,
             word_level=True,
-            verbose=False,
+            verbose=True,  # Enable verbose to get more debugging info
             db_config=db_params,
             redis_config=redis_params,
             show_revision_info=False
         )
 
-        print(html)
+        # Check if html contains an error message
+        if html and ("<div class='alert alert-danger'>" in html or "<div class='alert alert-warning'>" in html):
+            # Still return 200 but with the error message in HTML
+            return jsonify({"html": html})
+
+        # Check if html is None or empty
+        if not html:
+            return jsonify({
+                "error": "No visualization data available for the selected revisions",
+                "html": "<div class='alert alert-danger'>No visualization data available for the selected revisions</div>"
+            }), 404
+
+        print("Visualization HTML generated successfully")
 
         # Return the HTML as a response
         return jsonify({"html": html})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        error_message = f"Failed to generate visualization: {str(e)}"
+        print(f"Error generating visualization: {str(e)}")
+        return jsonify({
+            "error": error_message,
+            "html": f"<div class='alert alert-danger'><strong>Error:</strong> {error_message}</div>"
+        }), 500
 
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=False)
-

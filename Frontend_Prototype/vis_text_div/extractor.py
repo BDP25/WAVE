@@ -2,8 +2,8 @@
 Extract and cache revision texts from DataFrames.
 """
 import pandas as pd
-from redis_utils import get_redis_connection, cache_get, cache_set
-from logger_utils import setup_logger
+from .redis_utils import get_redis_connection, cache_get, cache_set
+from .logger_utils import setup_logger
 
 logger = setup_logger("extractor")
 

@@ -8,9 +8,9 @@ import logging
 
 # Add parent directory to path to allow importing db_utils
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from db_utils import db_params, redis_params
-from logger_utils import setup_logger
-from visualization import visualize_wiki_versions_with_deletions
+from ../db_utils import db_params, redis_params
+from .logger_utils import setup_logger
+from .visualization import visualize_wiki_versions_with_deletions
 
 logger = setup_logger(level=logging.ERROR)
 
@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--no-info", action='store_false', dest='show_revision_info')
     parser.add_argument("--no-clean", action='store_false', dest='clean_html')
     parser.add_argument("--verbose", action='store_true')
+    parser.add_argument("--precalc-diffs", action='store_true', help="Use precalculated diffs visualization approach")
     args = parser.parse_args()
 
     html = visualize_wiki_versions_with_deletions(
@@ -34,7 +35,8 @@ def main():
         clean_html=args.clean_html,
         verbose=args.verbose,
         db_config=db_params,
-        redis_config=redis_params
+        redis_config=redis_params,
+        use_precalc_diffs=args.precalc_diffs  # new parameter passed here
     )
     print(html)
 
@@ -64,7 +66,9 @@ if __name__ == "__main__":
         db_config=db_config,
         redis_config=redis_config,
         show_revision_info=False,
-        clean_html=True  # Enable HTML cleanup
+        clean_html=True,  # Enable HTML cleanup
+        use_precalc_diffs=False  # Example usage without precalculated diffs
     )
 
     print(f"\nHTML:\n-------------------------------------------------------\n{html}\n-------------------------------------------------------")
+

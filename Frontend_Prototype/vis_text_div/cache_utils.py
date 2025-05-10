@@ -1,9 +1,9 @@
 """
 Functions for retrieving and storing single revision text from cache or memory.
 """
-from extractor import extract_revision_texts
-from redis_utils import get_redis_connection, cache_get, cache_set
-from logger_utils import setup_logger
+from .extractor import extract_revision_texts
+from .redis_utils import get_redis_connection, cache_get, cache_set
+from .logger_utils import setup_logger
 
 logger = setup_logger("cache_utils")
 revision_texts = {}

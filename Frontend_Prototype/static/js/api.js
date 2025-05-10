@@ -12,7 +12,7 @@ export function fetchArticleHistory(article) {
 }
 
 // Fetch visualization data from the API
-export function fetchVisualization(articleId, startRevid, endRevid) {
+export function fetchVisualization(articleId, startRevid, endRevid, signal) {
     const visualizeUrl = `/api/visualize?article_id=${articleId}&start_revid=${startRevid}&end_revid=${endRevid}`;
-    return fetch(visualizeUrl).then(res => res.json());
+    return fetch(visualizeUrl, { signal }).then(res => res.json());
 }

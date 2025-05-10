@@ -25,7 +25,7 @@ db_params = {
 
 # Redis connection parameters
 redis_params = {
-    "host": os.getenv("REDIS_HOST", "localhost").replace("DB_HOST=", ""),  # Fix potential typo in env var
+    "host": os.getenv("REDIS_HOST", "localhost"),
     "port": int(os.getenv("REDIS_PORT", "6379")),
     "db": 0,
     "password": os.getenv("REDIS_PASSWORD", None)
@@ -107,18 +107,33 @@ def get_article_history_by_title(article_title: str):
     }
 
     try:
+        logger.info(f"Fetching article history for title: {article_title}")
         conn = psycopg2.connect(**db_params)
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
+        # First verify if the article exists
+        cursor.execute(
+            "SELECT article_id FROM wp_article WHERE article_title = %s",
+            (article_title,)
+        )
+        article_row = cursor.fetchone()
+
+        if not article_row:
+            logger.warning(f"No article found with title: {article_title}")
+            return {"error": "Article not found in database", "article_title": article_title}
+
+        article_id = article_row["article_id"]
+        logger.info(f"Found article with ID: {article_id}")
+
+        # Now get the history for this article
         cursor.execute(
             """
-            SELECT w.article_id, h.revid, h.timestamp
-            FROM wp_article w
-            JOIN history h ON w.article_id = h.article_id
-            WHERE w.article_title = %s
+            SELECT h.revid, h.timestamp
+            FROM history h 
+            WHERE h.article_id = %s
             ORDER BY h.timestamp ASC
             """,
-            (article_title,)
+            (article_id,)
         )
         history = cursor.fetchall()
 
@@ -126,26 +141,25 @@ def get_article_history_by_title(article_title: str):
         conn.close()
 
         if history:
-            # Extract article_id once
-            article_id = history[0]["article_id"]
-
+            logger.info(f"Found {len(history)} history entries for article ID {article_id}")
             # Format the result to include revid and timestamp
             return {
                 "article_id": article_id,
                 "history": [
                     {
                         "revid": record["revid"],
-                        "timestamp": record["timestamp"].isoformat()
+                        "timestamp": record["timestamp"].isoformat() if hasattr(record["timestamp"], "isoformat") else record["timestamp"]
                     }
                     for record in history
                 ]
             }
         else:
-            return {"error": "No history found for the given article_title"}
+            logger.warning(f"No history found for article ID: {article_id}")
+            return {"error": "No history found for the given article", "article_id": article_id}
 
     except Exception as e:
-        logger.error(f"Database error: {e}")
-        return {"error": str(e)}
+        logger.error(f"Database error in get_article_history_by_title: {e}", exc_info=True)
+        return {"error": str(e), "details": "Database error occurred while fetching article history"}
 
 def get_min_max_date():
     try:

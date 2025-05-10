@@ -235,37 +235,71 @@ function fetchWikipediaContent(article) {
 
     // Add loading placeholder
     const summaryPlaceholder = document.createElement("p");
-    summaryPlaceholder.innerText = "Loading summary...";
+    summaryPlaceholder.innerText = "Loading article data...";
+    summaryPlaceholder.id = "loading-placeholder";
     articleContainer.appendChild(summaryPlaceholder);
 
     // Add timestamps section
     const timestampsSection = document.createElement("div");
     timestampsSection.id = "timestamps-section";
+    timestampsSection.innerHTML = "<p>Loading revision history...</p>";
     articleContainer.appendChild(timestampsSection);
 
+    console.log(`Fetching article history for: ${article}`);
+    
     fetchArticleHistory(article)
         .then(data => {
+            console.log("Article history response:", data);
+            document.getElementById("loading-placeholder").remove();
+            
             if (data.error) {
-                timestampsSection.innerHTML = "<p>No timestamps found.</p>";
-                summaryPlaceholder.innerText = "No article data available.";
+                console.error("Error in article history:", data.error);
+                displayArticleHistory(data, articleContainer, timestampsSection);
             } else {
-                summaryPlaceholder.remove(); // Remove loading placeholder
                 displayArticleHistory(data, articleContainer, timestampsSection);
             }
         })
         .catch(err => {
-            console.error("Error fetching timestamps:", err);
-            timestampsSection.innerHTML = "<p>Error loading timestamps.</p>";
-            summaryPlaceholder.innerText = "Error loading article data.";
+            console.error("Error fetching article history:", err);
+            summaryPlaceholder.remove();
+            
+            const errorElement = document.createElement("div");
+            errorElement.classList.add("error-message");
+            errorElement.innerHTML = `
+                <p><strong>Error:</strong> Failed to fetch article history</p>
+                <p>Technical details: ${err.message}</p>
+            `;
+            timestampsSection.innerHTML = "";
+            timestampsSection.appendChild(errorElement);
         });
 }
 
 function displayArticleHistory(data, articleContainer, timestampsSection) {
+    // Check if there's an error and handle it more gracefully
+    if (data.error) {
+        console.error("Error from API:", data.error);
+        const errorElement = document.createElement("div");
+        errorElement.classList.add("error-message");
+        errorElement.innerHTML = `
+            <p><strong>Error:</strong> ${data.error}</p>
+            <p>Please try another article or contact the administrator if this issue persists.</p>
+        `;
+        timestampsSection.innerHTML = "";
+        timestampsSection.appendChild(errorElement);
+        return;
+    }
+
     const articleId = data.article_id;
 
     const articleIdElement = document.createElement("p");
     articleIdElement.innerText = `Article ID: ${articleId}`;
     articleContainer.appendChild(articleIdElement);
+
+    // Check if history exists and has entries
+    if (!data.history || data.history.length === 0) {
+        timestampsSection.innerHTML = "<p>No revision history available for this article.</p>";
+        return;
+    }
 
     const timestamps = data.history.map(entry => ({
         revid: entry.revid,
