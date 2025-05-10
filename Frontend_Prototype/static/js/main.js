@@ -1,8 +1,14 @@
-import { fetchClusters, fetchArticleHistory } from "./api.js";
+import { fetchClusters, fetchArticleHistory, fetchClusterSummary } from "./api.js";
 import { createDateSliderWithPicker } from "./slider.js";
 
 let clustersData = [];
 let flatpickrInstance = null;
+let selectedClusterIndex = null;
+let currentSelectedDate = null;
+let cachedClusterSummary = null;
+let lastDisplayedClusterIndex = null;  // Add this missing variable
+let lastDisplayedClusterDate = null;   // Add this missing variable
+
 
 // Initialize the application on DOMContentLoaded
 document.addEventListener("DOMContentLoaded", () => {
@@ -42,6 +48,7 @@ function initializeFlatpickr() {
         },
         onChange: function(selectedDates, dateStr) {
             loadClusterData(dateStr);
+            currentSelectedDate = dateStr;  // Update the current selected date
         },
         onOpen: function(selectedDates, dateStr, instance) {
             // Apply custom ID to the calendar element for CSS scoping
@@ -80,6 +87,7 @@ function initializeFlatpickr() {
     });
 
     // Initial data load
+    currentSelectedDate = maxDate;  // Initialize currentSelectedDate
     loadClusterData(maxDate);
 }
 
@@ -182,6 +190,8 @@ function loadClusterData(selectedDate) {
         .catch(err => console.error("Error fetching cluster data:", err));
 }
 
+
+
 function renderClusters() {
     const container = document.getElementById("cluster-container");
     container.innerHTML = "";
@@ -202,7 +212,27 @@ function renderClusters() {
         const list = document.createElement("ul");
         cluster.wikipedia_articles.forEach(article => {
             const item = document.createElement("li");
-            const link = createArticleLink(article);
+            const link = document.createElement("a");
+            link.innerText = article;
+            link.href = "#";
+            link.addEventListener("click", e => {
+                e.preventDefault();
+                selectedClusterIndex = index; // Cluster speichern
+                fetchWikipediaContent(article);
+
+                // Add summary section to article container
+                const articleContainer = document.getElementById("wiki-article");
+                if (!document.getElementById("summary-section")) {
+                    const summarySection = document.createElement("div");
+                    summarySection.id = "summary-section";
+                    summarySection.classList.add("article-summary");
+                    summarySection.innerHTML = "<p>Loading cluster summary...</p>";
+                    articleContainer.insertBefore(summarySection, articleContainer.firstChild.nextSibling);
+                }
+
+                // Get the summary for this cluster
+                displayClusterSummary();
+            });
             item.appendChild(link);
             list.appendChild(item);
         });
@@ -212,16 +242,52 @@ function renderClusters() {
     });
 }
 
-function createArticleLink(article) {
-    const link = document.createElement("a");
-    link.innerText = article;
-    link.href = "#";
-    link.addEventListener("click", e => {
-        e.preventDefault();
-        fetchWikipediaContent(article);
-    });
-    return link;
+
+function displayClusterSummary() {
+    if (selectedClusterIndex === null || currentSelectedDate === null) {
+        return;
+    }
+
+    const summarySection = document.getElementById("summary-section");
+    if (!summarySection) return;
+
+    // Check if we're requesting the same cluster and date as before
+    if (selectedClusterIndex === lastDisplayedClusterIndex &&
+        currentSelectedDate === lastDisplayedClusterDate &&
+        cachedClusterSummary !== null) {
+        console.log("Using cached cluster summary");
+        summarySection.innerHTML = cachedClusterSummary;
+        return;
+    }
+
+    summarySection.innerHTML = "<p>Loading cluster summary...</p>";
+
+    // Fix the parameter order here
+    fetchClusterSummary(selectedClusterIndex, currentSelectedDate)
+        .then(data => {
+            if (data.error) {
+                summarySection.innerHTML = `<p class="error-message">Error loading summary: ${data.error}</p>`;
+                console.error("Error loading summary:", data.error);
+            } else {
+                const summaryHTML = `
+                    <h3>Cluster Summary</h3>
+                    <div class="summary-content">${data.summary}</div>
+                `;
+                summarySection.innerHTML = summaryHTML;
+
+                // Cache the summary and record which cluster/date it's for
+                lastDisplayedClusterIndex = selectedClusterIndex;
+                lastDisplayedClusterDate = currentSelectedDate;
+                cachedClusterSummary = summaryHTML;
+            }
+        })
+        .catch(err => {
+            console.error("Error fetching cluster summary:", err);
+            summarySection.innerHTML = `<p class="error-message">Failed to load summary: ${err.message}</p>`;
+        });
 }
+
+
 
 function fetchWikipediaContent(article) {
     const articleContainer = document.getElementById("wiki-article");
@@ -246,23 +312,36 @@ function fetchWikipediaContent(article) {
     articleContainer.appendChild(timestampsSection);
 
     console.log(`Fetching article history for: ${article}`);
-    
+
     fetchArticleHistory(article)
         .then(data => {
             console.log("Article history response:", data);
             document.getElementById("loading-placeholder").remove();
-            
+
             if (data.error) {
                 console.error("Error in article history:", data.error);
                 displayArticleHistory(data, articleContainer, timestampsSection);
             } else {
                 displayArticleHistory(data, articleContainer, timestampsSection);
+
+                // After displaying article history, add summary section
+                if (!document.getElementById("summary-section") && selectedClusterIndex !== null) {
+                    const summarySection = document.createElement("div");
+                    summarySection.id = "summary-section";
+                    summarySection.classList.add("article-summary");
+
+                    // Insert after title but before timestamps
+                    articleContainer.insertBefore(summarySection, titleElement.nextSibling);
+
+                    // Request cluster summary
+                    displayClusterSummary();
+                }
             }
         })
         .catch(err => {
             console.error("Error fetching article history:", err);
             summaryPlaceholder.remove();
-            
+
             const errorElement = document.createElement("div");
             errorElement.classList.add("error-message");
             errorElement.innerHTML = `
@@ -273,6 +352,7 @@ function fetchWikipediaContent(article) {
             timestampsSection.appendChild(errorElement);
         });
 }
+
 
 function displayArticleHistory(data, articleContainer, timestampsSection) {
     // Check if there's an error and handle it more gracefully
