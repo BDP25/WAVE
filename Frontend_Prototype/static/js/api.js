@@ -16,3 +16,10 @@ export function fetchVisualization(articleId, startRevid, endRevid, signal) {
     const visualizeUrl = `/api/visualize?article_id=${articleId}&start_revid=${startRevid}&end_revid=${endRevid}`;
     return fetch(visualizeUrl, { signal }).then(res => res.json());
 }
+
+// Fetch cluster summary from the API
+export function fetchClusterSummary(clusterId, selectedDate) {
+    const summaryUrl = `/api/cluster_summary?cluster_id=${clusterId}&date=${encodeURIComponent(selectedDate)}`;
+    return fetch(summaryUrl).then(res => res.json());
+}
+
