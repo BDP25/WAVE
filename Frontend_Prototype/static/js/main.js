@@ -372,8 +372,7 @@ function displayArticleHistory(data, articleContainer, timestampsSection) {
     const articleId = data.article_id;
 
     const articleIdElement = document.createElement("p");
-    articleIdElement.innerText = `Article ID: ${articleId}`;
-    articleContainer.appendChild(articleIdElement);
+
 
     // Check if history exists and has entries
     if (!data.history || data.history.length === 0) {
