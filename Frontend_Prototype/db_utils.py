@@ -184,6 +184,56 @@ def get_min_max_date():
         print(f"Database error: {e}")
         return "", ""
 
+# TODO
+def get_cluster_summary(cluster_index, date):
+    """
+    Retrieve the summary_text for the given cluster index on a specific date.
+
+    Args:
+        cluster_index (int): Index of the cluster (0 = first entry of the day, etc.)
+        date (str): Date in 'YYYY-MM-DD' format
+
+    Returns:
+        str: Summary text or an error message
+    """
+
+    db_params = {
+        "dbname": os.getenv("DB_NAME", "your_database"),
+        "user": os.getenv("DB_USER", "your_username"),
+        "password": os.getenv("DB_PASSWORD", "your_password"),
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5432")
+    }
+
+    try:
+        logger.info(f"Fetching summary for cluster index {cluster_index} on date {date}")
+        conn = psycopg2.connect(**db_params)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Query all entries with that date
+        cursor.execute(
+            """
+            SELECT summary_text
+            FROM cluster
+            WHERE date = %s
+            """,
+            (date,)
+        )
+        results = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+
+
+
+        return results[cluster_index]["summary_text"]
+
+    except Exception as e:
+        logger.error(f"Database error in get_cluster_summary: {e}", exc_info=True)
+        return f"Error retrieving summary: {str(e)}"
+
+
 if __name__ == "__main__":
     # Run this file directly to test database connection
     test_db_connection()
@@ -192,3 +242,4 @@ if __name__ == "__main__":
     history = get_article_history_by_title(article_title)
 
     print(json.dumps(history, indent=4, ensure_ascii=False))
+
