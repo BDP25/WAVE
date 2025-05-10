@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template, request
 from frontend_agregator import get_clusters_per_date, get_min_max_date
-from db_utils import get_article_history_by_title
+from db_utils import get_article_history_by_title, get_cluster_summary
 from db_utils import db_params, redis_params
 from vis_text_div.visualization import visualize_wiki_versions_with_deletions
 
@@ -40,6 +40,32 @@ def api_article_history():
         return jsonify(history)
     except Exception as e:
         print(f"Fehler in api_article_history: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/cluster_summary")
+def api_cluster_summary():
+    try:
+        cluster_id = request.args.get("cluster_id")
+        date = request.args.get("date")
+        print("Cluster ID:", cluster_id)
+        print("Date:", date)
+
+
+        # Convert cluster_id to integer
+        try:
+            cluster_index = int(cluster_id)
+        except ValueError:
+            return jsonify({"error": "Cluster ID must be a number"}), 400
+
+        # Call the existing function from db_utils.py
+        summary = get_cluster_summary(cluster_index, date)
+
+        # Return the summary along with metadata
+        return jsonify({
+            "summary": summary
+        })
+    except Exception as e:
+        print(f"Error in api_cluster_summary: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
