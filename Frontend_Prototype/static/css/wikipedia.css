@@ -43,15 +43,15 @@ a:hover {
   padding-bottom: 0.2em;
   border-bottom: 1px solid #a2a9b1;
   position: relative;
-  z-index: 2;
+  z-index: 1;
   width: 100%;
+}
 
 .mw-parser-output:has(> figure) .mw-heading2 h2{
   width: calc(100% - (300px + 1em));
   margin-right: 1em;
 }
 
-}
 .mw-heading3 h3,
 .mw-parser-output h3 {
   font-size: 1.25em;
@@ -59,7 +59,7 @@ a:hover {
   padding-bottom: 0.15em;
   border-bottom: 1px solid #ccc;
   position: relative;
-  z-index: 2;
+  z-index: 1;
   width: 100%;
 }
 
@@ -73,7 +73,7 @@ a:hover {
   clear: right;
   margin: 0.5em 0 1em 1em;
   position: relative;
-  z-index: 3;
+  z-index: 1;
   background: #fff;
   border: 1px solid #aaa;
 }
@@ -86,7 +86,7 @@ a:hover {
   width: 1em;
   height: 100%;
   background: #fff;
-  z-index: 4;
+  z-index: 2;
   border-right: 1px solid #aaa;
 }
 
@@ -96,7 +96,7 @@ a:hover {
   margin: 0.5em 0 1em 1em;
   max-width: 300px;
   position: relative;
-  z-index: 5;
+  z-index: 1;
   background: #f8f9fa;
   border: 1px solid #aaa;
   padding: 5px;
@@ -110,7 +110,7 @@ a:hover {
   width: 1em;
   height: 100%;
   background: #fff;
-  z-index: 4;
+  z-index: 2;
   border-right: 1px solid #aaa;
 }
 
@@ -192,3 +192,4 @@ a:hover {
 #wiki-article h3 {
     color: #202122 !important;  /* Set the desired color */
 }
+

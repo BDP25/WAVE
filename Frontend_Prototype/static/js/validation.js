@@ -297,7 +297,7 @@ function fetchWikipediaContent(article) {
     articleContainer.innerHTML = "";
 
     // Add article title
-    const titleElement = document.createElement("h2");
+    const titleElement = document.createElement("l2");
     titleElement.style.fontWeight = "bold";
     titleElement.innerText = article;
     articleContainer.appendChild(titleElement);

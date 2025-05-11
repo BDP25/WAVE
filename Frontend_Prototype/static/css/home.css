@@ -18,8 +18,10 @@
 
 /* Underline title in wiki article in main container */
 #wiki-article l2 {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 10px;
     text-decoration: underline;
-    margin-bottom: 20px;
 }
 
 /* Increase the spacing of the summary text */
@@ -36,6 +38,8 @@
 .slider-wrapper {
     width: 100%;
     margin: 80px 0;
+    position: relative; /* Make z-index take effect */
+    z-index: 3000;
 }
 
 #multi-range-slider {
@@ -157,6 +161,7 @@
 .small-flatpickr {
 
     box-sizing: border-box;
+    z-index: 3001;
 }
 
 /* Kalenderelement extrem klein */
@@ -164,6 +169,7 @@
     width: 120px; /* Sehr kleine Breite */
     height: auto; /* Automatische Höhe */
     font-size: 8px; /* Sehr kleine Schriftgröße */
+    z-index: 3001;
 }
 
 .small-flatpickr .flatpickr-day {
@@ -392,5 +398,35 @@
 /* Force white color for the Cluster Summary heading */
 #wiki-article #summary-section h3 {
     color: white !important;
+}
+
+/* Ensure slider and calendar elements are always in front of Wikipedia article elements */
+.slider-wrapper,
+.flatpickr-calendar,
+.small-flatpickr,
+.noUi-tooltip,
+.tooltip-clickable,
+.flatpickr-time-selection,
+.flatpickr-time-selection-enhanced,
+.date-picker-input {
+    z-index: 99999 !important;
+    position: relative;
+}
+
+/* Specifically target noUi slider elements to ensure they're above Wikipedia content */
+.noUi-handle,
+.noUi-base,
+.noUi-connects,
+.noUi-connect,
+.noUi-target {
+    z-index: 9990 !important;
+    position: relative;
+}
+
+/* Ensure slider time selection dropdown appears above everything else */
+.time-grid,
+.time-entry-button {
+    z-index: 100000 !important;
+    position: relative;
 }
 
