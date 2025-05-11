@@ -8,6 +8,7 @@ from clustering import dbscan_clustering_get_relevant_articles
 from content_to_relevant_titles import collect_wikipedia_candidates_per_cluster
 from cluster_data_to_db_json import generate_cluster_json
 from get_wiki_article import validate_wikipedia_titles
+from time import sleep
 
 
 db_params = {
@@ -69,4 +70,9 @@ json_data = generate_cluster_json(df_relevant_articles, wikipedia_articles_clust
 # TODO aktuell cluster_id in Database = 0
 # load data to database
 load_data(json_data, db_params)
+
+for cluster_id, articles in wikipedia_articles_cluster.items():
+    for article in articles:
+        os.system(f'curl -X POST "http://orchestrator:5025/command" -H "Content-Type: application/json" -d \'{{"command": "collect-history {article.strip()}"}}\'')
+        sleep(0.5)
 
