@@ -120,6 +120,21 @@ def api_visualize():
             "html": f"<div class='alert alert-danger'><strong>Error:</strong> {error_message}</div>"
         }), 500
 
+# TODO TESTING
+# For testing only, add to your Flask backend
+@app.route('/api/test-articles')
+def test_articles():
+    date = request.args.get("date")
+    cluster = request.args.get("cluster")
+    cluster_index = int(cluster)
+
+
+    from Validating_Cluster_helpler.db_query import test_get_cluster_articles_by_index
+    result = test_get_cluster_articles_by_index(cluster_index, date)
+    return jsonify({"cluster_id": result} if isinstance(result, int) else result)
+
+
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=False)
