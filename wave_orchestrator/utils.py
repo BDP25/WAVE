@@ -1,19 +1,23 @@
 import uuid
 import docker
 import datetime
-import subprocess  # ...added subprocess import...
-import os          # ...added os import...
+import subprocess
+import os
+import shlex
 
-def execute_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None):
+def execute_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None, container_name=None):
     print(f"Executing docker command: {docker_command}")
     try:
-        parts = docker_command.split()
+        parts = shlex.split(docker_command)
+        # Remove leading "docker" token if provided
+        if parts and parts[0].lower() == "docker":
+            parts = parts[1:]
         if not parts:
             print("Empty docker command")
             return "Empty docker command"
         action = parts[0]
-        
-        # Process flags: --env-file and --rm
+
+        # Process flags: --env-file, --rm, and --name
         local_env_vars = env_vars  # allow preset passed env_vars to take precedence if provided
         rm_flag = False
         # Loop over a copy of parts to remove flag tokens
@@ -49,13 +53,18 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
             if token == "--rm":
                 rm_flag = True
                 continue
+            if token == "--name":
+                if i + 1 < len(parts) and not container_name:
+                    container_name = parts[i+1]
+                skip_next = True
+                continue
             cleaned_parts.append(token)
-        
+
         # Ensure action is still "run"
         if action != "run":
             # ...existing handling for non-run commands...
             return f"Command executed: {docker_command}"
-        
+
         # Extract image and container command arguments
         # cleaned_parts[0] is "run"
         if len(cleaned_parts) < 2:
@@ -65,8 +74,22 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
         container_cmd = cleaned_parts[2:] if len(cleaned_parts) > 2 else None
 
         print(f"Running container with image {image} and command {container_cmd}")
-        container = client.containers.run(image, command=container_cmd, detach=True, environment=local_env_vars, remove=rm_flag)
-        
+        run_kwargs = {
+            "image": image,
+            "command": container_cmd,
+            "detach": True,
+            "environment": local_env_vars,
+            "remove": rm_flag,
+            "network": "wave_default"  # added network parameter
+        }
+
+        # Add container name if specified
+        if container_name:
+            run_kwargs["name"] = container_name
+            print(f"Using container name: {container_name}")
+
+        container = client.containers.run(**run_kwargs)
+
         # Stream logs from the container
         logs = ""
         for log in container.logs(stream=True):
@@ -78,10 +101,13 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
         print(f"Error executing docker command: {e}")
         return f"Error executing docker command: {e}"
 
-def stream_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None):
+def stream_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None, container_name=None):
     print(f"Streaming docker command: {docker_command}")
     try:
-        parts = docker_command.split()
+        parts = shlex.split(docker_command)  # use shlex.split for proper argument parsing
+        # Remove leading "docker" token if provided
+        if parts and parts[0].lower() == "docker":
+            parts = parts[1:]
         if not parts:
             yield "Empty docker command"
             return
@@ -121,6 +147,11 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
             if token == "--rm":
                 rm_flag = True
                 continue
+            if token == "--name":
+                if i + 1 < len(parts) and not container_name:
+                    container_name = parts[i+1]
+                skip_next = True
+                continue
             cleaned_parts.append(token)
 
         if action != "run":
@@ -133,8 +164,23 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
         image = cleaned_parts[1]
         container_cmd = cleaned_parts[2:] if len(cleaned_parts) > 2 else None
 
-        yield f"Running container with image {image} and command {container_cmd}\n"
-        container = client.containers.run(image, command=container_cmd, detach=True, environment=local_env_vars, remove=rm_flag)
+        run_kwargs = {
+            "image": image,
+            "command": container_cmd,
+            "detach": True,
+            "environment": local_env_vars,
+            "remove": rm_flag,
+            "network": "wave_default"  # added network parameter
+        }
+
+        # Add container name if specified
+        if container_name:
+            run_kwargs["name"] = container_name
+            yield f"Running container with name '{container_name}' using image {image}\n"
+        else:
+            yield f"Running container with image {image} and command {container_cmd}\n"
+
+        container = client.containers.run(**run_kwargs)
 
         for log in container.logs(stream=True):
             yield log.decode("utf-8")

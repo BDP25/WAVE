@@ -9,9 +9,25 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(data => {
         const list = document.getElementById('containerList');
         list.innerHTML = '';
-        data.containers.forEach(container => {
+        // Sort containers: items with names starting with 'wave-' come first
+        const sorted = data.containers.sort((a, b) => {
+          const aWave = a.name.startsWith('wave-') ? 0 : 1;
+          const bWave = b.name.startsWith('wave-') ? 0 : 1;
+          return aWave !== bWave ? aWave - bWave : a.name.localeCompare(b.name);
+        });
+        sorted.forEach(container => {
           const li = document.createElement('li');
-          li.textContent = `${container.name} - Uptime: ${container.uptime}`;
+          li.classList.add('container-item');
+          if (container.name.startsWith('wave-')) {
+            li.classList.add('wave-container');
+          }
+          li.innerHTML = `
+            <div class="container-info">
+              <span class="container-name">${container.name}</span>
+              <span class="container-uptime">Uptime: ${container.uptime}</span>
+            </div>
+            <div class="status-indicator"></div>
+          `;
           list.appendChild(li);
         });
       })
@@ -21,12 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Function to fetch and display scheduled jobs
   function fetchJobs() {
     fetch(`${basePath}/api/jobs`)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
         const jobsList = document.getElementById('scheduledJobs');
         jobsList.innerHTML = '';
 
-        if (data.jobs.length === 0) {
+        if (!data.jobs || data.jobs.length === 0) {
           jobsList.innerHTML = '<p>No scheduled jobs</p>';
           return;
         }
@@ -70,7 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
           jobsList.appendChild(jobEl);
         });
       })
-      .catch(err => console.error('Error fetching jobs:', err));
+      .catch(err => {
+        console.error('Error fetching jobs:', err);
+        const jobsList = document.getElementById('scheduledJobs');
+        jobsList.innerHTML = '<p>Error loading scheduled jobs</p>';
+      });
   }
 
   // Function to delete a job
@@ -299,6 +324,201 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto refresh Running Containers section every 5 seconds
   setInterval(fetchContainers, 5000);
+
+  // Function to fetch and update queue status
+  function updateQueueStatus() {
+    fetch(`${basePath}/api/queue-status`)
+      .then(response => response.json())
+      .then(data => {
+        // Update Date Collector section
+        document.getElementById('dateQueueStats').textContent = data.date.stats;
+        const dateJobsList = document.getElementById('dateJobsList');
+        dateJobsList.innerHTML = '';
+        const dateRunning = data.date.running_jobs;
+        const dateUpcoming = data.date.upcoming_jobs;
+        const dateCombined = dateRunning.concat(dateUpcoming);
+        if (dateCombined.length === 0) {
+          const li = document.createElement('li');
+          li.textContent = 'Queue is currently empty';
+          li.className = 'empty-queue';
+          dateJobsList.appendChild(li);
+        } else {
+          dateCombined.forEach(job => {
+            const isRunning = dateRunning.some(r => r.docker_command === job.docker_command);
+            const li = document.createElement('li');
+            li.textContent = job.container_name ? job.container_name : job.docker_command;
+            li.className = isRunning ? 'running-job' : 'upcoming-job';
+            dateJobsList.appendChild(li);
+          });
+        }
+
+        // Update History Collector section
+        document.getElementById('historyQueueStats').textContent = data.history.stats;
+        const historyJobsList = document.getElementById('historyJobsList');
+        historyJobsList.innerHTML = '';
+        const historyRunning = data.history.running_jobs;
+        const historyUpcoming = data.history.upcoming_jobs;
+        const historyCombined = historyRunning.concat(historyUpcoming);
+        if (historyCombined.length === 0) {
+          const li = document.createElement('li');
+          li.textContent = 'Queue is currently empty';
+          li.className = 'empty-queue';
+          historyJobsList.appendChild(li);
+        } else {
+          historyCombined.forEach(job => {
+            const isRunning = historyRunning.some(r => r.docker_command === job.docker_command);
+            const li = document.createElement('li');
+            li.textContent = job.container_name ? job.container_name : job.docker_command;
+            li.className = isRunning ? 'running-job' : 'upcoming-job';
+            historyJobsList.appendChild(li);
+          });
+        }
+      })
+      .catch(err => console.error('Error fetching queue status:', err));
+  }
+
+  // Function to fetch and display completed jobs
+  function fetchCompletedJobs() {
+    const jobType = document.getElementById('jobTypeFilter').value;
+    fetch(`${basePath}/api/completed-jobs?type=${jobType}`)
+      .then(response => response.json())
+      .then(data => {
+        const jobsList = document.getElementById('completedJobsList');
+        jobsList.innerHTML = '';
+
+        if (!data.jobs || data.jobs.length === 0) {
+          jobsList.innerHTML = '<p class="no-jobs">No completed jobs found</p>';
+          document.getElementById('completedJobsCount').textContent = '(0)';
+          return;
+        }
+
+        document.getElementById('completedJobsCount').textContent = `(${data.jobs.length})`;
+
+        data.jobs.forEach(job => {
+          const jobEl = document.createElement('div');
+          jobEl.className = 'completed-job-item';
+
+          const header = document.createElement('div');
+          header.className = 'job-header';
+
+          const jobType = job.type ? `<span class="job-type">${job.type}</span>` : '';
+          const timestamp = new Date(job.completed_at).toLocaleString();
+
+          header.innerHTML = `
+            ${jobType}
+            <span class="job-timestamp">${timestamp}</span>
+          `;
+
+          const command = document.createElement('div');
+          command.className = 'job-command';
+          command.innerHTML = `<strong>Command:</strong> <code>${job.docker_command}</code>`;
+
+          const result = document.createElement('div');
+          result.className = 'job-result';
+          result.innerHTML = `<strong>Result:</strong><pre>${job.result || 'No output'}</pre>`;
+
+          // Add collapsible behavior
+          header.addEventListener('click', () => {
+            jobEl.classList.toggle('expanded');
+          });
+
+          jobEl.appendChild(header);
+          jobEl.appendChild(command);
+          jobEl.appendChild(result);
+
+          jobsList.appendChild(jobEl);
+        });
+      })
+      .catch(err => console.error('Error fetching completed jobs:', err));
+  }
+
+  // Add event listeners for completed jobs panel
+  const showCompletedBtn = document.getElementById('showCompletedJobs');
+  if (showCompletedBtn) {
+    showCompletedBtn.addEventListener('click', function() {
+      document.getElementById('completedJobsPanel').style.display = 'block';
+      showCompletedBtn.style.display = 'none'; // hide the show button when panel is open
+      fetchCompletedJobs();
+    });
+  }
+
+  const hideCompletedBtn = document.getElementById('hideCompletedJobs');
+  if (hideCompletedBtn) {
+    hideCompletedBtn.addEventListener('click', function() {
+      document.getElementById('completedJobsPanel').style.display = 'none';
+      if (showCompletedBtn) {
+        showCompletedBtn.style.display = 'block'; // show the show button when panel is closed
+      }
+    });
+  }
+
+    // Add listener for date collection form submission
+  const dateCollectionForm = document.getElementById('dateCollectionForm');
+  if (dateCollectionForm) {
+    dateCollectionForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const date = document.getElementById('collection_date').value;
+      if (!date) {
+        alert('Please select a date');
+        return;
+      }
+
+      const statusDiv = document.getElementById('dateCollectionStatus');
+      statusDiv.textContent = `Starting data collection for: ${date}...`;
+
+      fetch(`${basePath}/api/collect-date`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ date: date })
+      })
+      .then(response => {
+        if (!response.body) {
+          throw new Error('ReadableStream not yet supported in this browser.');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const outputEl = document.getElementById('commandOutput');
+        outputEl.textContent = `Running date collection for: ${date}\n`;
+
+        function read() {
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              statusDiv.textContent = `Completed data collection for: ${date}`;
+              fetchContainers(); // Refresh container list
+              return;
+            }
+            const text = decoder.decode(value);
+            outputEl.textContent += text;
+            outputEl.scrollTop = outputEl.scrollHeight; // Auto-scroll
+            read();
+          });
+        }
+        read();
+      })
+      .catch(err => {
+        console.error('Error collecting date data:', err);
+        statusDiv.textContent = `Error: ${err.message}`;
+      });
+    });
+  }
+
+  const refreshCompletedBtn = document.getElementById('refreshCompletedJobs');
+  if (refreshCompletedBtn) {
+    refreshCompletedBtn.addEventListener('click', fetchCompletedJobs);
+  }
+
+  const jobTypeFilter = document.getElementById('jobTypeFilter');
+  if (jobTypeFilter) {
+    jobTypeFilter.addEventListener('change', fetchCompletedJobs);
+  }
+
+  // Initial calls to load data
+  updateQueueStatus();
+
+  // Set up periodic refreshes
+  setInterval(updateQueueStatus, 5000);
+  setInterval(fetchContainers, 1000);
 
   // Initial fetch calls to load containers, jobs, and presets
   fetchContainers();

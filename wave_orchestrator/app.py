@@ -7,6 +7,7 @@ import docker
 from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
 import threading
+import time
 from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
 import json
@@ -21,6 +22,45 @@ app = Flask(__name__,
             template_folder='templates',
             static_folder='static',
             static_url_path=f'{APPLICATION_ROOT}/static')
+
+
+# New queue blueprint on a separate Flask instance for port 5025
+queue_bp = Blueprint('queue_bp', __name__)
+
+@queue_bp.route('/command', methods=['POST'])
+def add_queue_command():
+    data = request.json
+    command_text = data.get('command', '')
+    if command_text.startswith("collect-date"):
+        # Expected format: "collect-date <date>"
+        parts = command_text.split()
+        if len(parts) < 2:
+            return jsonify(error="Date is required"), 400
+        date_value = parts[1]
+        container_name = f"data-collector-{date_value}"
+        docker_command = f"run --rm --env-file .env data_collector --date {date_value}"
+        with date_lock:
+            date_queue.append({'docker_command': docker_command, 'container_name': container_name})
+        return jsonify(message="Date collector task queued"), 200
+    elif command_text.startswith("collect-history"):
+        # Expected format: "collect-history <title>"
+        parts = command_text.split(maxsplit=1)
+        if len(parts) < 2:
+            return jsonify(error="Title is required"), 400
+        title = parts[1]
+        # Format container name: lowercase and replace spaces with hyphens
+        formatted_title = title.lower().replace(' ', '-')
+        container_name = f"history-collector-{formatted_title}"
+        docker_command = f'run --rm --env-file .env history-collector --title "{title}" --lang "de"'
+        with history_lock:
+            history_queue.append({'docker_command': docker_command, 'container_name': container_name})
+        return jsonify(message="History collector task queued"), 200
+    else:
+        return jsonify(error="Unknown command"), 400
+
+# Create a new Flask instance for the queue endpoint
+queue_app = Flask(__name__)
+queue_app.register_blueprint(queue_bp)
 
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
@@ -56,45 +96,29 @@ except Exception as e:
     print(f"Error loading presets: {e}")
     command_presets = []
 
-# Create blueprint with URL prefix
-bp = Blueprint('bp', __name__, url_prefix=APPLICATION_ROOT)
+# Define blueprint for API endpoints
+bp = Blueprint('bp', __name__, static_folder='static')
 
 @bp.before_request
 def require_login():
-    # Allow access to login and static routes without authentication
-    if request.endpoint in ('bp.login', 'static'):
-        return None
+    # Allow login and logout routes to be accessed without login
+    if request.endpoint in ('bp.login', 'bp.logout', 'bp.static'):
+        return
     if not session.get('logged_in'):
         return redirect(url_for('bp.login'))
 
-@bp.route('/api/execute', methods=['POST'])
-def execute_command_immediately():
+@bp.route('/api/collect-date', methods=['POST'])
+def collect_date():
     data = request.json
-    docker_command = data.get('docker_command', '')
-    env_file = data.get('env_file')
-    env_vars = None
-    if env_file:
-        file_path = os.path.join(env_folder, env_file)
-        if os.path.exists(file_path):
-            try:
-                env_vars = {}
-                with open(file_path) as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or line.startswith("#"):
-                            continue
-                        if '=' in line:
-                            key, value = line.split('=', 1)
-                            env_vars[key.strip()] = value.strip()
-            except Exception as e:
-                return jsonify(error=f"Failed to load env file: {str(e)}"), 500
-        else:
-            return jsonify(error="Env file not found"), 404
-
-    return Response(
-        stream_with_context(stream_docker_command(client, None, docker_command, None, env_vars)),
-        mimetype='text/plain'
-    )
+    date = data.get('date')
+    if not date:
+        return jsonify(error="Date is required"), 400
+    formatted_date = date.replace('/', '-')
+    container_name = f"data-collector-{date}"
+    docker_command = f'run --rm --env-file .env --name {container_name} data_collector --date "{date}"'
+    with date_lock:
+        date_queue.append({'docker_command': docker_command, 'container_name': container_name})
+    return jsonify(message="Date collector task queued"), 200
 
 @bp.route('/api/presets', methods=['GET'])
 def get_presets():
@@ -279,12 +303,152 @@ def logout():
 def index():
     return render_template('index.html')
 
-# Register blueprint
-app.register_blueprint(bp)
+@bp.route('/api/queue-status', methods=['GET'])
+def queue_status():
+    global date_queue, date_running_jobs, date_completed, history_queue, history_running_jobs, history_completed
+    return jsonify({
+        "date": {
+            "stats": f"Pending: {len(date_queue)} Running: {len(date_running_jobs)} Completed: {len(date_completed)}",
+            "running_jobs": date_running_jobs,
+            "upcoming_jobs": date_queue
+        },
+        "history": {
+            "stats": f"Pending: {len(history_queue)} Running: {len(history_running_jobs)} Completed: {len(history_completed)}",
+            "running_jobs": history_running_jobs,
+            "upcoming_jobs": history_queue
+        }
+    })
 
+@bp.route('/api/jobs', methods=['GET'])
+def get_jobs():
+    jobs_list = []
+    for job_id, job_info in scheduled_jobs.items():
+        jobs_list.append({
+            'id': job_id,
+            'docker_command': job_info.get('docker_command', ''),
+            'next_run': job_info.get('next_run', ''),
+            'chain_command': job_info.get('chain_command', '')
+        })
+    return jsonify(jobs=jobs_list)
+
+# New global queues and concurrency controls
+date_queue = []
+history_queue = []
+max_concurrency = 3
+date_lock = threading.Lock()
+history_lock = threading.Lock()
+date_running = 0
+history_running = 0
+# New running job lists
+date_running_jobs = []
+history_running_jobs = []
+# Completed jobs lists remain unchanged
+date_completed = []
+history_completed = []
+MAX_COMPLETED_HISTORY = 100
+
+# New functions to process each queue
+def process_date_queue():
+    global date_running, date_running_jobs
+    while True:
+        with date_lock:
+            if date_queue and date_running < max_concurrency:
+                task = date_queue.pop(0)
+                date_running += 1
+                date_running_jobs.append(task)
+            else:
+                task = None
+        if task:
+            def run_task(task=task):
+                global date_running, date_running_jobs
+                cmd = task['docker_command']
+                print(f"Processing date task: {cmd}")
+                result = execute_docker_command(client, None, cmd)
+                with date_lock:
+                    date_running -= 1
+                    if task in date_running_jobs:
+                        date_running_jobs.remove(task)
+                    date_completed.append({
+                        'docker_command': cmd,
+                        'result': result,
+                        'completed_at': datetime.datetime.now().isoformat()
+                    })
+                    if len(date_completed) > MAX_COMPLETED_HISTORY:
+                        date_completed.pop(0)
+            threading.Thread(target=run_task, daemon=True).start()
+        time.sleep(1)
+
+def process_history_queue():
+    global history_running, history_running_jobs
+    while True:
+        with history_lock:
+            if history_queue and history_running < max_concurrency:
+                task = history_queue.pop(0)
+                history_running += 1
+                history_running_jobs.append(task)
+            else:
+                task = None
+        if task:
+            def run_task(task=task):
+                global history_running, history_running_jobs
+                cmd = task['docker_command']
+                print(f"Processing history task: {cmd}")
+                result = execute_docker_command(client, None, cmd)
+                with history_lock:
+                    history_running -= 1
+                    if task in history_running_jobs:
+                        history_running_jobs.remove(task)
+                    history_completed.append({
+                        'docker_command': cmd,
+                        'result': result,
+                        'completed_at': datetime.datetime.now().isoformat()
+                    })
+                    if len(history_completed) > MAX_COMPLETED_HISTORY:
+                        history_completed.pop(0)
+            threading.Thread(target=run_task, daemon=True).start()
+        time.sleep(1)
+
+# Add new endpoint to get detailed completed jobs
+@bp.route('/api/completed-jobs', methods=['GET'])
+def get_completed_jobs():
+    job_type = request.args.get('type', 'all')
+    limit = int(request.args.get('limit', MAX_COMPLETED_HISTORY))
+
+    if job_type == 'date':
+        # Return only date jobs, most recent first
+        return jsonify({"jobs": date_completed[-limit:][::-1]})
+    elif job_type == 'history':
+        # Return only history jobs, most recent first
+        return jsonify({"jobs": history_completed[-limit:][::-1]})
+    else:
+        # Return all jobs, most recent first from both queues
+        all_jobs = []
+        for job in date_completed[-limit:]:
+            job_copy = job.copy()
+            job_copy['type'] = 'date'
+            all_jobs.append(job_copy)
+        for job in history_completed[-limit:]:
+            job_copy = job.copy()
+            job_copy['type'] = 'history'
+            all_jobs.append(job_copy)
+        # Sort all jobs by completed_at, descending
+        all_jobs.sort(key=lambda x: x['completed_at'], reverse=True)
+        return jsonify({"jobs": all_jobs[:limit]})
+
+# Register blueprint with application root prefix
+app.register_blueprint(bp, url_prefix=APPLICATION_ROOT)
 # Start Docker event monitoring using utils function
 threading.Thread(target=monitor_docker_events, args=(client, chained_containers), daemon=True).start()
 
 if __name__ == "__main__":
+    # Start queue processing threads
+    threading.Thread(target=process_date_queue, daemon=True).start()
+    threading.Thread(target=process_history_queue, daemon=True).start()
+
+    # Start the queue endpoint on port 5025 in a separate thread
+    def run_queue_app():
+        queue_app.run(host='0.0.0.0', port=5025, debug=False, use_reloader=False)
+    threading.Thread(target=run_queue_app, daemon=True).start()
+
     print(f"Flask app running on {DOMAIN} with prefix '{APPLICATION_ROOT}'")
     app.run(host='0.0.0.0', port=5050, debug=False)

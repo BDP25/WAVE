@@ -5,6 +5,7 @@ services:
       - .env
     ports:
       - "5050:5050"
+      - "5025:5025"  # added mapping for the queue API
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:

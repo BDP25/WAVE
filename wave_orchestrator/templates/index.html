@@ -3,21 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <title>WAVE Orchestrator Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('bp.static', filename='style.css') }}">
+  <script src="{{ url_for('bp.static', filename='app.js') }}"></script>
 </head>
 <body>
   <a href="{{ url_for('bp.logout') }}" class="logout-btn">Logout</a>
   <h1>WAVE Orchestrator Dashboard</h1>
+  <!-- Replaced New Menu Bar with Hamburger Menu -->
+  <div id="hamburgerContainer">
+    <span id="hamburgerIcon" class="hamburger-menu">&#9776;</span>
+  </div>
+  <div id="sideMenu" class="side-menu">
+    <a href="#" onclick="togglePanel('dateCollectionPanel');">Date Collection</a>
+    <a href="#" onclick="togglePanel('immediateCommandPanel');">Run Docker Command</a>
+    <a href="#" onclick="togglePanel('jobSchedulePanel');">Schedule Job</a>
+    <a href="#" onclick="togglePanel('envPanel');">Edit .env File</a>
+  </div>
 
   <div class="dashboard-container">
+    <!-- Date Collection Panel (default hidden) -->
+    <div id="dateCollectionPanel" class="dashboard-panel" style="display:none;">
+      <h2>Date Collection</h2>
+      <form id="dateCollectionForm" class="command-form">
+        <div class="form-group">
+          <label for="collection_date">Select Date:</label>
+          <input type="date" id="collection_date" name="collection_date" required>
+        </div>
+        <button type="submit" class="execute-btn">Collect Data for Date</button>
+      </form>
+      <div id="dateCollectionStatus" class="status-message"></div>
+    </div>
+
+    <!-- Running Containers Panel (unchanged) -->
     <div class="dashboard-panel">
       <h2>Running Containers</h2>
       <ul id="containerList" class="container-list"></ul>
       <button id="refreshContainers" class="refresh-btn">Refresh</button>
     </div>
 
-    <div class="dashboard-panel">
+    <!-- Run Docker Command Panel (default hidden) -->
+    <div id="immediateCommandPanel" class="dashboard-panel" style="display:none;">
       <h2>Run Docker Command Now</h2>
       <form id="immediateCommandForm" class="command-form">
         <div class="form-group">
@@ -48,7 +73,8 @@
       </div>
     </div>
 
-    <div class="dashboard-panel">
+    <!-- Schedule a Docker Job Panel - now hidden by default -->
+    <div id="jobSchedulePanel" class="dashboard-panel" style="display:none;">
       <h2>Schedule a Docker Job</h2>
       <form id="jobForm" class="job-form">
         <!-- Job scheduling form -->
@@ -71,8 +97,8 @@
       </div>
     </div>
 
-    <!-- New .env Editor Panel -->
-    <div class="dashboard-panel">
+    <!-- .env Editor Panel - now hidden by default -->
+    <div id="envPanel" class="dashboard-panel" style="display:none;">
       <h2>Edit .env File</h2>
       <form id="envForm" class="env-form">
         <div class="form-group">
@@ -89,13 +115,88 @@
         </div>
       </form>
     </div>
+
+    <!-- ...existing dashboard panels (Queue Status, Docker Command Output, etc.)... -->
+
   </div> <!-- end of dashboard-container -->
+
+  <!-- Updated Queue Status Panel -->
+  <div class="dashboard-panel">
+    <h2>Queue Status</h2>
+    <div class="queue-status-container">
+      <div class="queue-section">
+        <h3 style="margin-bottom: 0;">Date Collector</h3>
+        <p id="dateQueueStats" style="margin-top: 0;"></p>
+        <div>
+          <ul id="dateJobsList"></ul>
+        </div>
+      </div>
+      <div class="queue-section">
+        <h3 style="margin-bottom: 0;">History Collector</h3>
+        <p id="historyQueueStats" style="margin-top: 0;"></p>
+        <div>
+          <ul id="historyJobsList"></ul>
+        </div>
+      </div>
+    </div>
+    <button id="showCompletedJobs" class="action-btn">Show Completed Jobs</button>
+    <div id="completedJobsPanel" style="display:none; margin-top:20px;">
+      <div class="completed-jobs-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0;">Completed Jobs <span id="completedJobsCount"></span></h2>
+        <button id="hideCompletedJobs" class="close-btn">Close</button>
+      </div>
+      <div class="filter-controls">
+        <select id="jobTypeFilter">
+          <option value="all">All Jobs</option>
+          <option value="date">Date Jobs</option>
+          <option value="history">History Jobs</option>
+        </select>
+        <button id="refreshCompletedJobs" class="refresh-btn">Refresh</button>
+      </div>
+      <div id="completedJobsList" class="completed-jobs-list">
+        <!-- Completed jobs will be listed here -->
+      </div>
+    </div>
+  </div>
 
   <!-- New Docker Command Output Panel -->
   <div class="dashboard-panel">
     <h2>Docker Command Output</h2>
     <pre id="commandOutput" class="command-output"></pre>
   </div>
+
+  <!-- Inline script for toggling side menu -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const hamburgerIcon = document.getElementById('hamburgerIcon');
+      const sideMenu = document.getElementById('sideMenu');
+
+      // Toggle menu when hamburger icon is clicked
+      hamburgerIcon.addEventListener('click', (e) => {
+        sideMenu.style.display = (sideMenu.style.display === 'block') ? 'none' : 'block';
+        e.stopPropagation(); // Prevent this click from being detected by the document
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener('click', (e) => {
+        // Check if click is outside both the hamburger icon and the menu
+        if (!hamburgerIcon.contains(e.target) && !sideMenu.contains(e.target)) {
+          sideMenu.style.display = 'none';
+        }
+      });
+    });
+  </script>
+  <script>
+    function togglePanel(panelId) {
+      const panel = document.getElementById(panelId);
+      if (panel.style.display === 'none' || panel.style.display === '') {
+        panel.style.display = 'block';
+      } else {
+        panel.style.display = 'none';
+      }
+    }
+    // All panels from the hamburger menu are now hidden by default in the HTML
+  </script>
 
 </body>
 </html>
