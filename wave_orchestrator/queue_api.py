@@ -60,7 +60,8 @@ def add_date_job():
         return jsonify(error="Date is required"), 400
     job_id = str(uuid.uuid4())
     container_name = f"data-collector-{date_val.strip().replace(' ', '-')}"
-    docker_command = f'run --rm --env-file .env --name {container_name} data_collector --date "{date_val}"'
+    # Updated command to include --network wave_default
+    docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data_collector --date "{date_val}"'
     date_queue.append({'id': job_id, 'command': docker_command, 'container_name': container_name})
     return jsonify(message="Job added to date collector queue", job_id=job_id)
 
@@ -72,10 +73,10 @@ def add_history_job():
     if not title:
         return jsonify(error="Title is required"), 400
     job_id = str(uuid.uuid4())
-    # Format container name: lowercase and replace spaces with hyphens
     formatted_title = title.lower().replace(' ', '-')
     container_name = f"history-collector-{formatted_title}"
-    docker_command = f'run --rm --env-file .env history-collector --title "{title}" --lang "{lang}"'
+    # Updated command to include --name and --network wave_default
+    docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default history-collector --title "{title}" --lang "{lang}"'
     history_queue.append({'id': job_id, 'command': docker_command, 'container_name': container_name})
     return jsonify(message="Job added to history collector queue", job_id=job_id)
 

@@ -73,7 +73,27 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
         image = cleaned_parts[1]
         container_cmd = cleaned_parts[2:] if len(cleaned_parts) > 2 else None
 
-        print(f"Running container with image {image} and command {container_cmd}")
+        # New logic to set container name for known images if not provided
+        if not container_name:
+            if image == "data_collector" and container_cmd:
+                # Look for '--date'
+                for i, token in enumerate(container_cmd):
+                    if token == "--date" and i+1 < len(container_cmd):
+                        date_value = container_cmd[i+1].replace('"','')
+                        container_name = f"data-collector-{date_value}"
+                        break
+            elif image == "history-collector" and container_cmd:
+                # Look for '--title'
+                for i, token in enumerate(container_cmd):
+                    if token == "--title" and i+1 < len(container_cmd):
+                        title = container_cmd[i+1].replace('"','')
+                        formatted_title = title.lower().replace(' ', '-')
+                        container_name = f"history-collector-{formatted_title}"
+                        break
+
+        # Auto-generate container name if still not defined
+        if not container_name:
+            container_name = "container-" + str(uuid.uuid4())[:8]
         run_kwargs = {
             "image": image,
             "command": container_cmd,
@@ -82,11 +102,8 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
             "remove": rm_flag,
             "network": "wave_default"  # added network parameter
         }
-
-        # Add container name if specified
-        if container_name:
-            run_kwargs["name"] = container_name
-            print(f"Using container name: {container_name}")
+        run_kwargs["name"] = container_name
+        print(f"Using container name: {container_name}")
 
         container = client.containers.run(**run_kwargs)
 
@@ -164,21 +181,37 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
         image = cleaned_parts[1]
         container_cmd = cleaned_parts[2:] if len(cleaned_parts) > 2 else None
 
+        # New logic to set container name for known images if not provided
+        if not container_name:
+            if image == "data_collector" and container_cmd:
+                for i, token in enumerate(container_cmd):
+                    if token == "--date" and i+1 < len(container_cmd):
+                        date_value = container_cmd[i+1].replace('"','')
+                        container_name = f"data-collector-{date_value}"
+                        break
+            elif image == "history-collector" and container_cmd:
+                for i, token in enumerate(container_cmd):
+                    if token == "--title" and i+1 < len(container_cmd):
+                        title = container_cmd[i+1].replace('"','')
+                        formatted_title = title.lower().replace(' ', '-')
+                        container_name = f"history-collector-{formatted_title}"
+                        break
+
+        if not container_name:
+            container_name = "container-" + str(uuid.uuid4())[:8]
+            yield f"Auto-generated container name: {container_name}\n"
+        else:
+            yield f"Using container name: {container_name}\n"
+
         run_kwargs = {
             "image": image,
             "command": container_cmd,
             "detach": True,
             "environment": local_env_vars,
             "remove": rm_flag,
-            "network": "wave_default"  # added network parameter
+            "network": "wave_default"
         }
-
-        # Add container name if specified
-        if container_name:
-            run_kwargs["name"] = container_name
-            yield f"Running container with name '{container_name}' using image {image}\n"
-        else:
-            yield f"Running container with image {image} and command {container_cmd}\n"
+        run_kwargs["name"] = container_name
 
         container = client.containers.run(**run_kwargs)
 

@@ -5,6 +5,7 @@ load_dotenv()
 from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_for, render_template, Blueprint, Response, stream_with_context
 import docker
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger  # <-- new import
 import datetime
 import threading
 import time
@@ -12,6 +13,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
 import json
 from utils import execute_docker_command, monitor_docker_events, stream_docker_command
+import re  # added for regex matching
 
 # Load environment variables
 DOMAIN = os.getenv('DOMAIN', 'localhost:5000')
@@ -96,6 +98,61 @@ except Exception as e:
     print(f"Error loading presets: {e}")
     command_presets = []
 
+# Add persistent jobs file path
+SCHEDULED_JOBS_FILE = os.path.join("/data", "scheduled_jobs.json")
+
+# New helper to persist scheduled jobs
+def persist_scheduled_jobs():
+    persistent_jobs = {}
+    for job_id, info in scheduled_jobs.items():
+        persistent_jobs[job_id] = {
+            'job_id': job_id,
+            'docker_command': info['docker_command'],
+            'chain_command': info.get('chain_command', ''),
+            'cron': info.get('cron'),
+            'job_name': info.get('job_name'),
+            'run_at': info.get('run_at'),
+            'env_vars': info.get('env_vars')
+        }
+    try:
+        with open(SCHEDULED_JOBS_FILE, 'w') as f:
+            json.dump(persistent_jobs, f)
+    except Exception as e:
+        print(f"Error persisting scheduled jobs: {e}")
+
+# New helper to load and reschedule persisted jobs
+def load_scheduled_jobs():
+    if os.path.exists(SCHEDULED_JOBS_FILE):
+        try:
+            with open(SCHEDULED_JOBS_FILE, 'r') as f:
+                persistent_jobs = json.load(f)
+            for job_id, job_data in persistent_jobs.items():
+                if job_data.get('cron'):
+                    trigger = CronTrigger.from_crontab(job_data['cron'])
+                elif job_data.get('run_at'):
+                    run_at = datetime.datetime.fromisoformat(job_data['run_at'])
+                    if run_at < datetime.datetime.now():
+                        run_at = datetime.datetime.now()
+                    trigger = run_at
+                else:
+                    continue
+                job = scheduler.add_job(
+                    execute_docker_command,
+                    trigger=trigger,
+                    args=[client, job_id, job_data['docker_command'], job_data.get('chain_command', ''), job_data.get('env_vars')]
+                )
+                scheduled_jobs[job_id] = {
+                    'job': job,
+                    'next_run': trigger.__str__(),
+                    'docker_command': job_data['docker_command'],
+                    'cron': job_data.get('cron'),
+                    'job_name': job_data.get('job_name'),
+                    'run_at': job_data.get('run_at'),
+                    'env_vars': job_data.get('env_vars')
+                }
+        except Exception as e:
+            print(f"Error loading scheduled jobs: {e}")
+
 # Define blueprint for API endpoints
 bp = Blueprint('bp', __name__, static_folder='static')
 
@@ -115,7 +172,8 @@ def collect_date():
         return jsonify(error="Date is required"), 400
     formatted_date = date.replace('/', '-')
     container_name = f"data-collector-{date}"
-    docker_command = f'run --rm --env-file .env --name {container_name} data_collector --date "{date}"'
+    # Updated command to include --network wave_default
+    docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data_collector --date "{date}"'
     with date_lock:
         date_queue.append({'docker_command': docker_command, 'container_name': container_name})
     return jsonify(message="Date collector task queued"), 200
@@ -212,6 +270,8 @@ def schedule_job():
     docker_command = data.get('docker_command', '')
     chain_command = data.get('chain_command')
     delay = data.get('delay', 0)
+    cron_expr = data.get('cron')  # new field for cron expression
+    job_name = data.get('job_name', 'Unnamed Job')
     env_file = data.get('env_file')
     env_vars = None
     if env_file:
@@ -234,16 +294,48 @@ def schedule_job():
 
     if not docker_command:
         return jsonify(error="docker_command is required"), 400
+
+    # Modify command for data_collector/history-collector if necessary
+    if docker_command.startswith('run --rm --env-file .env data_collector') and "--name" not in docker_command:
+        m = re.search(r'--date\s+"([^"]+)"', docker_command)
+        date_str = m.group(1) if m else "latest"
+        container_name = f"data-collector-{date_str}"
+        docker_command = docker_command.replace("data_collector", f'--name {container_name} --network wave_default data_collector', 1)
+    elif docker_command.startswith('run --rm --env-file .env history-collector') and "--name" not in docker_command:
+        m = re.search(r'--title\s+"([^"]+)"', docker_command)
+        title = m.group(1) if m else "unknown"
+        formatted_title = title.lower().replace(' ', '-')
+        container_name = f"history-collector-{formatted_title}"
+        docker_command = docker_command.replace("history-collector", f'--name {container_name} --network wave_default history-collector', 1)
+
     job_id = str(uuid.uuid4())
-    run_time = datetime.datetime.now() + datetime.timedelta(seconds=delay)
+    if cron_expr:
+        try:
+            trigger = CronTrigger.from_crontab(cron_expr)
+            run_at_str = None
+        except Exception as e:
+            return jsonify(error=f"Invalid cron expression: {e}"), 400
+    else:
+        run_time = datetime.datetime.now() + datetime.timedelta(seconds=delay)
+        trigger = run_time  # use date trigger
+        run_at_str = run_time.isoformat()
+
     job = scheduler.add_job(
         execute_docker_command,
-        trigger='date',
-        run_date=run_time,
+        trigger=trigger,
         args=[client, job_id, docker_command, chain_command, env_vars]
     )
-    scheduled_jobs[job_id] = {'job': job, 'next_run': run_time.isoformat(), 'docker_command': docker_command}
-    return jsonify(message="Job scheduled", job_id=job_id, run_at=run_time.isoformat())
+    scheduled_jobs[job_id] = {
+        'job': job,
+        'next_run': trigger.__str__(),
+        'docker_command': docker_command,
+        'cron': cron_expr if cron_expr else None,
+        'job_name': job_name,
+        'run_at': run_at_str,
+        'env_vars': env_vars
+    }
+    persist_scheduled_jobs()
+    return jsonify(message="Job scheduled", job_id=job_id, run_at=trigger.__str__())
 
 @bp.route('/api/jobs/<job_id>', methods=['DELETE'])
 def delete_job(job_id):
@@ -251,6 +343,7 @@ def delete_job(job_id):
         job_info = scheduled_jobs[job_id]
         job_info['job'].remove()
         del scheduled_jobs[job_id]
+        persist_scheduled_jobs()
         return jsonify(message="Job deleted")
     return jsonify(error="Job not found"), 404
 
@@ -327,7 +420,8 @@ def get_jobs():
             'id': job_id,
             'docker_command': job_info.get('docker_command', ''),
             'next_run': job_info.get('next_run', ''),
-            'chain_command': job_info.get('chain_command', '')
+            'chain_command': job_info.get('chain_command', ''),
+            'job_name': job_info.get('job_name', 'Unnamed Job')  # include job name
         })
     return jsonify(jobs=jobs_list)
 
@@ -450,5 +544,7 @@ if __name__ == "__main__":
         queue_app.run(host='0.0.0.0', port=5025, debug=False, use_reloader=False)
     threading.Thread(target=run_queue_app, daemon=True).start()
 
+    # Load persisted scheduled jobs before starting
+    load_scheduled_jobs()
     print(f"Flask app running on {DOMAIN} with prefix '{APPLICATION_ROOT}'")
     app.run(host='0.0.0.0', port=5050, debug=False)

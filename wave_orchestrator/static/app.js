@@ -252,27 +252,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Add listener for job scheduling form submission
-  document.getElementById('jobForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const command = document.getElementById('job_command').value;
-    const delay = parseInt(document.getElementById('job_delay').value, 10);
-    const chain = document.getElementById('job_chain').value || null;
-    fetch(`${basePath}/api/schedule`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ docker_command: command, delay: delay, chain_command: chain })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.error) {
-        alert(data.error);
-      } else {
-        alert(data.message);
-        fetchJobs();
-      }
-    })
-    .catch(err => console.error('Error scheduling job:', err));
-  });
+document.getElementById('jobForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const jobName = document.getElementById('job_name').value; // new field
+  const command = document.getElementById('job_command').value;
+  const delay = parseInt(document.getElementById('job_delay').value, 10);
+  const chain = document.getElementById('job_chain').value || null;
+  const cron = document.getElementById('job_cron').value || null;
+  fetch(`${basePath}/api/schedule`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ docker_command: command, delay: delay, chain_command: chain, cron: cron, job_name: jobName }) // include job_name
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      alert(data.error);
+    } else {
+      alert(data.message);
+      fetchJobs();
+    }
+  })
+  .catch(err => console.error('Error scheduling job:', err));
+});
 
   // Add listener for .env editor form submission
   const envForm = document.getElementById('envForm');

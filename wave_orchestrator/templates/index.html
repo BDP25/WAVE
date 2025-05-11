@@ -79,12 +79,20 @@
       <form id="jobForm" class="job-form">
         <!-- Job scheduling form -->
         <div class="form-group">
+          <label for="job_name">Job Name:</label>
+          <input type="text" id="job_name" name="job_name" placeholder="daily Job" required>
+        </div>
+        <div class="form-group">
           <label for="job_command">Docker Command:</label>
           <input type="text" id="job_command" name="job_command" placeholder="run nginx:latest" required>
         </div>
         <div class="form-group">
           <label for="job_delay">Delay (in seconds):</label>
           <input type="number" id="job_delay" name="job_delay" placeholder="0" required>
+        </div>
+        <div class="form-group">
+          <label for="job_cron">Cron Expression (optional):</label>
+          <input type="text" id="job_cron" name="cron" placeholder="e.g. 0 * * * *">
         </div>
         <div class="form-group">
           <label for="job_chain">Chain Command (Optional):</label>
@@ -171,17 +179,16 @@
       const hamburgerIcon = document.getElementById('hamburgerIcon');
       const sideMenu = document.getElementById('sideMenu');
 
-      // Toggle menu when hamburger icon is clicked
+      // Toggle sidebar on hamburger icon click
       hamburgerIcon.addEventListener('click', (e) => {
-        sideMenu.style.display = (sideMenu.style.display === 'block') ? 'none' : 'block';
-        e.stopPropagation(); // Prevent this click from being detected by the document
+        sideMenu.classList.toggle('open');
+        e.stopPropagation();
       });
 
-      // Close menu when clicking outside
+      // Close sidebar when clicking outside it
       document.addEventListener('click', (e) => {
-        // Check if click is outside both the hamburger icon and the menu
         if (!hamburgerIcon.contains(e.target) && !sideMenu.contains(e.target)) {
-          sideMenu.style.display = 'none';
+          sideMenu.classList.remove('open');
         }
       });
     });
@@ -189,11 +196,7 @@
   <script>
     function togglePanel(panelId) {
       const panel = document.getElementById(panelId);
-      if (panel.style.display === 'none' || panel.style.display === '') {
-        panel.style.display = 'block';
-      } else {
-        panel.style.display = 'none';
-      }
+      panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
     }
     // All panels from the hamburger menu are now hidden by default in the HTML
   </script>
