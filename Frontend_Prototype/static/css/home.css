@@ -17,7 +17,7 @@
 
 
 /* Underline title in wiki article in main container */
-#wiki-article h2 {
+#wiki-article l2 {
     text-decoration: underline;
     margin-bottom: 20px;
 }
@@ -389,7 +389,8 @@
   cursor: pointer;
 }
 
-
-
-
+/* Force white color for the Cluster Summary heading */
+#wiki-article #summary-section h3 {
+    color: white !important;
+}
 

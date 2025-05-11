@@ -186,3 +186,9 @@ a:hover {
   margin-top: 0.3em;
   text-align: center;
 }
+
+/* Override heading color for Wikipedia article */
+#wiki-article h2,
+#wiki-article h3 {
+    color: #202122 !important;  /* Set the desired color */
+}
