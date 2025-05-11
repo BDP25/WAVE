@@ -239,18 +239,22 @@ def update_article_history(article_title, language_code, db_config=None):
             ORDER BY timestamp ASC
         """, (article_id,))
         revisions = cursor.fetchall()  # Each row: (revid, content, user_name, timestamp)
+        # Process revisions in batches to conserve memory
+        BATCH_SIZE = 50
         prev_content = None
-        for rev in revisions:
-            current_revid, current_content, current_user, _ = rev
-            if prev_content is None:
-                diff_result = current_content
-            else:
-                diff_result = compute_diff(prev_content, current_content, current_user)
-            cursor.execute("""
-                UPDATE history SET diff_content = %s
-                WHERE article_id = %s AND revid = %s
-            """, (diff_result, article_id, current_revid))
-            prev_content = current_content
+        for i in range(0, len(revisions), BATCH_SIZE):
+            batch = revisions[i:i + BATCH_SIZE]
+            for rev in batch:
+                current_revid, current_content, current_user, _ = rev
+                if prev_content is None:
+                    diff_result = current_content
+                else:
+                    diff_result = compute_diff(prev_content, current_content, current_user)
+                cursor.execute("""
+                    UPDATE history SET diff_content = %s
+                    WHERE article_id = %s AND revid = %s
+                """, (diff_result, article_id, current_revid))
+                prev_content = current_content  # Carry over to the next batch
 
         conn.commit()
         cursor.close()
