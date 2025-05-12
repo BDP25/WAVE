@@ -24,8 +24,7 @@ def create_schema(db_params=None):
             "port": "5432"
         }
 
-    # Define the SQL commands for creating tables
-    # TODO summary
+    # Define the SQL commands for creating tablesy
     commands = [
         """
         CREATE TABLE IF NOT EXISTS Cluster (
@@ -42,8 +41,8 @@ def create_schema(db_params=None):
             pubtime TIMESTAMP,
             medium_name VARCHAR(255),
             head TEXT,
-            article_link TEXT,
             content TEXT,
+            article_link TEXT,
             CONSTRAINT fk_cluster
                 FOREIGN KEY(cluster_id) 
                 REFERENCES Cluster(cluster_id)
@@ -120,8 +119,8 @@ def load_data(json_input, db_params):
         for artikel in artikel_records:
             cur.execute(
                 """
-                INSERT INTO Artikel (article_id, cluster_id, pubtime, medium_name, head, article_link)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO Artikel (article_id, cluster_id, pubtime, medium_name, head, content, article_link)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (article_id) DO NOTHING;
                 """,
                 (
@@ -130,6 +129,7 @@ def load_data(json_input, db_params):
                     artikel["pubtime"],
                     artikel["medium_name"],
                     artikel["head"],
+                    artikel["content"],
                     artikel["article_link"]
                 )
             )
