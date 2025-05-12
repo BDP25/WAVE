@@ -58,6 +58,9 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
                     container_name = parts[i+1]
                 skip_next = True
                 continue
+            if token == "--network":   # NEW: skip the network flag and its value
+                skip_next = True
+                continue
             cleaned_parts.append(token)
 
         # Ensure action is still "run"
@@ -75,7 +78,7 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
 
         # New logic to set container name for known images if not provided
         if not container_name:
-            if image == "data_collector" and container_cmd:
+            if image == "data-collector" and container_cmd:
                 # Look for '--date'
                 for i, token in enumerate(container_cmd):
                     if token == "--date" and i+1 < len(container_cmd):
@@ -169,6 +172,9 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
                     container_name = parts[i+1]
                 skip_next = True
                 continue
+            if token == "--network":   # NEW: skip the network token and its value
+                skip_next = True
+                continue
             cleaned_parts.append(token)
 
         if action != "run":
@@ -183,7 +189,7 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
 
         # New logic to set container name for known images if not provided
         if not container_name:
-            if image == "data_collector" and container_cmd:
+            if image == "data-collector" and container_cmd:
                 for i, token in enumerate(container_cmd):
                     if token == "--date" and i+1 < len(container_cmd):
                         date_value = container_cmd[i+1].replace('"','')

@@ -98,6 +98,11 @@
           <label for="job_chain">Chain Command (Optional):</label>
           <input type="text" id="job_chain" name="job_chain" placeholder="run another_command">
         </div>
+        <div class="form-group">
+          <label for="job_recurring">Recurring Job:</label>
+          <input type="checkbox" id="job_recurring" name="job_recurring">
+          <span class="help-text">Check this box if the job should run repeatedly.</span>
+        </div>
         <button type="submit" class="schedule-btn">Schedule Job</button>
       </form>
       <div id="scheduledJobs" class="jobs-list">

@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request, send_from_directory, session, redirec
 import docker
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger  # <-- new import
+from apscheduler.triggers.date import DateTrigger  # NEW import
 import datetime
 import threading
 import time
@@ -40,7 +41,7 @@ def add_queue_command():
             return jsonify(error="Date is required"), 400
         date_value = parts[1]
         container_name = f"data-collector-{date_value}"
-        docker_command = f"run --rm --env-file .env data_collector --date {date_value}"
+        docker_command = f"run --rm --env-file .env data-collector --date {date_value}"
         with date_lock:
             date_queue.append({'docker_command': docker_command, 'container_name': container_name})
         return jsonify(message="Date collector task queued"), 200
@@ -173,7 +174,7 @@ def collect_date():
     formatted_date = date.replace('/', '-')
     container_name = f"data-collector-{date}"
     # Updated command to include --network wave_default
-    docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data_collector --date "{date}"'
+    docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data-collector --date "{date}"'
     with date_lock:
         date_queue.append({'docker_command': docker_command, 'container_name': container_name})
     return jsonify(message="Date collector task queued"), 200
@@ -264,14 +265,44 @@ def get_containers():
         containers_info.append({'name': container.name, 'uptime': uptime})
     return jsonify(containers=containers_info)
 
+
+def enqueue_collector_job(job_id, docker_command):
+    if docker_command.startswith('run --rm --env-file .env data-collector') and "--name" not in docker_command:
+        m = re.search(r'--date\s+"([^"]+)"', docker_command)
+        date_str = m.group(1) if m else "latest"
+        container_name = f"data-collector-{date_str}"
+        docker_command = docker_command.replace("data-collector", f'--name {container_name} --network wave_default data-collector', 1)
+        task = {'docker_command': docker_command, 'container_name': container_name, 'job_id': job_id}
+        with date_lock:
+            date_queue.append(task)
+        print(f"Enqueued data-collector job: {job_id}")
+    elif docker_command.startswith('run --rm --env-file .env history-collector') and "--name" not in docker_command:
+        m = re.search(r'--title\s+"([^"]+)"', docker_command)
+        title = m.group(1) if m else "unknown"
+        formatted_title = title.lower().replace(' ', '-')
+        container_name = f"history-collector-{formatted_title}"
+        docker_command = docker_command.replace("history-collector", f'--name {container_name} --network wave_default history-collector', 1)
+        task = {'docker_command': docker_command, 'container_name': container_name, 'job_id': job_id}
+        with history_lock:
+            history_queue.append(task)
+        print(f"Enqueued history-collector job: {job_id}")
+
+# Wrapper function to enqueue jobs at the scheduled time
+def scheduled_job_wrapper(job_id, docker_command, chain_command, env_vars):
+    if docker_command.startswith('run --rm --env-file .env data-collector') or docker_command.startswith('run --rm --env-file .env history-collector'):
+        enqueue_collector_job(job_id, docker_command)
+    else:
+        execute_docker_command(client, job_id, docker_command, chain_command, env_vars)
+
 @bp.route('/api/schedule', methods=['POST'])
 def schedule_job():
     data = request.json
     docker_command = data.get('docker_command', '')
     chain_command = data.get('chain_command')
     delay = data.get('delay', 0)
-    cron_expr = data.get('cron')  # new field for cron expression
+    cron_expr = data.get('cron')
     job_name = data.get('job_name', 'Unnamed Job')
+    recurring = data.get('recurring', False)  # NEW: Get recurring flag
     env_file = data.get('env_file')
     env_vars = None
     if env_file:
@@ -295,20 +326,25 @@ def schedule_job():
     if not docker_command:
         return jsonify(error="docker_command is required"), 400
 
-    # Modify command for data_collector/history-collector if necessary
-    if docker_command.startswith('run --rm --env-file .env data_collector') and "--name" not in docker_command:
+    # Ensure --name flag is added for data-collector jobs
+    if docker_command.startswith('run --rm --env-file .env data-collector') and "--name" not in docker_command:
         m = re.search(r'--date\s+"([^"]+)"', docker_command)
         date_str = m.group(1) if m else "latest"
         container_name = f"data-collector-{date_str}"
-        docker_command = docker_command.replace("data_collector", f'--name {container_name} --network wave_default data_collector', 1)
-    elif docker_command.startswith('run --rm --env-file .env history-collector') and "--name" not in docker_command:
-        m = re.search(r'--title\s+"([^"]+)"', docker_command)
-        title = m.group(1) if m else "unknown"
-        formatted_title = title.lower().replace(' ', '-')
-        container_name = f"history-collector-{formatted_title}"
-        docker_command = docker_command.replace("history-collector", f'--name {container_name} --network wave_default history-collector', 1)
+        docker_command = docker_command.replace("data-collector", f'--name {container_name} --network wave_default data-collector', 1)
 
     job_id = str(uuid.uuid4())
+    if cron_expr and cron_expr.startswith("cron["):
+        def get_val(key):
+            m = re.search(rf"{key}='([^']*)'", cron_expr)
+            val = m.group(1) if m else ""
+            return val.strip() if val.strip() else "*"
+        minute = get_val("minute")
+        hour = get_val("hour")
+        day = get_val("day")
+        month = get_val("month")
+        day_of_week = get_val("day_of_week")
+        cron_expr = f"{minute} {hour} {day} {month} {day_of_week}"
     if cron_expr:
         try:
             trigger = CronTrigger.from_crontab(cron_expr)
@@ -317,11 +353,22 @@ def schedule_job():
             return jsonify(error=f"Invalid cron expression: {e}"), 400
     else:
         run_time = datetime.datetime.now() + datetime.timedelta(seconds=delay)
-        trigger = run_time  # use date trigger
+        trigger = DateTrigger(run_date=run_time)
         run_at_str = run_time.isoformat()
 
+    # Wrapper to remove non-recurring jobs after first run
+    def job_wrapper(*args, **kwargs):
+        print(f"Executing job: {job_id}, Command: {docker_command}")
+        execute_docker_command(*args, **kwargs)
+        if not recurring:  # Remove job if not recurring
+            scheduler.remove_job(job_id)
+            scheduled_jobs.pop(job_id, None)
+            persist_scheduled_jobs()
+            print(f"Job {job_id} removed after first run.")
+
+    # Schedule the job
     job = scheduler.add_job(
-        execute_docker_command,
+        job_wrapper,
         trigger=trigger,
         args=[client, job_id, docker_command, chain_command, env_vars]
     )
@@ -332,9 +379,11 @@ def schedule_job():
         'cron': cron_expr if cron_expr else None,
         'job_name': job_name,
         'run_at': run_at_str,
-        'env_vars': env_vars
+        'env_vars': env_vars,
+        'recurring': recurring  # NEW: Store recurring flag
     }
     persist_scheduled_jobs()
+    print(f"Scheduled job: {job_id}, Command: {docker_command}, Next run: {trigger}")
     return jsonify(message="Job scheduled", job_id=job_id, run_at=trigger.__str__())
 
 @bp.route('/api/jobs/<job_id>', methods=['DELETE'])

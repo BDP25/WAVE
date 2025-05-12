@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
           jobInfo.className = 'job-info';
 
           const description = document.createElement('h3');
-          description.textContent = job.description || 'Unnamed Job';
+          description.textContent = job.job_name || 'Unnamed Job';
 
           const command = document.createElement('p');
           command.textContent = `Command: ${job.docker_command}`;
@@ -254,15 +254,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add listener for job scheduling form submission
 document.getElementById('jobForm').addEventListener('submit', function(e) {
   e.preventDefault();
-  const jobName = document.getElementById('job_name').value; // new field
+  const jobName = document.getElementById('job_name').value;
   const command = document.getElementById('job_command').value;
   const delay = parseInt(document.getElementById('job_delay').value, 10);
   const chain = document.getElementById('job_chain').value || null;
   const cron = document.getElementById('job_cron').value || null;
+  const recurring = document.getElementById('job_recurring').checked; // NEW: Get recurring flag
   fetch(`${basePath}/api/schedule`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ docker_command: command, delay: delay, chain_command: chain, cron: cron, job_name: jobName }) // include job_name
+    body: JSON.stringify({
+      docker_command: command,
+      delay: delay,
+      chain_command: chain,
+      cron: cron,
+      job_name: jobName,
+      recurring: recurring // NEW: Send recurring flag
+    })
   })
   .then(response => response.json())
   .then(data => {

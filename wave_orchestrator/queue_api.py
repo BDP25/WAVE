@@ -61,7 +61,7 @@ def add_date_job():
     job_id = str(uuid.uuid4())
     container_name = f"data-collector-{date_val.strip().replace(' ', '-')}"
     # Updated command to include --network wave_default
-    docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data_collector --date "{date_val}"'
+    docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data-collector --date "{date_val}"'
     date_queue.append({'id': job_id, 'command': docker_command, 'container_name': container_name})
     return jsonify(message="Job added to date collector queue", job_id=job_id)
 
