@@ -37,7 +37,7 @@ def test_get_cluster_articles_by_index(cluster_index, date):
         cursor.execute(
             """
             SELECT cluster_id
-            FROM cluster
+            FROM cluster_based_summary
             WHERE date = %s
             """,
             (date,)
@@ -51,7 +51,7 @@ def test_get_cluster_articles_by_index(cluster_index, date):
         cursor.execute(
             """
             SELECT article_id, head, content
-            FROM artikel
+            FROM artikel_based_summary
             WHERE cluster_id = %s
             """,
             (cluster_id,)

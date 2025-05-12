@@ -50,7 +50,7 @@ fetch_swissdox_data(date_of_interest, date_of_interest)
 cleaned_data = clean_and_process_data()
 
 
-df_relevant_articles = dbscan_clustering_get_relevant_articles(cleaned_data, target_clusters=(1, 2))
+df_relevant_articles = dbscan_clustering_get_relevant_articles(cleaned_data, target_clusters=(4, 6))
 
 
 df_cluster_topics, summary = collect_wikipedia_candidates_per_cluster(df_relevant_articles)
