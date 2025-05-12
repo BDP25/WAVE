@@ -43,6 +43,7 @@ def create_schema(db_params=None):
             medium_name VARCHAR(255),
             head TEXT,
             article_link TEXT,
+            content TEXT,
             CONSTRAINT fk_cluster
                 FOREIGN KEY(cluster_id) 
                 REFERENCES Cluster(cluster_id)

@@ -48,7 +48,8 @@ def generate_cluster_json(filtered_df, cluster_topics, cluster_summaries) -> str
                 "pubtime": row["pubtime"].strftime('%Y-%m-%dT%H:%M:%S'),
                 "medium_name": row["medium_name"],
                 "head": row["head"],
-                "article_link": row.get("article_link", "")
+                "article_link": row.get("article_link", ""),
+                "content": row.get("content", "")
             })
 
     json_data = {
