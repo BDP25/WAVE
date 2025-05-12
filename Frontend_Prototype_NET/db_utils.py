@@ -168,7 +168,7 @@ def get_min_max_date():
 
         # Get the oldest and newest date from the cluster table
         cursor.execute(
-            "SELECT MIN(date) AS oldest_date, MAX(date) AS newest_date FROM cluster"
+            "SELECT MIN(date) AS oldest_date, MAX(date) AS newest_date FROM cluster_ner"
         )
         result = cursor.fetchone()
 
@@ -214,7 +214,7 @@ def get_cluster_summary(cluster_index, date):
         cursor.execute(
             """
             SELECT summary_text
-            FROM cluster
+            FROM cluster_ner
             WHERE date = %s
             """,
             (date,)

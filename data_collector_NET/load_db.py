@@ -6,10 +6,11 @@ import os
 
 load_dotenv()
 
+
 def create_schema(db_params=None):
     """
     Connects to the PostgreSQL database and creates the 'Cluster' and 'Artikel' tables.
-    
+
     Parameters:
     db_params (dict): Dictionary containing database connection parameters.
                       Keys should include: 'dbname', 'user', 'password', 'host', 'port'
@@ -24,10 +25,11 @@ def create_schema(db_params=None):
             "port": "5432"
         }
 
-    # Define the SQL commands for creating tablesy
+    # Define the SQL commands for creating tables
+    # TODO summary
     commands = [
         """
-        CREATE TABLE IF NOT EXISTS Cluster (
+        CREATE TABLE IF NOT EXISTS Cluster_NER (
             cluster_id VARCHAR(255) PRIMARY KEY,
             wikipedia_article_names TEXT,
             date DATE,
@@ -35,7 +37,7 @@ def create_schema(db_params=None):
         )
         """,
         """
-        CREATE TABLE IF NOT EXISTS Artikel (
+        CREATE TABLE IF NOT EXISTS Artikel_NER (
             article_id VARCHAR(255) PRIMARY KEY,
             cluster_id VARCHAR(255),
             pubtime TIMESTAMP,
@@ -45,7 +47,7 @@ def create_schema(db_params=None):
             article_link TEXT,
             CONSTRAINT fk_cluster
                 FOREIGN KEY(cluster_id) 
-                REFERENCES Cluster(cluster_id)
+                REFERENCES Cluster_NER(cluster_id)
                 ON DELETE SET NULL
         )
         """
@@ -101,7 +103,7 @@ def load_data(json_input, db_params):
         for cluster in cluster_records:
             cur.execute(
                 """
-                INSERT INTO Cluster (cluster_id, wikipedia_article_names, date, summary_text)
+                INSERT INTO Cluster_NER (cluster_id, wikipedia_article_names, date, summary_text)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (cluster_id) DO NOTHING;
                 """,
@@ -119,7 +121,7 @@ def load_data(json_input, db_params):
         for artikel in artikel_records:
             cur.execute(
                 """
-                INSERT INTO Artikel (article_id, cluster_id, pubtime, medium_name, head, content, article_link)
+                INSERT INTO Artikel_NER (article_id, cluster_id, pubtime, medium_name, head, content, article_link)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (article_id) DO NOTHING;
                 """,
@@ -145,10 +147,9 @@ def load_data(json_input, db_params):
         cur.close()
         conn.close()
 
+
 if __name__ == "__main__":
     # Define your PostgreSQL connection
-
-
 
     db_params = {
         "dbname": os.getenv("DB_NAME", "your_database"),
@@ -169,6 +170,7 @@ if __name__ == "__main__":
                 "pubtime": "2025-04-09T08:30:00",
                 "medium_name": "Example News",
                 "head": "Breaking News: Example Event",
+                "content": "This is the content for article 1.",
                 "article_link": "https://www.example.com/news/example-event"
             },
             {
@@ -177,6 +179,7 @@ if __name__ == "__main__":
                 "pubtime": "2025-04-09T09:00:00",
                 "medium_name": "Daily Times",
                 "head": "Local Update: Community Event",
+                "content": "This is the content for article 2.",
                 "article_link": "https://www.dailytimes.com/news/community-event"
             },
             {
@@ -185,6 +188,7 @@ if __name__ == "__main__":
                 "pubtime": "2025-04-09T09:15:00",
                 "medium_name": "Tech Daily",
                 "head": "Innovative Tech Unveiled",
+                "content": "This is the content for article 3.",
                 "article_link": "https://www.techdaily.com/innovative-tech"
             },
             {
@@ -193,6 +197,7 @@ if __name__ == "__main__":
                 "pubtime": "2025-04-10T10:00:00",
                 "medium_name": "World News",
                 "head": "International Summit Begins",
+                "content": "This is the content for article 4.",
                 "article_link": "https://www.worldnews.com/summit-begins"
             },
             {
@@ -201,6 +206,7 @@ if __name__ == "__main__":
                 "pubtime": "2025-04-11T12:30:00",
                 "medium_name": "Health Weekly",
                 "head": "Health Alert: New Guidelines Released",
+                "content": "This is the content for article 5.",
                 "article_link": "https://www.healthweekly.com/guidelines-released"
             },
             {
@@ -209,6 +215,7 @@ if __name__ == "__main__":
                 "pubtime": "2025-04-10T10:30:00",
                 "medium_name": "Global Times",
                 "head": "Summit Highlights: Global Leaders Agree",
+                "content": "This is the content for article 6.",
                 "article_link": "https://www.globaltimes.com/summit-highlights"
             }
         ],
@@ -239,7 +246,6 @@ if __name__ == "__main__":
             }
         ]
     }
-
 
     # Pass the JSON data directly
     load_data(json_data, db_params)

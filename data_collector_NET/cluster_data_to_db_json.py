@@ -28,9 +28,9 @@ def generate_cluster_json(filtered_df, cluster_topics, cluster_summaries) -> str
 
 
 
-    for cluster_id in sorted(filtered_df["dbscan_cluster"].unique()):
+    for cluster_id in sorted(filtered_df["cluster_id"].unique()):
         hashed_cluster_id = generate_cluster_id(str(cluster_id), str(publication_date))
-        cluster_entries = filtered_df[filtered_df['dbscan_cluster'] == cluster_id]
+        cluster_entries = filtered_df[filtered_df['cluster_id'] == cluster_id]
         wikipedia_article_names = cluster_topics.get(cluster_id, [])
         summary_text = cluster_summaries.get(cluster_id, None)  # Get summary for this cluster
 

@@ -5,7 +5,7 @@ from get_news_data import fetch_swissdox_data
 from clean_data import clean_and_process_data
 from load_db import load_data
 from clustering import dbscan_clustering_get_relevant_articles
-from content_to_relevant_titles import collect_wikipedia_candidates_per_cluster
+from content_to_relevant_titles_based_summary import collect_wikipedia_candidates_per_cluster, filter_wikipedia_articles_with_groq
 from cluster_data_to_db_json import generate_cluster_json
 from get_wiki_article import validate_wikipedia_titles
 from time import sleep
@@ -49,16 +49,19 @@ fetch_swissdox_data(date_of_interest, date_of_interest)
 cleaned_data = clean_and_process_data()
 
 
-
-# TODO nur relevante Spalten
+# dbscan clustering for relevant articles
 df_relevant_articles = dbscan_clustering_get_relevant_articles(cleaned_data, target_clusters=(4, 6))
 
 
-# TODO content to wikipedia titles
+# content to wikipedia titles
 df_cluster_topics, summary = collect_wikipedia_candidates_per_cluster(df_relevant_articles)
-# TODO
+
+
 # validate titles with wikpedia articles
 wikipedia_articles_cluster = validate_wikipedia_titles(df_cluster_topics)
+
+# Validate titles with summary
+wikipedia_articles_cluster = filter_wikipedia_articles_with_groq(summary, wikipedia_articles_cluster)
 
 
 
@@ -67,12 +70,13 @@ json_data = generate_cluster_json(df_relevant_articles, wikipedia_articles_clust
 
 
 
-# TODO aktuell cluster_id in Database = 0
 # load data to database
 load_data(json_data, db_params)
 
+"""
 for cluster_id, articles in wikipedia_articles_cluster.items():
     for article in articles:
         os.system(f'curl -X POST "http://orchestrator:5025/command" -H "Content-Type: application/json" -d \'{{"command": "collect-history {article.strip()}"}}\'')
         sleep(0.5)
 
+"""

@@ -435,7 +435,7 @@ function testSelectArticleByCluster(date, clusterIndex) {
             // On select, display article head
             select.addEventListener("change", function() {
                 const selected = data.articles.find(a => a.article_id == this.value);
-                contentDiv.textContent = selected ? selected.head : "No head";
+                contentDiv.textContent = selected ? selected.content : "No content available";
             });
 
             // Insert select and contentDiv at the top of the container

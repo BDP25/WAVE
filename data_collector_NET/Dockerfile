@@ -23,12 +23,12 @@ RUN rm -f /app/requirements.txt
 RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
     echo '# Default to today if no date specified' >> /app/entrypoint.sh && \
     echo 'if [ $# -eq 0 ]; then' >> /app/entrypoint.sh && \
-    echo '  echo "Running: python run.py --date latest"' >> /app/entrypoint.sh && \
-    echo '  python run.py --date latest' >> /app/entrypoint.sh && \
+    echo '  echo "Running: python run_based_summary.py --date latest"' >> /app/entrypoint.sh && \
+    echo '  python run_based_summary.py --date latest' >> /app/entrypoint.sh && \
     echo 'else' >> /app/entrypoint.sh && \
     echo '  # Pass all arguments directly to the Python script' >> /app/entrypoint.sh && \
-    echo '  echo "Running: python run.py $@"' >> /app/entrypoint.sh && \
-    echo '  python run.py "$@"' >> /app/entrypoint.sh && \
+    echo '  echo "Running: python run_based_summary.py $@"' >> /app/entrypoint.sh && \
+    echo '  python run_based_summary.py "$@"' >> /app/entrypoint.sh && \
     echo 'fi' >> /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 

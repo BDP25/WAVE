@@ -232,9 +232,6 @@ function renderClusters() {
 
                 // Get the summary for this cluster
                 displayClusterSummary();
-
-                // TODO testin
-                testSelectArticleByCluster(currentSelectedDate, selectedClusterIndex)
             });
             item.appendChild(link);
             list.appendChild(item);
@@ -389,64 +386,4 @@ function displayArticleHistory(data, articleContainer, timestampsSection) {
     }));
 
     createDateSliderWithPicker(timestampsSection, timestamps, articleId);
-}
-
-
-
-
-// TODO Testing_NER
-// TESTING FUNCTION: Selectbox for articles by date and cluster index
-function testSelectArticleByCluster(date, clusterIndex) {
-    fetch(`/api/test-articles?date=${encodeURIComponent(date)}&cluster=${clusterIndex}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error || !data.articles) {
-                alert("No articles found or error: " + (data.error || "Unknown error"));
-                return;
-            }
-
-            // Remove old select/content if present
-            document.getElementById("test-article-select")?.remove();
-            document.getElementById("test-article-content")?.remove();
-
-            // Find a visible container (e.g., wiki-article)
-            const container = document.getElementById("wiki-article") || document.body;
-
-            // Create select box
-            let select = document.createElement("select");
-            select.id = "test-article-select";
-            // Make text larger and more readable
-            select.style.fontSize = "1.2em";
-            select.style.padding = "0.5em";
-            select.style.minWidth = "350px";
-
-            data.articles.forEach(article => {
-                let option = document.createElement("option");
-                option.value = article.article_id;
-                option.textContent = `${article.article_id} | ${article.head}`;
-                select.appendChild(option);
-            });
-
-            // Display area for article head
-            let contentDiv = document.createElement("div");
-            contentDiv.id = "test-article-content";
-            contentDiv.style.marginTop = "1em";
-
-            // On select, display article head
-            select.addEventListener("change", function() {
-                const selected = data.articles.find(a => a.article_id == this.value);
-                contentDiv.textContent = selected ? selected.head : "No head";
-            });
-
-            // Insert select and contentDiv at the top of the container
-            container.insertBefore(contentDiv, container.firstChild);
-            container.insertBefore(select, container.firstChild);
-
-            // Show first article by default
-            if (data.articles.length > 0) {
-                select.value = data.articles[0].article_id;
-                contentDiv.textContent = data.articles[0].head;
-            }
-        })
-        .catch(err => alert("Error fetching articles: " + err));
 }
