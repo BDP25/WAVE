@@ -19,7 +19,14 @@ RETRY_TEXT_LENGTH = 1500
 
 # Environment setup
 load_dotenv(dotenv_path='../../WAVE/.env')
-client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+# API-Keys aus den Umgebungsvariablen
+API_KEYS = [
+    os.getenv("GROQ_API_KEY_1"),
+    os.getenv("GROQ_API_KEY_2"),
+    os.getenv("GROQ_API_KEY_3"),
+]
+
+
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 nltk.download('punkt')
 
@@ -45,23 +52,57 @@ def split_text_sentencewise(text, max_length=CHUNK_SIZE):
     return chunks
 
 
-def call_groq_api(prompt, system_content, model=MODEL_NAME, temperature=0.4, max_tokens=300, json_format=True):
-    """Make a standardized call to the Groq API."""
-    try:
-        completion = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_content},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-            response_format={"type": "json_object"} if json_format else None
-        )
-        return completion.choices[0].message.content
-    except Exception as e:
-        print(f"API Fehler: {e}")
-        return ""
+api_key_index = 0
+rate_limit_errors = [0] * len(API_KEYS)  # Fehlerzähler für jeden Key
+
+def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_format=True):
+    global api_key_index, rate_limit_errors
+
+    max_total_attempts = len(API_KEYS) * 3  # Jeder Key darf 3x versagen
+    attempts = 0
+
+    while attempts < max_total_attempts:
+        try:
+            # 🔑 Client mit aktuellem API-Key initialisieren
+            client = groq.Groq(api_key=API_KEYS[api_key_index])
+
+            # 🔁 Anfrage stellen
+            completion = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_content},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"} if json_format else None
+            )
+
+            # Erfolgreich → Fehlerzähler zurücksetzen
+            rate_limit_errors[api_key_index] = 0
+            return completion.choices[0].message.content
+
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Fehler bei API-Key {api_key_index + 1}: {error_msg}")
+
+            # 🔍 Rate Limit erkannt?
+            if "rate limit" in error_msg.lower() or "429" in error_msg:
+                rate_limit_errors[api_key_index] += 1
+                print(f"Rate-Limit-Fehler: Zähler für Key {api_key_index + 1} = {rate_limit_errors[api_key_index]}")
+
+                # 🔄 Wechsel nur bei 3 aufeinanderfolgenden Fehlern
+                if rate_limit_errors[api_key_index] >= 3:
+                    print(f"Wechsle API-Key von {api_key_index + 1} auf {(api_key_index + 2) % len(API_KEYS)}")
+                    rate_limit_errors[api_key_index] = 0
+                    api_key_index = (api_key_index + 1) % len(API_KEYS)
+            else:
+                print("Kein Rate-Limit-Fehler – versuche erneut mit gleichem Key...")
+
+        attempts += 1
+
+    print("Alle API-Keys ausgeschöpft oder mehrfach fehlgeschlagen.")
+    return ""
 
 
 def parse_json_response(response):
