@@ -20,11 +20,8 @@ RETRY_TEXT_LENGTH = 1500
 # Environment setup
 load_dotenv(dotenv_path='../../WAVE/.env')
 # API-Keys aus den Umgebungsvariablen
-API_KEYS = [
-    os.getenv("GROQ_API_KEY_1"),
-    os.getenv("GROQ_API_KEY_2"),
-    os.getenv("GROQ_API_KEY_3"),
-]
+API_KEYS = os.getenv("GROQ_API_KEY").split(", ")
+
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
