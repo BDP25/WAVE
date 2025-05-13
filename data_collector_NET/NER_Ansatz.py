@@ -26,7 +26,7 @@ def identify_and_save_daily_events_to_df_and_dict(
 
     for _, row in df.iterrows():
         headline = row['head']
-        content_brief = row['content'][:2000]
+        content_brief = row['content']
         headline_texts.append(headline)
         content_texts.append(content_brief)
         entities = {}

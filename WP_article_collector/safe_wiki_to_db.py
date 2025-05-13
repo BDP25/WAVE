@@ -6,7 +6,7 @@ from psycopg2.extras import execute_batch
 from datetime import datetime
 import difflib
 import re  # added to check for HTML tags
-from bs4 import BeautifulSoup  # added import for HTML cleaning
+from bs4 import BeautifulSoup, NavigableString  # update import for HTML cleaning
 import hashlib  # added for user color generation
 
 # Import from new db_utils module instead of defining locally
@@ -76,30 +76,61 @@ def get_user_color(user):
     return f"#{hashlib.md5(user.encode()).hexdigest()[:6]}"
 
 # Updated diff function: now accepts a 'user' parameter.
-def compute_diff(old_html, new_html, user):
-    old_html = clean_internal_links(old_html)
-    new_html = clean_internal_links(new_html)
-    color = get_user_color(user)  # color now solely based on the editor
-    matcher = difflib.SequenceMatcher(None, old_html, new_html)
+def diff_text(old_text, new_text, user):
+    """
+    Compute a word-level diff between two text strings.
+    Wrap inserted words with:
+      <span style="background-color: orange" user-add={user}>...</span>
+    and deleted words with:
+      <span style="text-decoration: line-through; text-decoration-color: orange;" user-del={user}>...</span>
+    """
+    old_words = old_text.split()
+    new_words = new_text.split()
+    matcher = difflib.SequenceMatcher(None, old_words, new_words)
     result = []
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == 'equal':
-            result.append(new_html[j1:j2])
+            result.append(" ".join(new_words[j1:j2]))
         elif tag == 'insert':
-            # Addition: highlight with background using the editor's color.
-            segment = new_html[j1:j2]
-            result.append(f"<span style='background-color: {color}'>{segment}</span>")
+            inserted = " ".join(new_words[j1:j2])
+            result.append(f"<span style=\"background-color: orange\" user-add={user}>{inserted}</span>")
         elif tag == 'delete':
-            # Deletion: strike-through with the editor's color.
-            segment = old_html[i1:i2]
-            result.append(f"<span style='text-decoration: line-through; text-decoration-color: {color};'>{segment}</span>")
+            deleted = " ".join(old_words[i1:i2])
+            result.append(f"<span style=\"text-decoration: line-through; text-decoration-color: orange;\" user-del={user}>{deleted}</span>")
         elif tag == 'replace':
-            # Replacement: show deletion then addition, both styled by the editor's color.
-            del_segment = old_html[i1:i2]
-            add_segment = new_html[j1:j2]
-            result.append(f"<span style='text-decoration: line-through; text-decoration-color: {color};'>{del_segment}</span>")
-            result.append(f"<span style='background-color: {color}'>{add_segment}</span>")
-    return ''.join(result)
+            deleted = " ".join(old_words[i1:i2])
+            inserted = " ".join(new_words[j1:j2])
+            result.append(f"<span style=\"text-decoration: line-through; text-decoration-color: orange;\" user-del={user}>{deleted}</span>")
+            result.append(f"<span style=\"background-color: orange\" user-add={user}>{inserted}</span>")
+    return " ".join(result)
+
+
+def compute_diff(old_html, new_html, user):
+    """
+    Compute an HTML diff that preserves the overall HTML structure.
+    For each target tag (title, h1, p):
+      - If the tag's content is plain text (only one NavigableString),
+        compute a diff on its text and replace its content with the diff result.
+      - Otherwise, leave its content unchanged.
+    """
+    old_soup = BeautifulSoup(old_html, 'html.parser')
+    new_soup = BeautifulSoup(new_html, 'html.parser')
+    target_tags = ['title', 'h1', 'p']
+    for tag in target_tags:
+        old_tags = old_soup.find_all(tag)
+        new_tags = new_soup.find_all(tag)
+        for i, new_tag in enumerate(new_tags):
+            # Process only if the tag contains exactly one text node
+            if not (len(new_tag.contents) == 1 and isinstance(new_tag.contents[0], NavigableString)):
+                continue
+            old_text = old_tags[i].get_text(" ", strip=True) if i < len(old_tags) else ""
+            new_text = new_tag.get_text(" ", strip=True)
+            diff_result = diff_text(old_text, new_text, user)
+            new_tag.clear()
+            new_fragment = BeautifulSoup(diff_result, 'html.parser')
+            for content in new_fragment.contents:
+                new_tag.append(content)
+    return str(new_soup)
 
 def save_article_to_db(conn, article_title, language_code, page_id):
     """Save article to WP_article table and return the article_id."""
@@ -230,31 +261,34 @@ def update_article_history(article_title, language_code, db_config=None):
             conn.close()
             return False
 
-        # --- New: Calculate and update diffs for consecutive revisions ---
-        # Modify SQL to also retrieve user_name.
+        # --- New diff calculation: Compute incremental diffs ---
         cursor = conn.cursor()
         cursor.execute("""
             SELECT revid, content, user_name, timestamp FROM history
             WHERE article_id = %s
             ORDER BY timestamp ASC
         """, (article_id,))
-        revisions = cursor.fetchall()  # Each row: (revid, content, user_name, timestamp)
-        # Process revisions in batches to conserve memory
-        BATCH_SIZE = 50
-        prev_content = None
-        for i in range(0, len(revisions), BATCH_SIZE):
-            batch = revisions[i:i + BATCH_SIZE]
-            for rev in batch:
+        revisions = cursor.fetchall()  # (revid, content, user_name, timestamp)
+
+        if revisions:
+            # Set diff_content for the oldest revision equal to its content.
+            first_revid, first_content, first_user, _ = revisions[0]
+            cursor.execute("""
+                UPDATE history SET diff_content = %s
+                WHERE article_id = %s AND revid = %s
+            """, (first_content, article_id, first_revid))
+
+            # Use immediate predecessor for incremental diff.
+            prev_content = first_content
+            for rev in revisions[1:]:
                 current_revid, current_content, current_user, _ = rev
-                if prev_content is None:
-                    diff_result = current_content
-                else:
-                    diff_result = compute_diff(prev_content, current_content, current_user)
+                # Compute diff between previous revision content and the current one.
+                diff_result = compute_diff(prev_content, current_content, current_user)
                 cursor.execute("""
                     UPDATE history SET diff_content = %s
                     WHERE article_id = %s AND revid = %s
                 """, (diff_result, article_id, current_revid))
-                prev_content = current_content  # Carry over to the next batch
+                prev_content = current_content
 
         conn.commit()
         cursor.close()
