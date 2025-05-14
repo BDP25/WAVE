@@ -42,7 +42,6 @@ def create_schema(db_params=None):
             pubtime TIMESTAMP,
             medium_name VARCHAR(255),
             head TEXT,
-            content TEXT,
             article_link TEXT,
             CONSTRAINT fk_cluster
                 FOREIGN KEY(cluster_id) 
