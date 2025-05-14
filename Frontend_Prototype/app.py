@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request
 from frontend_agregator import get_clusters_per_date, get_min_max_date
 from db_utils import get_article_history_by_title, get_cluster_summary
 from db_utils import db_params, redis_params
-from vis_text_div.visualization import visualize_wiki_versions_with_deletions
+from visualisation import visualize_wiki_versions_with_deletions  # updated import; previously from vis_text_div.visualization
 
 app = Flask(__name__)
 
