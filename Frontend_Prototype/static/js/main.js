@@ -405,4 +405,298 @@ function displayArticleHistory(data, articleContainer, timestampsSection) {
     }));
 
     createDateSliderWithPicker(timestampsSection, timestamps, articleId);
+
+    // Add event listener for when visualization content is loaded
+    document.addEventListener('visualizationLoaded', setupUserHoverPopups);
 }
+
+// Fix the user hover popups function to correctly identify users
+function setupUserHoverPopups() {
+    console.log("Setting up user hover popups");
+
+    // Remove any existing popup to avoid duplicates
+    const existingPopup = document.getElementById('user-info-popup');
+    if (existingPopup) {
+        existingPopup.remove();
+    }
+
+    // Create popup element
+    const popup = document.createElement('div');
+    popup.id = 'user-info-popup';
+    popup.className = 'user-info-popup';
+    popup.style.display = 'none';
+    document.body.appendChild(popup);
+
+    // Find elements with user-add or user-del attributes in the output container
+    const outputContainer = document.querySelector('.output-container') || document.getElementById('wiki-article');
+    if (!outputContainer) {
+        console.log("No output container found");
+        return;
+    }
+
+    // Select all spans with user attributes - use broader selectors to match all variations
+    const userElements = outputContainer.querySelectorAll('[user-add], [user-del], [data-user-add], [data-user-del]');
+
+    console.log(`Found ${userElements.length} elements with user attribution`);
+
+    userElements.forEach(element => {
+        // Get user information from the element - check all possible attribute combinations
+        let username = null;
+
+        // Check data attributes first
+        if (element.hasAttribute('data-user-add')) {
+            username = element.getAttribute('data-user-add');
+        } else if (element.hasAttribute('data-user-del')) {
+            username = element.getAttribute('data-user-del');
+        }
+        // Then check direct user-add/user-del attributes
+        else if (element.hasAttribute('user-add')) {
+            username = element.getAttribute('user-add');
+            // If value is "user", try to find the actual username in content
+            if (username === "user") {
+                username = element.textContent.trim();
+            }
+        } else if (element.hasAttribute('user-del')) {
+            username = element.getAttribute('user-del');
+            // If value is "user", try to find the actual username in content
+            if (username === "user") {
+                username = element.textContent.trim();
+            }
+        }
+
+        if (!username) {
+            console.log("No username found for element:", element.outerHTML);
+            return;
+        }
+
+        console.log(`Found user element with username: ${username}`);
+
+        // Cache for IP data to avoid repeated requests
+        let ipDataCache = null;
+
+        // Add hover event listeners
+        element.addEventListener('mouseenter', async (e) => {
+            // Get viewport dimensions
+            const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+            // Make the popup visible but with opacity 0 to measure its size
+            popup.style.opacity = '0';
+            popup.style.display = 'block';
+
+            // Set initial content based on user type to get approximate dimensions
+            if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(username)) {
+                popup.innerHTML = `<strong>Anonymous Editor (IPv4)</strong><br>IP: ${username}`;
+            } else if (/^[0-9a-fA-F:]+$/.test(username) && username.includes(':')) {
+                popup.innerHTML = `<strong>Anonymous Editor (IPv6)</strong><br>IP: ${username}`;
+            } else {
+                popup.innerHTML = `<strong>Wikipedia Editor</strong><br>Username: ${username}`;
+            }
+
+            // Get popup dimensions after setting initial content
+            const popupWidth = popup.offsetWidth;
+            const popupHeight = popup.offsetHeight;
+
+            // Calculate position that keeps popup within viewport
+            let leftPos = e.pageX + 10;
+            let topPos = e.pageY + 10;
+
+            // Check right edge of screen
+            if (leftPos + popupWidth > viewportWidth - 20) {
+                leftPos = e.pageX - popupWidth - 10; // Position to the left of cursor
+            }
+
+            // Check bottom edge of screen
+            if (topPos + popupHeight > viewportHeight - 20) {
+                topPos = e.pageY - popupHeight - 10; // Position above cursor
+            }
+
+            // Ensure popup doesn't go off left or top edge
+            leftPos = Math.max(10, leftPos);
+            topPos = Math.max(10, topPos);
+
+            // Set the calculated position
+            popup.style.left = `${leftPos}px`;
+            popup.style.top = `${topPos}px`;
+
+            // Now make the popup visible again
+            popup.style.opacity = '1';
+
+            // Determine user type and set content accordingly
+            // Check if IPv4 address (simple regex pattern)
+            if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(username)) {
+                popup.innerHTML = `
+                    <strong>Anonymous Editor (IPv4)</strong><br>
+                    IP: ${username}<br>
+                    <div class="loading-spinner">Loading additional information...</div>
+                `;
+
+                // Fetch additional IP information if not already cached
+                if (!ipDataCache) {
+                    try {
+                        const response = await fetch(`/api/ip_info?ip=${encodeURIComponent(username)}`);
+                        ipDataCache = await response.json();
+                    } catch (error) {
+                        console.error("Error fetching IP info:", error);
+                        ipDataCache = { error: "Failed to load IP information" };
+                    }
+                }
+
+                // Update the popup with the detailed information
+                displayIPDetails(username, ipDataCache, popup, "IPv4");
+
+                // Recheck position after content update
+                recheckPopupPosition(popup, leftPos, topPos, viewportWidth, viewportHeight);
+            }
+            // Check if IPv6 address - look for hex digits and colons
+            else if (/^[0-9a-fA-F:]+$/.test(username) && username.includes(':')) {
+                popup.innerHTML = `
+                    <strong>Anonymous Editor (IPv6)</strong><br>
+                    IP: ${username}<br>
+                    <div class="loading-spinner">Loading additional information...</div>
+                `;
+
+                // Fetch additional IP information if not already cached
+                if (!ipDataCache) {
+                    try {
+                        const response = await fetch(`/api/ip_info?ip=${encodeURIComponent(username)}`);
+                        ipDataCache = await response.json();
+                    } catch (error) {
+                        console.error("Error fetching IP info:", error);
+                        ipDataCache = { error: "Failed to load IP information" };
+                    }
+                }
+
+                // Update the popup with the detailed information
+                displayIPDetails(username, ipDataCache, popup, "IPv6");
+
+                // Recheck position after content update
+                recheckPopupPosition(popup, leftPos, topPos, viewportWidth, viewportHeight);
+            }
+            // Regular username
+            else {
+                const popupContent = `
+                    <strong>Wikipedia Editor</strong><br>
+                    Username: ${username}
+                `;
+                popup.innerHTML = popupContent;
+
+                // Recheck position after content update
+                recheckPopupPosition(popup, leftPos, topPos, viewportWidth, viewportHeight);
+            }
+        });
+
+        element.addEventListener('mouseleave', () => {
+            popup.style.display = 'none';
+        });
+    });
+}
+
+// Helper function to recheck and adjust popup position after content is updated
+function recheckPopupPosition(popup, leftPos, topPos, viewportWidth, viewportHeight) {
+    // Get updated popup dimensions after content has changed
+    const updatedPopupWidth = popup.offsetWidth;
+    const updatedPopupHeight = popup.offsetHeight;
+
+    // Check right edge of screen again
+    if (leftPos + updatedPopupWidth > viewportWidth - 20) {
+        leftPos = Math.max(10, viewportWidth - updatedPopupWidth - 20);
+        popup.style.left = `${leftPos}px`;
+    }
+
+    // Check bottom edge of screen again
+    if (topPos + updatedPopupHeight > viewportHeight - 20) {
+        topPos = Math.max(10, viewportHeight - updatedPopupHeight - 20);
+        popup.style.top = `${topPos}px`;
+    }
+}
+
+// Helper function to display IP details in the popup
+function displayIPDetails(ip, ipData, popup, ipType) {
+    // Check if there was an error fetching the data
+    if (ipData.error) {
+        popup.innerHTML = `
+            <strong>Anonymous Editor (${ipType})</strong><br>
+            IP: ${ip}<br>
+            <div class="error-message">${ipData.error}</div>
+        `;
+        return;
+    }
+
+    // Extract relevant information from the whois data
+    const results = ipData.whois_data?.results;
+    let content = `
+        <strong>Anonymous Editor (${ipType})</strong><br>
+        <div class="ip-info-section">
+            <div class="ip-address">${ip}</div>
+    `;
+
+    if (results) {
+        // Add network information
+        content += `
+            <div class="ip-details">
+                <table class="ip-info-table">
+                    <tr>
+                        <td>Network:</td>
+                        <td>${results.prefix || 'Unknown'}</td>
+                    </tr>
+        `;
+
+        // Add ASN information if available
+        if (results.asns && results.asns.length > 0) {
+            content += `
+                <tr>
+                    <td>ASN:</td>
+                    <td>${results.asns.join(', ')}</td>
+                </tr>
+            `;
+        }
+
+        // Add organization information if available
+        if (results.as2org && results.as2org.length > 0) {
+            const org = results.as2org[0].org;
+            if (org) {
+                content += `
+                    <tr>
+                        <td>Organization:</td>
+                        <td>${org.ASORG || 'Unknown'}</td>
+                    </tr>
+                    <tr>
+                        <td>Country:</td>
+                        <td>${org.CC || 'Unknown'}</td>
+                    </tr>
+                `;
+            }
+
+            // Add AS Name if available
+            if (results.as2org[0].ASNAME) {
+                content += `
+                    <tr>
+                        <td>AS Name:</td>
+                        <td>${results.as2org[0].ASNAME}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        content += `
+                </table>
+            </div>
+        `;
+    } else {
+        content += `<div class="no-data-message">No additional network information available</div>`;
+    }
+
+    content += `</div>`;
+    popup.innerHTML = content;
+}
+
+// Create a custom event that will be triggered when visualization is loaded
+function createVisualizationLoadedEvent() {
+    // Create and dispatch the event
+    const event = new CustomEvent('visualizationLoaded');
+    document.dispatchEvent(event);
+}
+
+// Extend the existing API module to expose the event creation function
+window.createVisualizationLoadedEvent = createVisualizationLoadedEvent;

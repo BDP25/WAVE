@@ -193,3 +193,341 @@ a:hover {
     color: #202122 !important;  /* Set the desired color */
 }
 
+
+/* wikipedia.css */
+/*— Base typography & layout —*/
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI","Helvetica Neue",Arial,Helvetica,sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #202122;
+  background-color: #fff;
+}
+.mw-content-ltr {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 1em;
+}
+
+/*— Paragraphs & lists —*/
+.mw-parser-output > p,
+.mw-parser-output ul,
+.mw-parser-output ol {
+  margin: 0 0 1em;
+  padding: 0;
+}
+.mw-parser-output li {
+  margin: 0.25em 0;
+}
+
+/*— Links —*/
+a {
+  color: #0645ad;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/*— Headings —*/
+.mw-heading2 h2,
+.mw-parser-output h2 {
+  font-size: 1.5em;
+  margin: 1em 0 0.5em;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid #a2a9b1;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.mw-parser-output:has(> figure) .mw-heading2 h2{
+  width: calc(100% - (300px + 1em));
+  margin-right: 1em;
+}
+
+.mw-heading3 h3,
+.mw-parser-output h3 {
+  font-size: 1.25em;
+  margin: 0.75em 0 0.4em;
+  padding-bottom: 0.15em;
+  border-bottom: 1px solid #ccc;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.mw-parser-output:has(> figure) .mw-heading3 h3{
+  width: calc(100% - (300px + 1em));
+  margin-right: 1em;
+}
+
+.mw-default-size {
+  float: right;
+  clear: right;
+  margin: 0.5em 0 1em 1em;
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  border: 1px solid #aaa;
+}
+
+.mw-default-size::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -1em;
+  width: 1em;
+  height: 100%;
+  background: #fff;
+  z-index: 2;
+  border-right: 1px solid #aaa;
+}
+
+.mw-parser-output figure {
+  float: right;
+  clear: right;
+  margin: 0.5em 0 1em 1em;
+  max-width: 300px;
+  position: relative;
+  z-index: 1;
+  background: #f8f9fa;
+  border: 1px solid #aaa;
+  padding: 5px;
+}
+
+.mw-parser-output figure::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -1em;
+  width: 1em;
+  height: 100%;
+  background: #fff;
+  z-index: 2;
+  border-right: 1px solid #aaa;
+}
+
+.mw-parser-output figure img {
+  width: 100%;
+  height: auto;
+  /* removed border, background-color, and padding */
+}
+.mw-parser-output figcaption {
+  font-size: 0.9em;
+  color: #5a5a5a;
+  margin-top: 0.25em;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/*— Tables (wiki-style) —*/
+.wikitable {
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.9em;
+}
+.wikitable th,
+.wikitable td {
+  border: 1px solid #aaa;
+  padding: 0.2em 0.4em;
+  vertical-align: top;
+}
+.wikitable th {
+  background-color: #f0f0f0;
+  font-weight: bold;
+}
+
+/*— Navigation/info boxes —*/
+.hintergrundfarbe1 {
+  background-color: #f8f9fa;
+}
+.rahmenfarbe1 {
+  border: 1px solid #a2a9b1;
+}
+.navigation-not-searchable {
+  font-size: 0.95em;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+.noprint {
+  display: block;
+}
+
+/*— Utility: clearfix —*/
+.clearfix::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+/*— Image box with caption (Wikipedia style) —*/
+.thumb {
+  border: 1px solid #aaa;
+  background-color: #f8f9fa;
+  padding: 0.5em;
+  margin: 1em 0;
+  display: inline-block;
+}
+.thumb img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.thumb .thumbcaption {
+  font-size: 0.9em;
+  color: #5a5a5a;
+  margin-top: 0.3em;
+  text-align: center;
+}
+
+/* Override heading color for Wikipedia article */
+#wiki-article h2,
+#wiki-article h3 {
+    color: #202122 !important;  /* Set the desired color */
+}
+
+/* User info popup styles */
+.user-info-popup {
+    position: fixed;
+    background-color: #ffffff;
+    border: 2px solid #0645ad; /* More visible border */
+    border-radius: 4px;
+    padding: 10px 15px;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 99999; /* Much higher z-index to ensure visibility */
+    max-width: 300px;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    opacity: 1;
+}
+
+.user-info-popup strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #333;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.user-info-popup small {
+    color: #666;
+    font-style: italic;
+    display: block;
+    margin-top: 6px;
+}
+
+/* Enhanced user info popup styles */
+.user-info-popup {
+    position: fixed;
+    background-color: #ffffff;
+    border: 2px solid #0645ad;
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-size: 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    z-index: 99999;
+    max-width: 350px;
+    min-width: 250px;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    opacity: 1;
+}
+
+.user-info-popup strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: bold;
+    font-size: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 5px;
+}
+
+.user-info-popup small {
+    color: #666;
+    font-style: italic;
+    display: block;
+    margin-top: 6px;
+}
+
+/* IP info specific styling */
+.ip-info-section {
+    margin-top: 5px;
+}
+
+.ip-address {
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 15px;
+    background-color: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+    border: 1px solid #ddd;
+}
+
+.ip-details {
+    margin-top: 8px;
+}
+
+.ip-info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.ip-info-table td {
+    padding: 4px 6px;
+    vertical-align: top;
+}
+
+.ip-info-table td:first-child {
+    font-weight: bold;
+    width: 100px;
+    color: #555;
+}
+
+.loading-spinner {
+    color: #666;
+    font-style: italic;
+    margin: 10px 0;
+    padding-left: 20px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18'%3E%3Cpath fill='%23666' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' attributeType='XML' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E") no-repeat left center;
+    min-height: 20px;
+}
+
+.error-message {
+    color: #d32f2f;
+    font-style: italic;
+    margin: 8px 0;
+    font-size: 13px;
+}
+
+.no-data-message {
+    color: #666;
+    font-style: italic;
+    margin: 8px 0;
+    font-size: 13px;
+}
+
+/* Enhanced highlight for elements with user attribution */
+[user-add]:hover,
+[user-del]:hover,
+[data-user-add]:hover,
+[data-user-del]:hover {
+    cursor: help;
+    background-color: rgba(255, 255, 0, 0.2);
+    outline: 1px dotted #0645ad;
+    position: relative;
+    z-index: 100;
+}
+
+/* Helper class to make attribution elements more visible */
+[user-add], [user-del], [data-user-add], [data-user-del] {
+    border-bottom: 1px dotted #aaa;
+}
+

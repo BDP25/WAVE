@@ -2,11 +2,17 @@ from flask import Flask, jsonify, render_template, request
 from frontend_agregator import get_clusters_per_date, get_min_max_date
 from db_utils import get_article_history_by_title, get_cluster_summary
 from db_utils import db_params, redis_params
-from visualisation import visualize_wiki_versions_with_deletions, get_cache_key
+from visualisation import (
+    visualize_wiki_versions_with_deletions
+)
 import time
+import logging
+import socket
+import json
+from datetime import datetime
 
 app = Flask(__name__)
-
+logger = logging.getLogger(__name__)
 
 @app.route("/")
 def index():
@@ -84,9 +90,8 @@ def api_visualize():
         article_id = request.args.get("article_id")
         start_revid = int(request.args.get("start_revid"))
         end_revid = int(request.args.get("end_revid"))
-        print("Article ID:", article_id)
-        print("Start Revid:", start_revid)
-        print("End Revid:", end_revid)
+
+        logger.info(f"Visualization request: article_id={article_id}, start_revid={start_revid}, end_revid={end_revid}")
 
         # Validate parameters
         if not article_id or not start_revid or not end_revid:
@@ -95,7 +100,7 @@ def api_visualize():
         # Record start time for performance measurement
         start_time = time.time()
 
-        # Call the visualization function with caching support
+        # Call the visualization function without caching support
         html = visualize_wiki_versions_with_deletions(
             article_id=article_id,
             start_revid=start_revid,
@@ -103,13 +108,13 @@ def api_visualize():
             word_level=True,
             verbose=True,  # Enable verbose to get more debugging info
             db_config=db_params,
-            redis_config=redis_params,
-            show_revision_info=False
+            redis_config=None,  # No redis config needed
+            show_revision_info=False  # Still show the summary revision info
         )
 
         # Calculate generation time
         generation_time = time.time() - start_time
-        print(f"Visualization generated in {generation_time:.2f} seconds")
+        logger.info(f"Visualization generated in {generation_time:.2f} seconds")
 
         # Check if html contains an error message
         if html and ("<div class='alert alert-danger'>" in html or "<div class='alert alert-warning'>" in html):
@@ -123,25 +128,123 @@ def api_visualize():
                 "html": "<div class='alert alert-danger'>No visualization data available for the selected revisions</div>"
             }), 404
 
-        print("Visualization HTML generated successfully")
+        logger.info("Visualization HTML generated successfully")
 
         # Return the HTML as a response with metadata
         return jsonify({
             "html": html,
             "metadata": {
-                "generation_time": generation_time,
-                "cache_key": get_cache_key(article_id, start_revid, end_revid, True, False)
+                "generation_time": generation_time
             }
         })
     except Exception as e:
         error_message = f"Failed to generate visualization: {str(e)}"
-        print(f"Error generating visualization: {str(e)}")
+        logger.error(f"Error generating visualization: {str(e)}", exc_info=True)
         return jsonify({
             "error": error_message,
             "html": f"<div class='alert alert-danger'><strong>Error:</strong> {error_message}</div>"
         }), 500
 
+@app.route("/api/ip_info", methods=["GET"])
+def api_ip_info():
+    try:
+        # Get IP address from the request
+        ip_address = request.args.get("ip")
+
+        if not ip_address:
+            return jsonify({"error": "No IP address provided"}), 400
+
+        # Get current date in YYYYMMDD format for the query
+        current_date = datetime.now().strftime("%Y%m%d")
+
+        # Query the BTTF Whois service
+        whois_data = query_bttf_whois(ip_address, current_date)
+
+        if not whois_data:
+            return jsonify({
+                "ip": ip_address,
+                "error": "Unable to retrieve information for this IP address"
+            })
+
+        # Return the data
+        return jsonify({
+            "ip": ip_address,
+            "whois_data": whois_data,
+            "info_date": current_date
+        })
+    except Exception as e:
+        logger.error(f"Error fetching IP information: {str(e)}", exc_info=True)
+        return jsonify({
+            "ip": ip_address if 'ip_address' in locals() else "unknown",
+            "error": f"Failed to retrieve IP information: {str(e)}"
+        }), 500
+
+def query_bttf_whois(ip_address, date_str):
+    """
+    Query the BTTF Whois service for information about an IP address.
+
+    Args:
+        ip_address (str): IP address to query
+        date_str (str): Date in YYYYMMDD format
+
+    Returns:
+        dict: Parsed JSON response or None if query failed
+    """
+    try:
+        # Format query for CIDR notation
+        if ':' in ip_address:  # IPv6
+            query = f"{ip_address}/128 {date_str}"
+        else:  # IPv4
+            query = f"{ip_address}/32 {date_str}"
+
+        # Connect to the Whois server
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(5)  # 5 second timeout
+        s.connect(("bttf-whois.measurement.network", 43))
+
+        # Send the query
+        s.sendall(f"{query}\r\n".encode())
+
+        # Receive the response
+        response = b""
+        while True:
+            data = s.recv(1024)
+            if not data:
+                break
+            response += data
+
+        s.close()
+
+        # Parse the JSON response
+        if response:
+            try:
+                # Convert bytes to string
+                response_str = response.decode('utf-8').strip()
+
+                # Extract only the JSON part (skip comment lines starting with #)
+                json_text = ""
+                for line in response_str.split('\n'):
+                    if not line.strip().startswith('#'):
+                        json_text += line + "\n"
+
+                # Only try to parse if we found non-comment content
+                if json_text.strip():
+                    logger.info(f"Parsing JSON: {json_text[:100]}...")
+                    return json.loads(json_text.strip())
+                else:
+                    logger.warning("No JSON content found in response")
+                    return None
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                logger.error(f"Problematic content: {response_str[:100]}...")
+                return None
+        else:
+            return None
+
+    except Exception as e:
+        logger.error(f"Error querying BTTF Whois service: {str(e)}", exc_info=True)
+        return None
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=False)
-

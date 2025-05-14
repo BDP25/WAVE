@@ -1,4 +1,3 @@
-
 import { fetchVisualization } from "./api.js";
 
 let debounceTimeout;
@@ -452,6 +451,16 @@ function displayVisualizationOutput(data, sliderWrapper) {
     output.className = "output-container";
     output.innerHTML = data.html || "<p>No visualization data available.</p>";
     sliderWrapper.appendChild(output);
+
+    // Trigger the visualization loaded event with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+        if (window.createVisualizationLoadedEvent) {
+            console.log("Triggering visualization loaded event");
+            window.createVisualizationLoadedEvent();
+        } else {
+            console.warn("createVisualizationLoadedEvent function not found");
+        }
+    }, 100);  // Small delay to ensure content is fully rendered
 }
 
 function handleVisualizationError(err, sliderWrapper) {
@@ -1002,3 +1011,4 @@ function addAxisLabel(axis, date, text, className, start, range) {
 
     axis.appendChild(label);
 }
+

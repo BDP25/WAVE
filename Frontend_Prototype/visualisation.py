@@ -6,7 +6,6 @@ from psycopg2.extras import RealDictCursor
 from bs4 import BeautifulSoup, NavigableString, Comment
 import colorsys
 import logging
-import redis
 import json
 import hashlib
 import time
@@ -22,6 +21,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <style>
     body {{ font-family: Arial, sans-serif; line-height: 1.6; background-color: #fff; }}
     .revision-info {{ font-size: 12px; color: #666; margin-bottom: 4px; }}
+    .revision-summary {{ font-size: 14px; color: #444; margin-bottom: 10px; padding: 8px; background-color: #f8f8f8; border-left: 3px solid #ddd; }}
   </style>
 </head>
 <body>
@@ -99,42 +99,13 @@ def visualize_wiki_versions_with_deletions(article_id, start_revid, end_revid,
     """
     Fetch all revisions between start_revid and end_revid,
     then inline-merge their spans into the final HTML.
-    Uses Redis cache if available to avoid regenerating the same visualization.
     """
-    # Generate a cache key for these parameters
-    cache_key = get_cache_key(article_id, start_revid, end_revid, word_level, show_revision_info)
-
-    # Try to get from cache first
-    try:
-        if redis_config:
-            r = redis.Redis(
-                host=redis_config.get('host', 'localhost'),
-                port=redis_config.get('port', 6379),
-                db=redis_config.get('db', 0),
-                password=redis_config.get('password'),
-                decode_responses=True  # Auto-decode bytes to strings
-            )
-
-            # Check if visualization exists in cache
-            cached_html = r.get(cache_key)
-            if cached_html:
-                if verbose:
-                    logger.info(f"Cache hit for {cache_key}")
-                return cached_html
-
-            if verbose:
-                logger.info(f"Cache miss for {cache_key}")
-    except Exception as e:
-        # Log the error but continue without caching
-        logger.warning(f"Redis cache error (will continue without caching): {e}")
-
-    # If not in cache, generate the visualization
     try:
         conn = psycopg2.connect(**db_config)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         # 1) Normalize to ints
         start_revid = int(start_revid)
-        end_revid   = int(end_revid)
+        end_revid = int(end_revid)
 
         # 2) Look up their actual timestamps
         cur.execute(
@@ -203,25 +174,20 @@ def visualize_wiki_versions_with_deletions(article_id, start_revid, end_revid,
         # Optional header with revision info
         body = []
         if show_revision_info:
-            for rev in revisions:
-                body.append(
-                    f"<div class='revision-info'>"
-                    f"{rev['timestamp']} - rev {rev['revid']} by {rev['user_name']}: {rev['comment']}"
-                    f"</div>"
-                )
+            # Add a summary instead of individual revision details
+            revision_count = len(revisions)
+            first_date = revisions[0]['timestamp'] if revisions else "unknown"
+            last_date = revisions[-1]['timestamp'] if revisions else "unknown"
+
+            body.append(
+                f"<div class='revision-summary'>"
+                f"Showing changes across {revision_count} revisions from "
+                f"{first_date} to {last_date}"
+                f"</div>"
+            )
+
         body.append(str(soup))
         html_result = HTML_TEMPLATE.format(body="\n".join(body))
-
-        # Save to cache for future requests
-        try:
-            if redis_config:
-                # Cache for 1 hour (3600 seconds)
-                cache_ttl = 3600
-                r.setex(cache_key, cache_ttl, html_result)
-                if verbose:
-                    logger.info(f"Cached visualization for {cache_key} (expires in {cache_ttl}s)")
-        except Exception as e:
-            logger.warning(f"Failed to cache result: {e}")
 
         return html_result
 
