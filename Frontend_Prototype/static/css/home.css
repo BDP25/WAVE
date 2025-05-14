@@ -459,12 +459,17 @@
 }
 
 /* Specifically target noUi slider elements to ensure they're above Wikipedia content */
-.noUi-handle,
-.noUi-base,
+
 .noUi-connects,
-.noUi-connect,
-.noUi-target {
-    z-index: 9990 !important;
+.noUi-connect
+ {
+    z-index: 1 !important;
+    position: relative;
+}
+
+
+.noUi-handle {
+    z-index: 10 !important;
     position: relative;
 }
 
