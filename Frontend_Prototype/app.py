@@ -2,7 +2,8 @@ from flask import Flask, jsonify, render_template, request
 from frontend_agregator import get_clusters_per_date, get_min_max_date
 from db_utils import get_article_history_by_title, get_cluster_summary
 from db_utils import db_params, redis_params
-from visualisation import visualize_wiki_versions_with_deletions  # updated import; previously from vis_text_div.visualization
+from visualisation import visualize_wiki_versions_with_deletions, get_cache_key
+import time
 
 app = Flask(__name__)
 
@@ -91,7 +92,10 @@ def api_visualize():
         if not article_id or not start_revid or not end_revid:
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Call the visualization function
+        # Record start time for performance measurement
+        start_time = time.time()
+
+        # Call the visualization function with caching support
         html = visualize_wiki_versions_with_deletions(
             article_id=article_id,
             start_revid=start_revid,
@@ -102,6 +106,10 @@ def api_visualize():
             redis_config=redis_params,
             show_revision_info=False
         )
+
+        # Calculate generation time
+        generation_time = time.time() - start_time
+        print(f"Visualization generated in {generation_time:.2f} seconds")
 
         # Check if html contains an error message
         if html and ("<div class='alert alert-danger'>" in html or "<div class='alert alert-warning'>" in html):
@@ -117,8 +125,14 @@ def api_visualize():
 
         print("Visualization HTML generated successfully")
 
-        # Return the HTML as a response
-        return jsonify({"html": html})
+        # Return the HTML as a response with metadata
+        return jsonify({
+            "html": html,
+            "metadata": {
+                "generation_time": generation_time,
+                "cache_key": get_cache_key(article_id, start_revid, end_revid, True, False)
+            }
+        })
     except Exception as e:
         error_message = f"Failed to generate visualization: {str(e)}"
         print(f"Error generating visualization: {str(e)}")
@@ -127,21 +141,7 @@ def api_visualize():
             "html": f"<div class='alert alert-danger'><strong>Error:</strong> {error_message}</div>"
         }), 500
 
-# TODO TESTING
-# For testing only, add to your Flask backend
-@app.route('/api/test-articles')
-def test_articles():
-    date = request.args.get("date")
-    cluster = request.args.get("cluster")
-    cluster_index = int(cluster)
-
-
-    from Validating_Cluster_helpler.db_query import test_get_cluster_articles_by_index
-    result = test_get_cluster_articles_by_index(cluster_index, date)
-    return jsonify({"cluster_id": result} if isinstance(result, int) else result)
-
-
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=False)
+

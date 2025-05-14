@@ -7,7 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN rm ./requirements.txt
 
 COPY *.py .
-COPY ./vis_text_div/* /app/vis_text_div/
 COPY ./static ./static
 COPY ./templates ./templates
 

@@ -1,283 +1,231 @@
-if __name__ == "__main__" and __package__ is None:
-    import os, sys
+# visualisation.py
 
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-    __package__ = "vis_text_div"
-
-"""
-Visualization functions for wiki revision histories with inline deletions.
-"""
-import pandas as pd
-from typing import List, Dict, Optional
-from bs4 import BeautifulSoup
-import difflib
 import re
-import time
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import logging  # added import
+from bs4 import BeautifulSoup, NavigableString, Comment
+import colorsys
+import logging
+import redis
+import json
+import hashlib
+import time
 
-logger = logging.getLogger("visualization")  # replaced setup_logger with built-in logging
+logger = logging.getLogger(__name__)
 
+# Must double‐brace any { } in CSS so Python .format() only sees {body}
+HTML_TEMPLATE = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>Wikipedia Article Changes</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; line-height: 1.6; background-color: #fff; }}
+    .revision-info {{ font-size: 12px; color: #666; margin-bottom: 4px; }}
+  </style>
+</head>
+<body>
+{body}
+</body>
+</html>"""
 
-def visualize_wiki_versions_with_deletions(article_id, start_revid, end_revid, word_level, verbose, db_config,
+# Patterns for cleaning unwrapped or stray NewPP comments
+_CLEAN_PATTERNS = [
+    re.compile(r'NewPP', re.IGNORECASE),
+    re.compile(r'Cache expiry', re.IGNORECASE),
+    re.compile(r'CPU time usage', re.IGNORECASE),
+    re.compile(r'Real time usage', re.IGNORECASE),
+    re.compile(r'Preprocessor visited node count', re.IGNORECASE),
+    re.compile(r'Post-expand', re.IGNORECASE),
+    re.compile(r'Unstrip', re.IGNORECASE),
+    re.compile(r'RevisionOutputCache', re.IGNORECASE),
+    re.compile(r'Transclusion expansion time report', re.IGNORECASE),
+    re.compile(r'Saved in parser cache', re.IGNORECASE)
+]
+
+def generate_color_for_user(user_name: str) -> str:
+    """Map a username to a distinct hex color via HSL hashing."""
+    hue = hash(user_name) % 360
+    r, g, b = colorsys.hls_to_rgb(hue/360, 0.55, 0.65)
+    return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+
+def inline_merge_spans(base_html: str, diff_html: str):
+    """
+    Take base_html (the final revision HTML) and a diff fragment,
+    find each <span user-add> or <span user-del> in the diff, and
+    splice it into its first matching location in base_html.
+    """
+    base_soup = BeautifulSoup(base_html, "html.parser")
+    diff_soup = BeautifulSoup(diff_html, "html.parser")
+
+    # Only look at the special span tags
+    for span in diff_soup.find_all("span", attrs={"user-add": True}) + \
+                diff_soup.find_all("span", attrs={"user-del": True}):
+
+        token = span.get_text()
+        user_attr = "user-add" if span.has_attr("user-add") else "user-del"
+
+        # Walk text nodes in base until we find the token
+        for text_node in base_soup.find_all(string=True):
+            if token in text_node:
+                parent = text_node.parent
+                before, after = text_node.split(token, 1)
+                # Build new sequence: before text, span, after text
+                new_nodes = []
+                if before:
+                    new_nodes.append(NavigableString(before))
+                # Apply the span itself
+                new_span = BeautifulSoup(str(span), "html.parser").span
+                new_nodes.append(new_span)
+                if after:
+                    new_nodes.append(NavigableString(after))
+                # Replace original text_node with our sequence
+                text_node.replace_with(new_nodes[0])
+                for node in new_nodes[1:]:
+                    new_nodes[0].insert_after(node)
+                    new_nodes[0] = node
+                break
+
+    return str(base_soup)
+
+def get_cache_key(article_id, start_revid, end_revid, word_level, show_revision_info):
+    """Generate a unique cache key for the visualization parameters."""
+    params = f"{article_id}:{start_revid}:{end_revid}:{word_level}:{show_revision_info}"
+    return f"wiki_vis:{hashlib.md5(params.encode()).hexdigest()}"
+
+def visualize_wiki_versions_with_deletions(article_id, start_revid, end_revid,
+                                           word_level, verbose, db_config,
                                            redis_config, show_revision_info):
     """
-    Generate a stacked HTML version of an article by combining diff_content
-    from all revisions between start_revid and end_revid.
+    Fetch all revisions between start_revid and end_revid,
+    then inline-merge their spans into the final HTML.
+    Uses Redis cache if available to avoid regenerating the same visualization.
     """
-    # Ensure start_revid is not greater than end_revid
-    if start_revid > end_revid:
-        start_revid, end_revid = end_revid, start_revid
+    # Generate a cache key for these parameters
+    cache_key = get_cache_key(article_id, start_revid, end_revid, word_level, show_revision_info)
 
+    # Try to get from cache first
+    try:
+        if redis_config:
+            r = redis.Redis(
+                host=redis_config.get('host', 'localhost'),
+                port=redis_config.get('port', 6379),
+                db=redis_config.get('db', 0),
+                password=redis_config.get('password'),
+                decode_responses=True  # Auto-decode bytes to strings
+            )
+
+            # Check if visualization exists in cache
+            cached_html = r.get(cache_key)
+            if cached_html:
+                if verbose:
+                    logger.info(f"Cache hit for {cache_key}")
+                return cached_html
+
+            if verbose:
+                logger.info(f"Cache miss for {cache_key}")
+    except Exception as e:
+        # Log the error but continue without caching
+        logger.warning(f"Redis cache error (will continue without caching): {e}")
+
+    # If not in cache, generate the visualization
     try:
         conn = psycopg2.connect(**db_config)
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        # 1) Normalize to ints
+        start_revid = int(start_revid)
+        end_revid   = int(end_revid)
 
-        # Fetch revisions for the given article within the specified revid range
-        cursor.execute(
-            """
-            SELECT revid, diff_content, timestamp, user_name, comment
-            FROM history
-            WHERE article_id = %s
-              AND revid BETWEEN %s
-              AND %s
-            ORDER BY timestamp ASC
-            """,
-            (article_id, start_revid, end_revid)
+        # 2) Look up their actual timestamps
+        cur.execute(
+            "SELECT timestamp FROM history WHERE article_id=%s AND revid=%s",
+            (article_id, start_revid)
         )
-        revisions = cursor.fetchall()
-        cursor.close()
+        row = cur.fetchone()
+        if not row:
+            return HTML_TEMPLATE.format(body="<p>No such start revision</p>")
+        ts_start = row["timestamp"]
+
+        cur.execute(
+            "SELECT timestamp FROM history WHERE article_id=%s AND revid=%s",
+            (article_id, end_revid)
+        )
+        row = cur.fetchone()
+        if not row:
+            return HTML_TEMPLATE.format(body="<p>No such end revision</p>")
+        ts_end = row["timestamp"]
+
+        # 3) Swap so start_ts ≤ end_ts
+        ts1, ts2 = (ts_start, ts_end) if ts_start <= ts_end else (ts_end, ts_start)
+
+        # 4) Fetch every revision in that time window
+        cur.execute("""
+            SELECT revid, user_name, timestamp, comment, content, diff_content
+              FROM history
+             WHERE article_id = %s
+               AND timestamp BETWEEN %s AND %s
+             ORDER BY timestamp ASC
+        """, (article_id, ts1, ts2))
+        revisions = cur.fetchall()
+        cur.close()
         conn.close()
 
         if not revisions:
-            return "<div class='alert alert-danger'>No revisions found for the selected range.</div>"
+            return HTML_TEMPLATE.format(body="<p>No revisions found</p>")
 
-        final_fragments = []
+        # Start from the very last revision's full HTML
+        final = revisions[-1]["content"]
+
+        # Apply each diff inline, oldest first
         for rev in revisions:
-            rev_info = ""
-            if show_revision_info:
-                rev_info = f"<div class='revision-info'>Revision {rev['revid']} by {rev['user_name']} on {rev['timestamp']} - {rev['comment']}</div>"
-            final_fragments.append(rev_info + rev['diff_content'] + "<hr>")
-            if verbose:
-                print(f"Processed revision {rev['revid']}")
+            diff_html = rev.get("diff_content") or ""
+            final = inline_merge_spans(final, diff_html)
 
-        final_html_body = "".join(final_fragments)
-        final_html = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>Stacked Article</title></head><body>{final_html_body}</body></html>"
-        return final_html
-    except Exception as e:
-        if verbose:
-            print(f"Error in visualize_wiki_versions_with_deletions: {e}")
-        return f"<div class='alert alert-danger'>Error generating visualization: {e}</div>"
+        # Parse the merged HTML and strip out *all* HTML comments
+        soup = BeautifulSoup(final, "html.parser")
+        for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
+            comment.extract()
+        # Remove stray NewPP-like text nodes
+        for text_node in soup.find_all(string=True):
+            if any(pat.match(text_node) for pat in _CLEAN_PATTERNS):
+                text_node.extract()
 
+        # Re-color all spans by their user
+        for span in soup.find_all("span"):
+            user = span.get("user-add") or span.get("user-del")
+            color = generate_color_for_user(user)
+            if span.has_attr("user-add"):
+                span["style"] = f"background-color: {color};"
+            else:
+                existing = span.get("style", "")
+                span["style"] = f"{existing} text-decoration: line-through; text-decoration-color: {color};"
 
-def get_user_color(user_name: str) -> str:
-    # Simple mapping: picks a color from a preset list based on hash of username.
-    colors = ["#a2d5f2", "#ffb3ba", "#baffc9", "#ffffba", "#ffdfba", "#d3b3ff"]
-    return colors[hash(user_name) % len(colors)]
-
-
-def _generate_from_precalc_diffs(
-        history_df: pd.DataFrame,
-        start_revid: int,
-        end_revid: int,
-        show_revision_info: bool,
-        verbose: bool
-) -> str:
-    """Generate visualization using precalculated diffs from the database."""
-    logger.info("Using precalculated diffs for visualization")
-
-    # Ensure revisions are in correct order
-    if start_revid > end_revid:
-        start_revid, end_revid = end_revid, start_revid
-
-    # Get the base content from the first revision
-    first_rev = history_df[history_df['revid'] == start_revid].iloc[0]
-    base_content = first_rev['content']
-
-    # Prepare the result container
-    combined_content = BeautifulSoup(base_content, 'html.parser')
-
-    # Get all revisions between start and end (excluding the start revision)
-    relevant_revs = history_df[
-        (history_df['revid'] > start_revid) &
-        (history_df['revid'] <= end_revid)
-        ].sort_values(by='timestamp')
-
-    # Track metadata for revision info
-    rev_metadata = []
-    if show_revision_info:
-        rev_metadata.append({
-            'revid': first_rev['revid'],
-            'timestamp': first_rev['timestamp'],
-            'user_name': first_rev['user_name'],
-            'comment': first_rev['comment']
-        })
-
-    # Combine all diff_content sequentially
-    for _, rev in relevant_revs.iterrows():
+        # Optional header with revision info
+        body = []
         if show_revision_info:
-            rev_metadata.append({
-                'revid': rev['revid'],
-                'timestamp': rev['timestamp'],
-                'user_name': rev['user_name'],
-                'comment': rev['comment']
-            })
+            for rev in revisions:
+                body.append(
+                    f"<div class='revision-info'>"
+                    f"{rev['timestamp']} - rev {rev['revid']} by {rev['user_name']}: {rev['comment']}"
+                    f"</div>"
+                )
+        body.append(str(soup))
+        html_result = HTML_TEMPLATE.format(body="\n".join(body))
 
-        if not pd.isna(rev['diff_content']) and rev['diff_content']:
-            diff_soup = BeautifulSoup(rev['diff_content'], 'html.parser')
+        # Save to cache for future requests
+        try:
+            if redis_config:
+                # Cache for 1 hour (3600 seconds)
+                cache_ttl = 3600
+                r.setex(cache_key, cache_ttl, html_result)
+                if verbose:
+                    logger.info(f"Cached visualization for {cache_key} (expires in {cache_ttl}s)")
+        except Exception as e:
+            logger.warning(f"Failed to cache result: {e}")
 
-            # Merge changes into the combined content; update styles by user
-            for tag in diff_soup.find_all(['ins', 'del']):
-                if tag.name == 'ins':
-                    tag['style'] = f"background-color: {get_user_color(rev['user_name'])};"
-                elif tag.name == 'del':
-                    tag[
-                        'style'] = f"text-decoration: line-through; text-decoration-color: {get_user_color(rev['user_name'])};"
-                combined_content.append(tag)
+        return html_result
 
-    # Build the final HTML
-    html_parts = []
-
-    # Add header with revision info if requested
-    if show_revision_info:
-        revision_info = "<div style='margin-bottom: 15px;'>"
-        for rev in rev_metadata:
-            revision_info += (
-                f"<p>Revision {rev['revid']} | {rev['timestamp']} | "
-                f"User: {rev['user_name']} | Comment: {rev['comment']}</p>"
-            )
-        revision_info += "</div>"
-        html_parts.append(revision_info)
-
-    # Add content with diffs
-    html_parts.append("<div style='padding: 20px; border: 1px solid #ccc; background-color: #f9f9f9;'>")
-    html_parts.append(str(combined_content))
-    html_parts.append("</div>")
-
-    return "\n".join(html_parts)
-
-
-def _generate_from_text_diff(
-        history_df: pd.DataFrame,
-        revision_texts: Dict[int, str],
-        start_revid: int,
-        end_revid: int,
-        word_level: bool,
-        show_revision_info: bool,
-        verbose: bool
-) -> str:
-    logger.info("Calculating diffs from revision texts")
-
-    if start_revid not in revision_texts or end_revid not in revision_texts:
-        logger.error(f"Missing revision texts for {start_revid} or {end_revid}")
-        return "<p>Error: Could not retrieve revision texts</p>"
-
-    old_text = revision_texts[start_revid]
-    new_text = revision_texts[end_revid]
-
-    # Always retrieve revision metadata for diff creator
-    old_rev = history_df[history_df['revid'] == start_revid].iloc[0]
-    new_rev = history_df[history_df['revid'] == end_revid].iloc[0]
-
-    html_diff = _create_diff_html(
-        old_text, new_text, word_level,
-        old_rev['user_name'], new_rev['user_name']
-    )
-
-    # Build the final HTML
-    html_parts = []
-
-    if show_revision_info:
-        revision_info = (
-            f"<div style='margin-bottom: 15px;'>"
-            f"<p>From: Revision {old_rev['revid']} | {old_rev['timestamp']} | "
-            f"User: {old_rev['user_name']} | Comment: {old_rev['comment']}</p>"
-            f"<p>To: Revision {new_rev['revid']} | {new_rev['timestamp']} | "
-            f"User: {new_rev['user_name']} | Comment: {new_rev['comment']}</p>"
-            f"</div>"
-        )
-        html_parts.append(revision_info)
-
-    html_parts.append("<div style='padding: 20px; border: 1px solid #ccc; background-color: #f9f9f9;'>")
-    html_parts.append(html_diff)
-    html_parts.append("</div>")
-
-    return "\n".join(html_parts)
-
-
-def _create_diff_html(old_text: str, new_text: str, word_level: bool, old_user: str, new_user: str) -> str:
-    """Create HTML diff between two texts at word or line level, coloring changes by editor."""
-    if word_level:
-        # Split text into words for word-level diff
-        old_words = re.findall(r'\S+|\s+', old_text)
-        new_words = re.findall(r'\S+|\s+', new_text)
-
-        # Generate diff
-        diff = difflib.ndiff(old_words, new_words)
-
-        # Process diff into HTML
-        html_parts = []
-        for line in diff:
-            if line.startswith('- '):
-                html_parts.append(
-                    f"<span style='text-decoration: line-through; text-decoration-color: {get_user_color(old_user)};'>{line[2:]}</span>")
-            elif line.startswith('+ '):
-                html_parts.append(f"<span style='background-color: {get_user_color(new_user)};'>{line[2:]}</span>")
-            elif line.startswith('  '):
-                html_parts.append(line[2:])
-
-        return "".join(html_parts)
-    else:
-        # Line-level diff
-        old_lines = old_text.splitlines()
-        new_lines = new_text.splitlines()
-
-        # Generate diff
-        diff = difflib.ndiff(old_lines, new_lines)
-
-        # Process diff into HTML
-        html_parts = []
-        for line in diff:
-            if line.startswith('- '):
-                html_parts.append(
-                    f"<p style='text-decoration: line-through; text-decoration-color: {get_user_color(old_user)};'>{line[2:]}</p>")
-            elif line.startswith('+ '):
-                html_parts.append(f"<p style='background-color: {get_user_color(new_user)};'>{line[2:]}</p>")
-            elif line.startswith('  '):
-                html_parts.append(f"<p>{line[2:]}</p>")
-
-        return "\n".join(html_parts)
-
-
-if __name__ == "__main__":
-    # Minimal test harness for local execution.
-    # Use dummy configurations; adjust as needed.
-    import os
-
-    dummy_db_config = {
-        "dbname": os.getenv("DB_NAME", "your_database"),
-        "user": os.getenv("DB_USER", "your_username"),
-        "password": os.getenv("DB_PASSWORD", "your_password"),
-        "host": os.getenv("DB_HOST", "localhost"),
-        "port": os.getenv("DB_PORT", "5432")
-    }
-    dummy_redis_config = {}
-    article_id = 1118968
-    start_revid = 11775085
-    end_revid = 126704837
-    # Call the main visualization function and print output.
-    html_output = visualize_wiki_versions_with_deletions(
-        article_id=article_id,
-        start_revid=start_revid,
-        end_revid=end_revid,
-        word_level=True,
-        show_revision_info=False,
-        clean_html=False,
-        verbose=True,
-        db_config=dummy_db_config,
-        redis_config=dummy_redis_config,
-        use_precalc_diffs=False
-    )
-    print(html_output)
+    except Exception as e:
+        logger.error("Error generating visualization", exc_info=True)
+        return HTML_TEMPLATE.format(body=f"<p>Error: {e}</p>")
 
