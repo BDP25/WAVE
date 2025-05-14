@@ -190,7 +190,7 @@ label[for="date-picker"] {
 /* Only style selected date */
 #date-picker-calendar.flatpickr-calendar .flatpickr-day.selected {
     background: #b6e6b6 !important;
-    color: black !important;
+    color: #000 !important;
     border-color: #b6e6b6 !important;
 }
 

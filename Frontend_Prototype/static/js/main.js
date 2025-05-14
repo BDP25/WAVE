@@ -13,6 +13,7 @@ let lastDisplayedClusterDate = null;   // Add this missing variable
 // Initialize the application on DOMContentLoaded
 document.addEventListener("DOMContentLoaded", () => {
     initializeFlatpickr();
+    document.getElementById("intro-section").style.display = "block";
 });
 
 function initializeFlatpickr() {
@@ -89,6 +90,8 @@ function initializeFlatpickr() {
     // Initial data load
     currentSelectedDate = maxDate;  // Initialize currentSelectedDate
     loadClusterData(maxDate);
+
+
 }
 
 function applyCalendarFormatting(instance, minDateObj, maxDateObj, availableDates, startYear, endYear) {
@@ -291,6 +294,9 @@ function displayClusterSummary() {
 
 function fetchWikipediaContent(article) {
     const articleContainer = document.getElementById("wiki-article");
+    // Hide intro if present
+    const introSection = document.getElementById("intro-section");
+    if (introSection) introSection.style.display = "none";
     articleContainer.innerHTML = "";
 
     // Add article title
