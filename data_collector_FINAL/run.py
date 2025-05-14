@@ -74,10 +74,9 @@ json_data = generate_cluster_json(df_relevant_articles, wikipedia_articles_clust
 # load data to database
 load_data(json_data, db_params)
 
-"""
+
 for cluster_id, articles in wikipedia_articles_cluster.items():
     for article in articles:
         os.system(f'curl -X POST "http://orchestrator:5025/command" -H "Content-Type: application/json" -d \'{{"command": "collect-history {article.strip()}"}}\'')
         sleep(0.5)
 
-"""
