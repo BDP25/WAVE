@@ -6,7 +6,7 @@ from psycopg2.extras import execute_batch
 from datetime import datetime
 import difflib
 import re
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 import hashlib  # added for user color generation
 
 # Import from new db_utils module instead of defining locally
