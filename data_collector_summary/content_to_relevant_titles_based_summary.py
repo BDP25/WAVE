@@ -24,6 +24,7 @@ API_KEYS = os.getenv("GROQ_API_KEY").split(", ")
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
+# TODO entfernen
 nltk.download('punkt')
 
 
@@ -204,7 +205,8 @@ def generate_final_summary(summaries):
         "Hier sind mehrere Zusammenfassungen von Nachrichtenartikeln zum gleichen Thema. "
         "Fasse NUR das Hauptthema zusammen, ignoriere Nebenthemen. "
         "Erstelle eine präzise Gesamtzusammenfassung in genau 4 Sätzen, die alle wichtigen Aspekte des Hauptthemas abdeckt. "
-        "Beginne die Zusammenfassung direkt mit dem Inhalt, ohne eine Einleitung oder Floskel wie 'Hier ist eine präzise Gesamtzusammenfassung...' zu verwenden.\n\n"
+        "Beginne die Zusammenfassung direkt mit dem Inhalt, ohne eine Einleitung oder Floskel wie 'Hier ist eine präzise Gesamtzusammenfassung...' zu verwenden. "
+        "Die Zusammenfassung muss vollständig auf Deutsch verfasst sein.\n\n"
         f"{combined_input}"
     )
 

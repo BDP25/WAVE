@@ -1,0 +1,92 @@
+Date,Process,Cluster,Found Wikipedia articles,Themnerelevanz(1-5),Cluster-Beschreibbarkeit(ja/nein),Relevanz zu Wikipedia Verlinkung (1-5),Zusammenfasung (1-5),evaluated trough
+05.01.2025,TEXT,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,{Skiunfall},5,ja,4,2,hagereli
+05.01.2025,TEXT,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Marco Odermatt"",""Lara Gut-Behrami"",""Sportler des Jahres (Schweiz)""}",5,ja,3,3,hagereli
+05.01.2025,TEXT,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{""Credit Suisse""}",5,ja,4,5,hagereli
+05.01.2025,TEXT,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{Swiss,Landung}",5,ja,3,5,hagereli
+05.01.2025,TEXT,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{""ZSC Lions"",""Marco Bayer"",""Marc Crawford""}",5,ja,5,5,hagereli
+05.01.2025,TEXT,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,{Skiunfall},5,ja,4.5,3.5,gutbrjoa
+05.01.2025,TEXT,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Marco Odermatt"",""Lara Gut-Behrami"",""Sportler des Jahres (Schweiz)""}",4.5,ja,4,2,gutbrjoa
+05.01.2025,TEXT,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{""Credit Suisse""}",4.5,ja,4.5,3.5,gutbrjoa
+05.01.2025,TEXT,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{Swiss,Landung}",4.5,ja,2.5,5,gutbrjoa
+05.01.2025,TEXT,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{""ZSC Lions"",""Marco Bayer"",""Marc Crawford""}",4.5,ja,5,3.5,gutbrjoa
+05.01.2025,TEXT,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,{Skiunfall},5,ja,4,4,fluehsi2
+05.01.2025,TEXT,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Marco Odermatt"",""Lara Gut-Behrami"",""Sportler des Jahres (Schweiz)""}",4,ja,3,3,fluehsi2
+05.01.2025,TEXT,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{""Credit Suisse""}",5,ja,3,4,fluehsi2
+05.01.2025,TEXT,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{Swiss,Landung}",5,ja,3,5,fluehsi2
+05.01.2025,TEXT,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{""ZSC Lions"",""Marco Bayer"",""Marc Crawford""}",5,ja,5,4.5,fluehsi2
+10.02.2025,TEXT,296eff6a22655a0fe2b9ece63f4b7c36941d6aa4c37d7856f9a49daeabf47893,"{""Super Bowl LIX Halftime Show"",""Kendrick Lamar""}",4.5,ja,4,5,hagereli
+10.02.2025,TEXT,fcae03f82e5cdde6065f7efc8948c94ebfc949de7eff8b93e9fb4a0d24a0f166,"{""Donald Trump"",""Europäische Union"",Handelskrieg}",4,ja,3.5,5,hagereli
+10.02.2025,TEXT,f68ec01e19bfb07216c2384a59fd4bdcb1becdd31d6fb3fee7e058c3f1a559de,{Mindestlohn},5,ja,3.75,4,hagereli
+10.02.2025,TEXT,a14249632f9322b8a11c68d83fe0bd9adc865639570f96923e8d88a2463e60d4,"{""Franjo von Allmen"",Swiss-Ski}",5,ja,4,4.5,hagereli
+10.02.2025,TEXT,ea5c43913154a9e2219c9c0404d64c0d2b1a98824565c8f0e28b4613217a627e,"{""Jungpartei (Schweiz)""}",2.5,ja,1,2.5,hagereli
+19.03.2025,TEXT,9ee0a308b77c979233e697681c54c1ef040d7441a50b4164f3815fc0a6364560,"{""Ekrem İmamoğlu"",""Recep Tayyip Erdoğan""}",5,ja,5,5,gutbrjoa
+19.03.2025,TEXT,acc085a64beb074a43ff6aa7fe153a794b9c014ece4a2be1d0026dd408faabc3,"{""Stadler Rail""}",3.75,ja,4.5,3,gutbrjoa
+19.03.2025,TEXT,32ef65b8658a6a68f239f44ca7fbf3cfa106852a11e6521326942d1e9a13239c,"{""Credit Suisse"",Geldwäsche,Moçambique-Affäre}",4,ja,5,4.5,gutbrjoa
+19.03.2025,TEXT,3957d2ee8a1170a05c0b3014d3801d3e9bf11dae6c1437bb741a76fdaa676d09,"{""Russisch-ukrainischer Gasstreit""}",5,ja,4.5,5,gutbrjoa
+26.04.2025,TEXT,57897961e66aebdb47dd0292d8bb6a6177f6604f9cd6d5e5463b544456d80ae5,"{""Donald Trump""}",5,ja,3,4,fluehsi2
+26.04.2025,TEXT,22ddf5e80908668cc7f789d62f4e1067e1c7bb0c8ebd64a9e0a416b4c27a7d8b,"{""Franziskus (Papst)"",""Begräbnisfeier für Papst Franziskus"",Petersplatz}",5,ja,4.5,4.5,fluehsi2
+26.04.2025,TEXT,361234519f6e1a2ee97685e43b06a5c0569c9607e25fdf1aeafa76ddc34fa74e,"{""Appenzeller Bahnen (1988)""}",3,ja,4,4,fluehsi2
+26.04.2025,TEXT,32364d3d251445cda47cfb83e069ca349725a0c0486e604f4d135adc0cbf2e11,"{""Donald Trump"",""Russisch-Ukrainischer Krieg""}",5,ja,4.5,3,fluehsi2
+26.04.2025,TEXT,0c02c6320cd65b446f4978c80b48042afcbbf58271c5c4f60e685271141839b4,"{""Donald Trump""}",4,ja,2.5,3,fluehsi2
+05.01.2025,NET,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,"{""Österreichische Volkspartei"",""Freiheitliche Partei Österreichs"",""Herbert Kickl"",Österreich}",5,ja,4,4,hagereli
+05.01.2025,NET,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Donald Trump"",Florida,""Assunta Meloni""}",4,ja,2,4,hagereli
+05.01.2025,NET,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{Zürich,Swiss,""Staatsanwaltschaft (Österreich)""}",5,ja,3,4,hagereli
+05.01.2025,NET,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{""Lara Gut-Behrami"",""Marco Odermatt""}",5,ja,2,4,hagereli
+05.01.2025,NET,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{Parsenn,Tschiertschen}",5,ja,3,4,hagereli
+05.01.2025,NET,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,"{""Österreichische Volkspartei"",""Freiheitliche Partei Österreichs"",""Herbert Kickl"",Österreich}",5,ja,3.5,3.5,gutbrjoa
+05.01.2025,NET,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Donald Trump"",Florida,""Assunta Meloni""}",4,ja,2,4,gutbrjoa
+05.01.2025,NET,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{Zürich,Swiss,""Staatsanwaltschaft (Österreich)""}",5,ja,3,5,gutbrjoa
+05.01.2025,NET,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{""Lara Gut-Behrami"",""Marco Odermatt""}",5,ja,3,2.5,gutbrjoa
+05.01.2025,NET,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{Parsenn,Tschiertschen}",5,ja,3.5,3.5,gutbrjoa
+05.01.2025,NET,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,"{""Österreichische Volkspartei"",""Freiheitliche Partei Österreichs"",""Herbert Kickl"",Österreich}",5,ja,4,4.5,fluehsi2
+05.01.2025,NET,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Donald Trump"",Florida,""Assunta Meloni""}",4.5,ja,2.5,4.5,fluehsi2
+05.01.2025,NET,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{Zürich,Swiss,""Staatsanwaltschaft (Österreich)""}",4,ja,3.5,4,fluehsi2
+05.01.2025,NET,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{""Lara Gut-Behrami"",""Marco Odermatt""}",5,ja,3,3,fluehsi2
+05.01.2025,NET,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{Parsenn,Tschiertschen}",4.5,ja,4,4,fluehsi2
+10.02.2025,NET,296eff6a22655a0fe2b9ece63f4b7c36941d6aa4c37d7856f9a49daeabf47893,"{""US-Präsident Donald Trump""}",2,ungewiss,2,4,hagereli
+10.02.2025,NET,fcae03f82e5cdde6065f7efc8948c94ebfc949de7eff8b93e9fb4a0d24a0f166,"{Scholz,""Merz (Familienname)"",""Alternative für Deutschland"",""Sozialdemokratische Partei Deutschlands"",Deutschland}",5,ja,1.5,5,hagereli
+10.02.2025,NET,f68ec01e19bfb07216c2384a59fd4bdcb1becdd31d6fb3fee7e058c3f1a559de,"{""Kendrick Lamar"",""Super Bowl"",""Donald Trump"",""Taylor Swift""}",5,ja,5,5,hagereli
+10.02.2025,NET,a14249632f9322b8a11c68d83fe0bd9adc865639570f96923e8d88a2463e60d4,{Schweizer},5,ja,1,2.5,hagereli
+10.02.2025,NET,ea5c43913154a9e2219c9c0404d64c0d2b1a98824565c8f0e28b4613217a627e,"{Waffenruhe,Hamas,Israel}",5,ja,4,4,hagereli
+10.02.2025,NET,81899a38509f226058145562457ebd04f823e0aa8c42f4ea6de3568b7e90ae42,"{""Albin Kurti"",Kurti,""Parlamentarisches Datenschutzkomitee""}",5,ja,2.5,5,hagereli
+19.03.2025,NET,9ee0a308b77c979233e697681c54c1ef040d7441a50b4164f3815fc0a6364560,"{""Russlands Präsident Putin"",Ukraine-Krieg,EU-Kommission}",4.5,ja,4,3.5,gutbrjoa
+19.03.2025,NET,acc085a64beb074a43ff6aa7fe153a794b9c014ece4a2be1d0026dd408faabc3,"{""Ekrem İmamoğlu""}",5,ja,3,5,gutbrjoa
+19.03.2025,NET,32ef65b8658a6a68f239f44ca7fbf3cfa106852a11e6521326942d1e9a13239c,"{""Stadler Rail""}",3.75,ja,4.5,4,gutbrjoa
+19.03.2025,NET,3957d2ee8a1170a05c0b3014d3801d3e9bf11dae6c1437bb741a76fdaa676d09,"{""Peter Bichsel""}",2.5,nein,4,4,gutbrjoa
+19.03.2025,NET,48931e49fa0c4823eaad92a3587338c6ef651a716ec1ed4f0db028a4df330ad8,"{Hamas,""Gaza (Stadt)"",Waffenruhe,Israel}",4.5,ja,4,4,gutbrjoa
+19.03.2025,NET,258dc0582de0a9054f74095f54d188d6ef282615bb8d871263c2e1ff6d090161,"{""Credit Suisse""}",5,ja,4,5,gutbrjoa
+26.04.2025,NET,57897961e66aebdb47dd0292d8bb6a6177f6604f9cd6d5e5463b544456d80ae5,"{Petersplatz,Franziskus,Petersdom,""Donald Trump"",Rom}",5,ja,3,4,fluehsi2
+26.04.2025,NET,22ddf5e80908668cc7f789d62f4e1067e1c7bb0c8ebd64a9e0a416b4c27a7d8b,"{""Klaus Schwab"",Weltwirtschaftsforum,Schweiz}",4.5,ja,5,4.5,fluehsi2
+26.04.2025,NET,361234519f6e1a2ee97685e43b06a5c0569c9607e25fdf1aeafa76ddc34fa74e,"{""Die Regierung von Donald Trump"",Zollkrieg,""Donald Trump""}",4,ungewiss,4,3.5,fluehsi2
+26.04.2025,NET,32364d3d251445cda47cfb83e069ca349725a0c0486e604f4d135adc0cbf2e11,{Ukraine-Konflikt},5,ja,3,4,fluehsi2
+26.04.2025,NET,0c02c6320cd65b446f4978c80b48042afcbbf58271c5c4f60e685271141839b4,"{""Papst Franziskus""}",5,ja,4,4.5,fluehsi2
+26.04.2025,NET,b564e8f7487b4456e97c1da85ae3c37caf43251f42d3c41b9aa75f8621fe22de,"{""Appenzeller Bahnen (1988)"",""Appenzeller Bahnen""}",3,ja,3.5,4,fluehsi2
+05.01.2025,SUM,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,"{Tschiertschen,Betelberg,Parsenn}",4,ja,3,3,hagereli
+05.01.2025,SUM,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Lara Gut-Behrami"",""Marco Odermatt"",""Heinz Frei"",""Patrick Fischer"",""Tanja Hüberli"",""Nina Brunner""}",5,ja,3,3,hagereli
+05.01.2025,SUM,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{""Credit Suisse"",""Senat der Vereinigten Staaten""}",5,ja,3.5,5,hagereli
+05.01.2025,SUM,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{""Hypoxie (Medizin)"",Hirnödem,""Bundesanwaltschaft (Schweiz)""}",5,ja,3.5,5,hagereli
+05.01.2025,SUM,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{""ZSC Lions"",""National League (Eishockey)"",""Marco Bayer""}",5,ja,4,5,hagereli
+05.01.2025,SUM,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,"{Tschiertschen,Betelberg,Parsenn}",5,ja,4.5,5,gutbrjoa
+05.01.2025,SUM,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Lara Gut-Behrami"",""Marco Odermatt"",""Heinz Frei"",""Patrick Fischer"",""Tanja Hüberli"",""Nina Brunner""}",5,ja,3.75,5,gutbrjoa
+05.01.2025,SUM,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{""Credit Suisse"",""Senat der Vereinigten Staaten""}",5,ja,4.5,4.25,gutbrjoa
+05.01.2025,SUM,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{""Hypoxie (Medizin)"",Hirnödem,""Bundesanwaltschaft (Schweiz)""}",5,ja,4,5,gutbrjoa
+05.01.2025,SUM,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{""ZSC Lions"",""National League (Eishockey)"",""Marco Bayer""}",5,ja,4.25,5,gutbrjoa
+05.01.2025,SUM,ccbe35f1ceb98826c5ae2e36a04299525f9029eee12d5829fa150daff45e96a2,"{Tschiertschen,Betelberg,Parsenn}",5,ja,4.5,5,fluehsi2
+05.01.2025,SUM,4dd144d87e5a11620b6c4f251712ca1eb8bc2b40b45d777c1fb477dff7fa514c,"{""Lara Gut-Behrami"",""Marco Odermatt"",""Heinz Frei"",""Patrick Fischer"",""Tanja Hüberli"",""Nina Brunner""}",4,ja,3,4,fluehsi2
+05.01.2025,SUM,03647fc58b856a830aec8127f9cb39fdcb3598f368f528bd20bd7ea934ccb69a,"{""Credit Suisse"",""Senat der Vereinigten Staaten""}",5,ja,4,4,fluehsi2
+05.01.2025,SUM,8836ba75ae660e0d9c526daf064fd05c79a177c52c955189495bae4061348571,"{""Hypoxie (Medizin)"",Hirnödem,""Bundesanwaltschaft (Schweiz)""}",5,ja,3.5,5,fluehsi2
+05.01.2025,SUM,3efa65dcc4ea38b7484310de03282d673d0f7c1ed9a891142ee0401c741d62f2,"{""ZSC Lions"",""National League (Eishockey)"",""Marco Bayer""}",5,ja,4,4,fluehsi2
+10.02.2025,SUM,296eff6a22655a0fe2b9ece63f4b7c36941d6aa4c37d7856f9a49daeabf47893,"{""Kendrick Lamar"",""Serena Williams"",""Super Bowl LIX Halftime Show""}",5,ja,5,4,hagereli
+10.02.2025,SUM,fcae03f82e5cdde6065f7efc8948c94ebfc949de7eff8b93e9fb4a0d24a0f166,"{""Donald Trump"",""Vereinigte Staaten"",""Europäische Union""}",5,ja,4,5,hagereli
+10.02.2025,SUM,f68ec01e19bfb07216c2384a59fd4bdcb1becdd31d6fb3fee7e058c3f1a559de,"{""Kanton Solothurn"",""Kanton Bern"",""Kanton Freiburg"",Mindestlohn,Kulturgut}",5,ja,3,5,hagereli
+10.02.2025,SUM,a14249632f9322b8a11c68d83fe0bd9adc865639570f96923e8d88a2463e60d4,"{""Franjo von Allmen"",Saalbach-Hinterglemm,""Nordische Skiweltmeisterschaften""}",5,ja,5,5,hagereli
+10.02.2025,SUM,ea5c43913154a9e2219c9c0404d64c0d2b1a98824565c8f0e28b4613217a627e,"{""Kanton Luzern"",""Volksinitiative (Schweiz)""}",5,ja,5,5,hagereli
+19.03.2025,SUM,9ee0a308b77c979233e697681c54c1ef040d7441a50b4164f3815fc0a6364560,"{""Recep Tayyip Erdoğan"",""Ekrem İmamoğlu"",Istanbul}",4.75,ja,4.75,4.5,gutbrjoa
+19.03.2025,SUM,acc085a64beb074a43ff6aa7fe153a794b9c014ece4a2be1d0026dd408faabc3,"{""Stadler Rail"",EBIT,Auftragseingang,Jahresüberschuss}",3.75,ja,4,4.5,gutbrjoa
+19.03.2025,SUM,32ef65b8658a6a68f239f44ca7fbf3cfa106852a11e6521326942d1e9a13239c,"{""Credit Suisse"",Geldwäsche,Mosambik,""Eidgenössische Finanzverwaltung""}",4.25,ja,4,5,gutbrjoa
+19.03.2025,SUM,3957d2ee8a1170a05c0b3014d3801d3e9bf11dae6c1437bb741a76fdaa676d09,"{Waffenruhe,""Russisch-Ukrainischer Krieg"",""Donald Trump"",""Wladimir Wladimirowitsch Putin""}",4.75,ja,5,4.75,gutbrjoa
+26.04.2025,SUM,57897961e66aebdb47dd0292d8bb6a6177f6604f9cd6d5e5463b544456d80ae5,"{Handelsstreit,""Donald Trump"",Absichtserklärung}",5,ja,4,3.5,fluehsi2
+26.04.2025,SUM,22ddf5e80908668cc7f789d62f4e1067e1c7bb0c8ebd64a9e0a416b4c27a7d8b,"{""Franziskus (Papst)"",""Santa Maria Maggiore"",Petersplatz}",5,ja,4.5,4.5,fluehsi2
+26.04.2025,SUM,361234519f6e1a2ee97685e43b06a5c0569c9607e25fdf1aeafa76ddc34fa74e,"{""Appenzeller Bahnen"",Schweiz,""Psychologisches Gutachten""}",3,ja,2.5,2.5,fluehsi2
+26.04.2025,SUM,32364d3d251445cda47cfb83e069ca349725a0c0486e604f4d135adc0cbf2e11,"{""Russisch-Ukrainischer Krieg"",""Wladimir Wladimirowitsch Putin"",Krim,""Donald Trump""}",5,ja,4.5,4,fluehsi2
+26.04.2025,SUM,0c02c6320cd65b446f4978c80b48042afcbbf58271c5c4f60e685271141839b4,"{""Donald Trump"",""Wolodymyr Selenskyj"",""Russisch-Ukrainischer Krieg"",""Russischer Überfall auf die Ukraine seit 2022""}",5,ja,4,4,fluehsi2
