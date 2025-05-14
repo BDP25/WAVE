@@ -14,7 +14,20 @@ let lastDisplayedClusterDate = null;   // Add this missing variable
 document.addEventListener("DOMContentLoaded", () => {
     initializeFlatpickr();
     document.getElementById("intro-section").style.display = "block";
+
+    // Add click event listener to the logo in the sidebar
+    // Add click event listener to the logo in the sidebar
+    const logoElement = document.querySelector('.sidebar .logo');
+    if (logoElement) {
+        logoElement.addEventListener('click', (e) => {
+            // Reload the page instead of trying to show intro section
+            window.location.reload();
+        });
+    }
+
 });
+
+
 
 function initializeFlatpickr() {
     const datePickerElement = document.getElementById("date-picker");
@@ -273,7 +286,7 @@ function displayClusterSummary() {
                 console.error("Error loading summary:", data.error);
             } else {
                 const summaryHTML = `
-                    <h3>Cluster Summary</h3>
+                    <h3>Cluster-Zusammenfasung</h3>
                     <div class="summary-content">${data.summary}</div>
                 `;
                 summarySection.innerHTML = summaryHTML;
