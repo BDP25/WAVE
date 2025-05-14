@@ -95,7 +95,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="GFlRgYO1Asi0t8vswzjz-24" value="Entitäts­extraktion mit spaCy Textvektorisierung per TF-IDF" style="html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;" parent="1" vertex="1">
-          <mxGeometry x="670" y="186" width="110" height="58" as="geometry" />
+          <mxGeometry x="670" y="185" width="110" height="58" as="geometry" />
         </mxCell>
         <mxCell id="GFlRgYO1Asi0t8vswzjz-25" value="&lt;span data-is-only-node=&quot;&quot; data-end=&quot;14&quot; data-start=&quot;0&quot;&gt;Clustering&lt;/span&gt;: Ähnliche Artikel werden gruppiert." style="html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=0;" parent="1" vertex="1">
           <mxGeometry x="363.73" y="168.08000000000004" width="103" height="90" as="geometry" />
@@ -107,7 +107,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="GFlRgYO1Asi0t8vswzjz-28" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
-          <mxGeometry x="365.99" y="170" width="193" height="90" as="geometry" />
+          <mxGeometry x="363.99" y="169" width="193" height="90" as="geometry" />
         </mxCell>
         <mxCell id="GFlRgYO1Asi0t8vswzjz-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="GFlRgYO1Asi0t8vswzjz-30" target="GFlRgYO1Asi0t8vswzjz-32" edge="1">
           <mxGeometry relative="1" as="geometry" />
