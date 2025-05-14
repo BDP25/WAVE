@@ -184,44 +184,36 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
     """
     # Import at runtime to avoid circular dependency
     from safe_wiki_to_db import update_article_history
-    
-    # Set default db_config if not provided
+
     if db_config is None:
         db_config = {
             "host": "localhost",
-            "database": "wikipedia_db",
+            "dbname": "wikipedia_db",
             "user": "postgres",
             "password": "postgres",
             "port": 5432
         }
 
-    # Connect to database
     conn = create_db_connection(**db_config)
     if not conn:
         print("Database connection failed, downloading data directly")
-        # If we can't connect to DB, just download and return without saving
         history_df, page_id = download_wiki_history(article_title, language_code)
         return {"title": article_title, "language": language_code, "article_id": page_id}, history_df
 
     try:
-        # Get the Wikipedia page ID (needed for checking if it exists in DB)
         page_id = get_page_id(article_title, language_code)
-        
         cursor = conn.cursor()
 
-        # Check if article exists and is recent - now using page_id for lookup
         cursor.execute("""
             SELECT article_id, article_title, language_code, last_updated 
             FROM WP_article 
             WHERE article_id = %s
         """, (page_id,))
-
         article_result = cursor.fetchone()
         needs_update = True
 
         if article_result:
             article_id, title, lang, last_updated = article_result
-            # Check if update is needed based on age
             if last_updated and (datetime.now() - last_updated) < timedelta(days=max_age_days):
                 needs_update = False
                 print(f"Article '{title}' is up-to-date (last updated: {last_updated})")
@@ -230,43 +222,24 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
         else:
             print(f"Article '{article_title}' not found in database")
 
-        # Download history data only once if needed
-        history_df = None
+        # Remove duplicate download: rely solely on update_article_history if update is needed.
         if needs_update:
-            history_df, page_id = download_wiki_history(article_title, language_code)
             success = update_article_history(article_title, language_code, db_config)
             if not success:
                 print("Warning: Failed to update article history")
-
-            # Update the 'content' column with raw HTML from the site
-            for _, row in history_df.iterrows():
-                cursor.execute(
-                    "UPDATE history SET content = %s WHERE article_id = %s AND revid = %s",
-                    (row['raw_html'], page_id, row['revid'])
-                )
-            conn.commit()
-
-            # Get the article ID (it should be the Wikipedia page_id now)
-            article_id = page_id
-            
-            # Verify it exists in our database
+            # Query updated history from the database.
             cursor.execute("""
-                SELECT article_id, article_title, language_code, last_updated 
-                FROM WP_article 
+                SELECT revid, timestamp, user_name, comment, diff_content as raw_html
+                FROM history
                 WHERE article_id = %s
-            """, (article_id,))
-
-            article_result = cursor.fetchone()
-            if article_result:
-                article_id, title, lang, last_updated = article_result
-            else:
-                print("Error: Article not found after update attempt")
-                conn.close()
-                return None, None
+                ORDER BY timestamp DESC
+            """, (page_id,))
+            history_rows = cursor.fetchall()
+            history_df = pd.DataFrame(history_rows, columns=["revid", "time", "user", "comment", "raw_html"])
+            article_id = page_id
         else:
-            # Retrieve history data if no update is needed
             cursor.execute("""
-                SELECT revid, timestamp, user_name, comment, content as raw_html
+                SELECT revid, timestamp, user_name, comment, diff_content as raw_html
                 FROM history
                 WHERE article_id = %s
                 ORDER BY timestamp DESC
@@ -274,12 +247,11 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
             history_rows = cursor.fetchall()
             history_df = pd.DataFrame(history_rows, columns=["revid", "time", "user", "comment", "raw_html"])
 
-        # Retrieve article data
         article_data = {
             "article_id": article_id,
-            "title": title,
-            "language": lang,
-            "last_updated": last_updated
+            "title": title if article_result else article_title,
+            "language": lang if article_result else language_code,
+            "last_updated": last_updated if article_result else None
         }
 
         cursor.close()
@@ -291,11 +263,8 @@ def get_or_update_article(article_title, language_code, max_age_days=7, db_confi
         print(f"Error in get_or_update_article: {e}")
         if conn:
             conn.close()
-
-        # Fallback: Download data directly if DB operations fail
         print("Falling back to direct download")
-        if history_df is None:  # Ensure history is only downloaded once
-            history_df, page_id = download_wiki_history(article_title, language_code)
+        history_df, page_id = download_wiki_history(article_title, language_code)
         return {"title": article_title, "language": language_code, "article_id": page_id}, history_df
 
 def delete_article(article_title, language_code, db_config=None):
@@ -314,7 +283,7 @@ def delete_article(article_title, language_code, db_config=None):
     if db_config is None:
         db_config = {
             "host": "localhost",
-            "database": "wikipedia_db",
+            "dbname": "wikipedia_db",
             "user": "postgres",
             "password": "postgres",
             "port": 5432
@@ -390,10 +359,10 @@ if __name__ == "__main__":
     }
 
     # Example usage
-    article_title = "Bundesamt für Informatik und Telekommunikation"
+    article_title = "David Degen"
     language_code = "de"
 
-    task = ("del") # can be "del", "get" or "get-latest"
+    task = ("replace") # can be "del", "get", "get-latest", "replace"
 
     if task == "get":
         article_data, history_data = get_or_update_article(article_title, language_code, db_config=db_config)
@@ -410,4 +379,15 @@ if __name__ == "__main__":
     if task == "del":
         deletion_success = delete_article(article_title, language_code, db_config=db_config)
         print(f"Deletion of article '{article_title}' successful: {deletion_success}")
+
+    if task == "replace":
+        # First delete the article
+        deletion_success = delete_article(article_title, language_code, db_config=db_config)
+        print(f"Deletion of article '{article_title}' successful: {deletion_success}")
+
+        # Then get the updated article
+        article_data, history_data = get_or_update_article(article_title, language_code, db_config=db_config)
+
+        print("Article Data:", article_data)
+        print("History Data:", history_data.head(5))
 

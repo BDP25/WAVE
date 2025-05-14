@@ -5,8 +5,8 @@ import pandas as pd
 from psycopg2.extras import execute_batch
 from datetime import datetime
 import difflib
-import re  # added to check for HTML tags
-from bs4 import BeautifulSoup, NavigableString  # update import for HTML cleaning
+import re
+from bs4 import BeautifulSoup
 import hashlib  # added for user color generation
 
 # Import from new db_utils module instead of defining locally
@@ -79,57 +79,113 @@ def get_user_color(user):
 def diff_text(old_text, new_text, user):
     """
     Compute a word-level diff between two text strings.
-    Wrap inserted words with:
-      <span style="background-color: orange" user-add={user}>...</span>
-    and deleted words with:
-      <span style="text-decoration: line-through; text-decoration-color: orange;" user-del={user}>...</span>
+    Merges consecutive additions or deletions by the same user into single spans.
     """
-    old_words = old_text.split()
-    new_words = new_text.split()
-    matcher = difflib.SequenceMatcher(None, old_words, new_words)
+    # Tokenize words, punctuation, and whitespace
+    tokens_old = re.findall(r'\w+|[^\w\s]|\s+', old_text, flags=re.UNICODE)
+    tokens_new = re.findall(r'\w+|[^\w\s]|\s+', new_text, flags=re.UNICODE)
+
+    # Use ndiff to get detailed character-level differences
+    diff = difflib.ndiff(tokens_old, tokens_new)
+
+    # Initialize variables for tracking and combining consecutive changes
     result = []
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == 'equal':
-            result.append(" ".join(new_words[j1:j2]))
-        elif tag == 'insert':
-            inserted = " ".join(new_words[j1:j2])
-            result.append(f"<span style=\"background-color: orange\" user-add={user}>{inserted}</span>")
-        elif tag == 'delete':
-            deleted = " ".join(old_words[i1:i2])
-            result.append(f"<span style=\"text-decoration: line-through; text-decoration-color: orange;\" user-del={user}>{deleted}</span>")
-        elif tag == 'replace':
-            deleted = " ".join(old_words[i1:i2])
-            inserted = " ".join(new_words[j1:j2])
-            result.append(f"<span style=\"text-decoration: line-through; text-decoration-color: orange;\" user-del={user}>{deleted}</span>")
-            result.append(f"<span style=\"background-color: orange\" user-add={user}>{inserted}</span>")
-    return " ".join(result)
+    current_operation = None  # '+', '-', or None for unchanged
+    current_user = None
+    buffer = []
+
+    def flush_buffer():
+        """Helper to wrap and append buffered content when operation changes"""
+        nonlocal buffer, current_operation, current_user, result
+        if not buffer:
+            return
+
+        combined_text = ''.join(buffer)
+        if current_operation == '+':
+            result.append(
+                f'<span style="background-color: orange;" user-add="{current_user}">{combined_text}</span>'
+            )
+        elif current_operation == '-':
+            result.append(
+                f'<span style="text-decoration: line-through; text-decoration-color: orange;"'
+                f' user-del="{current_user}">{combined_text}</span>'
+            )
+        else:
+            result.append(combined_text)
+
+        buffer = []
+
+    # Process each token from the diff
+    for op in diff:
+        code, tok = op[0], op[2:]
+
+        # Skip the '?' hint lines from ndiff
+        if code == '?':
+            continue
+
+        # Determine operation type
+        operation = None
+        if code == ' ':
+            operation = None  # unchanged
+        elif code == '-':
+            operation = '-'  # deletion
+        elif code == '+':
+            operation = '+'  # addition
+
+        # If operation or user changed, flush the buffer
+        if operation != current_operation or (operation in ['+', '-'] and current_user != user):
+            flush_buffer()
+            current_operation = operation
+            current_user = user if operation in ['+', '-'] else None
+
+        # Add current token to buffer
+        buffer.append(tok)
+
+    # Flush any remaining content
+    flush_buffer()
+
+    return ''.join(result)
 
 
 def compute_diff(old_html, new_html, user):
     """
-    Compute an HTML diff that preserves the overall HTML structure.
-    For each target tag (title, h1, p):
-      - If the tag's content is plain text (only one NavigableString),
-        compute a diff on its text and replace its content with the diff result.
-      - Otherwise, leave its content unchanged.
+    Compute an HTML diff that preserves the overall structure.
+    For each target tag (title, h1, p), compute a diff on its text (via get_text),
+    then replace its inner HTML with the diff result wrapping inserted/deleted words.
+    Ensures all content after changes is preserved in the output.
     """
     old_soup = BeautifulSoup(old_html, 'html.parser')
     new_soup = BeautifulSoup(new_html, 'html.parser')
-    target_tags = ['title', 'h1', 'p']
-    for tag in target_tags:
-        old_tags = old_soup.find_all(tag)
-        new_tags = new_soup.find_all(tag)
+    target_tags = ['title', 'h1', 'p',  'th']
+
+    # Process target tags (title, h1, p)
+    for tag_name in target_tags:
+        old_tags = old_soup.find_all(tag_name)
+        new_tags = new_soup.find_all(tag_name)
+
+        # Process each tag by index
         for i, new_tag in enumerate(new_tags):
-            # Process only if the tag contains exactly one text node
-            if not (len(new_tag.contents) == 1 and isinstance(new_tag.contents[0], NavigableString)):
-                continue
-            old_text = old_tags[i].get_text(" ", strip=True) if i < len(old_tags) else ""
-            new_text = new_tag.get_text(" ", strip=True)
-            diff_result = diff_text(old_text, new_text, user)
-            new_tag.clear()
-            new_fragment = BeautifulSoup(diff_result, 'html.parser')
-            for content in new_fragment.contents:
-                new_tag.append(content)
+            if i < len(old_tags):  # Only process if there's a corresponding old tag
+                old_tag = old_tags[i]
+
+                # Get complete text including any nested content
+                old_text = old_tag.get_text(" ", strip=False)
+                new_text = new_tag.get_text(" ", strip=False)
+
+                # Skip if texts are identical (optimization)
+                if old_text == new_text:
+                    continue
+
+                # Compute diff between old and new text
+                diff_result = diff_text(old_text, new_text, user)
+
+                # Replace the content of the tag with the diff result
+                new_tag.clear()
+                new_fragment = BeautifulSoup(diff_result, 'html.parser')
+                for content in list(new_fragment.contents):
+                    new_tag.append(content)
+
+    # Return the modified HTML as a string
     return str(new_soup)
 
 def save_article_to_db(conn, article_title, language_code, page_id):
