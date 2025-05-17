@@ -24,6 +24,7 @@ API_KEYS = os.getenv("GROQ_API_KEY").split(", ")
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
 # TODO entfernen
 nltk.download('punkt')
 
@@ -49,21 +50,21 @@ def split_text_sentencewise(text, max_length=CHUNK_SIZE):
     return chunks
 
 
-api_key_index = 0
-rate_limit_errors = [0] * len(API_KEYS)  # Fehlerzähler für jeden Key
+
 
 def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_format=True):
-    global api_key_index, rate_limit_errors
+    api_key_index = 0
+    rate_limit_errors = [0] * len(API_KEYS)
 
     max_total_attempts = len(API_KEYS) * 3  # Jeder Key darf 3x versagen
     attempts = 0
 
     while attempts < max_total_attempts:
         try:
-            # 🔑 Client mit aktuellem API-Key initialisieren
+            # initialize Groq client with the current API key
             client = groq.Groq(api_key=API_KEYS[api_key_index])
 
-            # 🔁 Anfrage stellen
+            # request completion
             completion = client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=[
@@ -75,7 +76,7 @@ def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_
                 response_format={"type": "json_object"} if json_format else None
             )
 
-            # Erfolgreich → Fehlerzähler zurücksetzen
+            # reset rate limit error count for the current API key
             rate_limit_errors[api_key_index] = 0
             return completion.choices[0].message.content
 
@@ -83,12 +84,12 @@ def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_
             error_msg = str(e)
             print(f"Fehler bei API-Key {api_key_index + 1}: {error_msg}")
 
-            # 🔍 Rate Limit erkannt?
+            # rate limit error handling
             if "rate limit" in error_msg.lower() or "429" in error_msg:
                 rate_limit_errors[api_key_index] += 1
                 print(f"Rate-Limit-Fehler: Zähler für Key {api_key_index + 1} = {rate_limit_errors[api_key_index]}")
 
-                # 🔄 Wechsel nur bei 3 aufeinanderfolgenden Fehlern
+                # change API key if rate limit error occurs
                 if rate_limit_errors[api_key_index] >= 3:
                     print(f"Wechsle API-Key von {api_key_index + 1} auf {(api_key_index + 2) % len(API_KEYS)}")
                     rate_limit_errors[api_key_index] = 0
