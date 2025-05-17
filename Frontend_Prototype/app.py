@@ -27,8 +27,6 @@ def validation():
 def api_clusters():
     try:
         datum = request.args.get("datum")
-        if not datum:
-            return jsonify({"error": "Kein Datum angegeben"}), 400
         clusters = get_clusters_per_date(datum)
         return jsonify(clusters)
     except Exception as e:
@@ -40,10 +38,6 @@ def api_clusters():
 def api_article_history():
     try:
         article_title = request.args.get("title")
-        # TODO debug
-        print(article_title)
-        if not article_title:
-            return jsonify({"error": "Kein Artikel angegeben"}), 400
         history = get_article_history_by_title(article_title)
         return jsonify(history)
     except Exception as e:
@@ -55,16 +49,9 @@ def api_cluster_summary():
     try:
         cluster_id = request.args.get("cluster_id")
         date = request.args.get("date")
-        print("Cluster ID:", cluster_id)
-        print("Date:", date)
 
 
-        # Convert cluster_id to integer
-        try:
-            cluster_index = int(cluster_id)
-        except ValueError:
-            return jsonify({"error": "Cluster ID must be a number"}), 400
-
+        cluster_index = int(cluster_id)
         # Call the existing function from db_utils.py
         summary = get_cluster_summary(cluster_index, date)
 
@@ -84,13 +71,8 @@ def api_visualize():
         article_id = request.args.get("article_id")
         start_revid = int(request.args.get("start_revid"))
         end_revid = int(request.args.get("end_revid"))
-        print("Article ID:", article_id)
-        print("Start Revid:", start_revid)
-        print("End Revid:", end_revid)
 
-        # Validate parameters
-        if not article_id or not start_revid or not end_revid:
-            return jsonify({"error": "Missing required parameters"}), 400
+
 
         # Record start time for performance measurement
         start_time = time.time()
@@ -143,5 +125,5 @@ def api_visualize():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=4000, debug=False)
 
