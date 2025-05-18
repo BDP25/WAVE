@@ -833,7 +833,6 @@ function positionCalendarContainer(instance) {
 
 
 
-
 function setupSlideEventHandler(slider, calendars, tooltips) {
     slider.noUiSlider.on("slide", () => {
         calendars.forEach((fpInstance, index) => {
@@ -845,4 +844,3 @@ function setupSlideEventHandler(slider, calendars, tooltips) {
         });
     });
 }
-

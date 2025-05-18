@@ -103,4 +103,3 @@ export function handleInvalidDate(selectedDate, index, slider, onChange, history
     slider.noUiSlider.setHandle(index, nearestTime);
     onChange();
 }
-
