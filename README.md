@@ -9,3 +9,4 @@ TODO Zusammenfassung des Clusters als Bericht
 
 app.py clean code
 
+Repo Docker etc 
