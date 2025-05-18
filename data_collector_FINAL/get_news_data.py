@@ -119,6 +119,6 @@ def save_downloaded_file(download_url: str) -> Optional[str]:
     with open(file_path, "wb") as file:
         file.write(response.content)
 
-    print(f"✅ File saved successfully: {file_path}")
+    print(f"File saved successfully: {file_path}")
     print("File size: %.2f KB" % (len(response.content) / 1024))
     return file_path
