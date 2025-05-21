@@ -531,3 +531,9 @@ a:hover {
     border-bottom: 1px dotted #aaa;
 }
 
+.noUi-base
+ {
+    z-index: 10 !important;
+    position: relative;
+}
+

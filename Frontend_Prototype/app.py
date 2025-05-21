@@ -5,6 +5,10 @@ from db_utils import db_params, redis_params
 from visualisation import (
     visualize_wiki_versions_with_deletions
 )
+from cache_utils import (
+    get_cached_whois_data, cache_whois_data,
+    get_cached_visualization, cache_visualization
+)
 import time
 import logging
 import socket
@@ -100,16 +104,38 @@ def api_visualize():
         # Record start time for performance measurement
         start_time = time.time()
 
-        # Call the visualization function without caching support
+        # Check cache first
+        cached_html = get_cached_visualization(
+            article_id=article_id,
+            start_revid=start_revid,
+            end_revid=end_revid,
+            word_level=True,
+            show_revision_info=False
+        )
+
+        if cached_html:
+            # Cache hit!
+            generation_time = time.time() - start_time
+            logger.info(f"Visualization returned from cache in {generation_time:.2f} seconds")
+
+            return jsonify({
+                "html": cached_html,
+                "metadata": {
+                    "generation_time": generation_time,
+                    "source": "cache"
+                }
+            })
+
+        # Cache miss - generate visualization
         html = visualize_wiki_versions_with_deletions(
             article_id=article_id,
             start_revid=start_revid,
             end_revid=end_revid,
             word_level=True,
-            verbose=True,  # Enable verbose to get more debugging info
+            verbose=True,
             db_config=db_params,
-            redis_config=None,  # No redis config needed
-            show_revision_info=False  # Still show the summary revision info
+            redis_config=None,
+            show_revision_info=False
         )
 
         # Calculate generation time
@@ -118,7 +144,7 @@ def api_visualize():
 
         # Check if html contains an error message
         if html and ("<div class='alert alert-danger'>" in html or "<div class='alert alert-warning'>" in html):
-            # Still return 200 but with the error message in HTML
+            # Don't cache error responses
             return jsonify({"html": html})
 
         # Check if html is None or empty
@@ -128,13 +154,24 @@ def api_visualize():
                 "html": "<div class='alert alert-danger'>No visualization data available for the selected revisions</div>"
             }), 404
 
-        logger.info("Visualization HTML generated successfully")
+        # Store in cache if successful
+        cache_visualization(
+            article_id=article_id,
+            start_revid=start_revid,
+            end_revid=end_revid,
+            html=html,
+            word_level=True,
+            show_revision_info=False
+        )
+
+        logger.info("Visualization HTML generated and cached successfully")
 
         # Return the HTML as a response with metadata
         return jsonify({
             "html": html,
             "metadata": {
-                "generation_time": generation_time
+                "generation_time": generation_time,
+                "source": "generated"
             }
         })
     except Exception as e:
@@ -157,7 +194,17 @@ def api_ip_info():
         # Get current date in YYYYMMDD format for the query
         current_date = datetime.now().strftime("%Y%m%d")
 
-        # Query the BTTF Whois service
+        # Check cache first
+        cached_data = get_cached_whois_data(ip_address, current_date)
+        if cached_data:
+            return jsonify({
+                "ip": ip_address,
+                "whois_data": cached_data,
+                "info_date": current_date,
+                "source": "cache"
+            })
+
+        # Cache miss - query the BTTF Whois service
         whois_data = query_bttf_whois(ip_address, current_date)
 
         if not whois_data:
@@ -166,11 +213,15 @@ def api_ip_info():
                 "error": "Unable to retrieve information for this IP address"
             })
 
+        # Cache the successful response
+        cache_whois_data(ip_address, current_date, whois_data)
+
         # Return the data
         return jsonify({
             "ip": ip_address,
             "whois_data": whois_data,
-            "info_date": current_date
+            "info_date": current_date,
+            "source": "api"
         })
     except Exception as e:
         logger.error(f"Error fetching IP information: {str(e)}", exc_info=True)
@@ -248,3 +299,4 @@ def query_bttf_whois(ip_address, date_str):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=False)
+

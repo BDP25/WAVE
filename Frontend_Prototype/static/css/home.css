@@ -468,6 +468,12 @@
 }
 
 
+.noUi-base
+ {
+    z-index: 10 !important;
+    position: relative;
+}
+
 .noUi-handle {
     z-index: 10 !important;
     position: relative;
