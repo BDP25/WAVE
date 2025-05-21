@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAVE</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='images/Logo.svg') }}" type="image/svg+xml">
+
+    <!-- Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/wikipedia.css') }}">
+
+    <!-- NoUISlider for date slider -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+
+    <!-- Flatpickr for enhanced date picking -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+
+<body>
+    <!-- Static Sidebar -->
+    <div class="sidebar">
+        <div class="top">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/Logo.svg') }}" class="logo" style="filter: brightness(0) invert(1);">
+            </div>
+
+
+            <div>
+                <label for="date-picker">Datum wählen:</label>
+                <input type="text"
+                       id="date-picker"
+                       name="date"
+                       data-min-date="{{ min_date }}"
+                       data-max-date="{{ vorgestern }}"
+                       required />
+            </div>
+
+
+        </div>
+
+        <div id="cluster-container">
+            <!-- Cluster information will be populated dynamically here -->
+        </div>
+    </div>
+
+    <!-- Container to the right of the sidebar -->
+    <div class="main-container">
+        <div id="home" class="home">
+            <div id="chart-container">
+                <!-- Chart will be rendered here -->
+            </div>
+            <div id="wiki-article">
+                <!-- Wikipedia article details will be shown here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript modules with proper paths -->
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/slider.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+/* ================================
+   Sidebar
+=================================== */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 250px;
+  background-color: #12171e;
+  padding: 0.4rem 0.8rem;
+  z-index: 20;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar .top {
+  flex-shrink: 0;
+}
+
+.sidebar .top .logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -0.2rem;
+  padding: 0 10% 0 10% !important;
+}
+
+.sidebar .top .logo span {
+  font-size: 0.65rem;
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+
+.sidebar ul li {
+  list-style-type: none;
+  margin: 0.2rem auto;
+}
+
+.sidebar ul li a {
+  color: #fff;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 3px;
+  border-radius: 0.8rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.sidebar ul li a:hover {
+  background-color: #fff;
+  color: #12171e;
+}
+
+.sidebar ul li a i {
+  font-size: 0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar ul li a span {
+  font-size: 0.75rem;
+}
+
+
+.logo {
+  max-width: 100%;
+  height: auto; /* Maintain aspect ratio */
+  display: block;
+  margin-top: 10px;
+  max-height: 400px;
+}
+
+
+
+
+.sidebar .top .date-picker-container {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.sidebar .top .date-picker-container label {
+  margin-bottom: 0.4rem;
+  font-weight: bold;
+}
+
+.sidebar .top .date-picker {
+  width: 85%;
+  padding: 6px 10px;
+  margin: 0 0 12px 0;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: #1f2a38;
+  color: #fff;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.sidebar .top .date-picker::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Kalender-Icon weiß */
+}
+
+
+
+
+
+
+
+/* ================================
+   Cluster Container
+=================================== */
+
+/* Style for the cluster container */
+#cluster-container {
+  width: 85%;
+  margin: 0.5rem auto;
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+}
+
+/* Style for each cluster */
+.cluster {
+  border: 2px solid #1f2a38;
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: #1f2a38;
+  border-radius: 0.5rem;
+  color: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Style for the cluster title */
+.cluster h3 {
+    margin: 0.3rem 0 0.3rem 0;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* Style for the list of Wikipedia articles */
+.cluster ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+
+/* Style for each list item  */
+.cluster li {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+    line-height: 1.0;
+    padding: 0.05rem 0;
+}
+
+/* Style for links inside list items */
+.cluster li a {
+    color: #4dabf7;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    display: block;
+    padding: 0.05rem 0;
+}
+
+/* Style for links on hover */
+.cluster li a:hover {
+    color: #74c0fc;
+    text-decoration: underline;
+}
+
+
+
+
+
+/* Label styling for date picker */
+label[for="date-picker"] {
+    color: white;
+    font-size: 14px;
+    margin-top: 1.5rem;  /* Added margin-top */
+    margin-bottom: 5px;
+    display: block;
+}
+/* Only style selected date */
+#date-picker-calendar.flatpickr-calendar .flatpickr-day.selected {
+    background: #b6e6b6 !important;
+    color: #000 !important;
+    border-color: #b6e6b6 !important;
+}
+
+/* Ensure calendar layout properly shows all days */
+#date-picker-calendar.flatpickr-calendar .dayContainer {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    width: 100% !important;
+    min-width: 210px !important;
+    max-width: none !important;
+}
+
+#date-picker-calendar.flatpickr-calendar .flatpickr-weekdaycontainer {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    width: 100% !important;
+}
+
+/* Ensure all days have the same width */
+#date-picker-calendar.flatpickr-calendar .flatpickr-day {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+/* Ensure all weekdays are visible */
+#date-picker-calendar.flatpickr-calendar .flatpickr-weekday {
+    max-width: none !important;
+    width: 100% !important;
+    display: block !important;
+}
+
+/* Small flatpickr customizations */
+#date-picker-calendar.flatpickr-calendar {
+    width: 250px;
+    padding: 6px;
+}
+
+/* Weekday header styling */
+#date-picker-calendar.flatpickr-calendar .flatpickr-weekday {
+    font-size: 10px;
+    padding: 0;
+    height: 18px;
+    width: 100%;
+    text-align: center;
+}
+
+/* Day cell styling */
+#date-picker-calendar.flatpickr-calendar .flatpickr-day {
+    width: 100%;
+    max-width: none;
+    height: 18px;
+    line-height: 18px;
+    font-size: 10px;
+    margin: 1px;
+    padding: 0;
+}
+
+/* Calendar container styling */
+#date-picker-calendar.flatpickr-calendar .flatpickr-days {
+    width: 100%;
+    min-width: 220px;
+}
+
+#date-picker-calendar.flatpickr-calendar .dayContainer {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+#date-picker-calendar.flatpickr-calendar .flatpickr-month {
+    height: 24px;
+    min-height: 24px;
+    padding: 2px 0;
+}
+
+#date-picker-calendar.flatpickr-calendar .flatpickr-monthDropdown-months {
+    width: 75px;
+    font-size: 11px;
+}
+
+/* Calendar navigation arrows */
+#date-picker-calendar.flatpickr-calendar .flatpickr-prev-month,
+#date-picker-calendar.flatpickr-calendar .flatpickr-next-month {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin: 0;
+}
+
+/* Year dropdown styling */
+#date-picker-calendar.flatpickr-calendar .flatpickr-yearDropdown {
+    width: 45px;
+    font-size: 11px;
+}
+
+/* No clusters message */
+.no-clusters {
+    color: #fff;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 1rem;
+}

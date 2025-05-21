@@ -1,0 +1,490 @@
+.main-container {
+    flex: 1;
+    background-color: #2b343f;
+    color: white;
+    padding: 40px;
+    overflow-y: auto;
+    margin-left: 275px;
+    margin-top: 20px;
+    margin-right: 25px;
+    margin-bottom: 20px;
+    overflow-x: hidden; /* <-- Das verhindert horizontales Scrollen */
+    border-radius: 12px 12px 12px 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    height: calc(100vh - 40px); /* Adjusts the height to fill the viewport, leaving room for top and bottom margins */
+}
+
+
+/* ================================
+   Intro Section
+=================================== */
+/* Intro section styling */
+#intro-section {
+  background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  padding: 2.5rem 2rem;
+  margin: 2rem 0;
+  font-family: 'Inter', sans-serif;
+}
+#intro-section h2 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #2d3a5c;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.5px;
+}
+.wave-highlight {
+  color: #6366f1;
+}
+#intro-section p {
+  font-size: 1.15rem;
+  color: #374151;
+  margin-bottom: 1.2rem;
+}
+.intro-subtitle {
+  font-weight: 600;
+  color: #6366f1;
+  font-size: 1.1rem;
+}
+#intro-section ul {
+  margin: 0.7rem 0 0 1.2rem;
+  color: #374151;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+.intro-note {
+  color: #64748b;
+  font-size: 1rem;
+  margin-top: 1.5rem;
+}
+
+
+
+
+
+/* Underline title in wiki article in main container */
+#wiki-article l2 {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-decoration: underline;
+}
+
+/* Increase the spacing of the summary text */
+#wiki-article p {
+    margin-top: 20px;
+    line-height: 1.6;
+}
+
+
+/* ================================
+   Slider Timeseries
+=================================== */
+/* Distance to top edge */
+.slider-wrapper {
+    width: 100%;
+    margin: 80px 0;
+    position: relative; /* Make z-index take effect */
+    z-index: 3000;
+}
+
+#multi-range-slider {
+    margin: 0 15px;
+}
+
+.timeline-axis {
+    position: relative;
+    height: 20px;
+    margin-top: 10px;
+}
+
+.timeline-axis span {
+    position: absolute;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    font-size: 12px;
+}
+
+.timeline-axis span::before {
+    content: "";
+    display: block;
+    width: 1px;
+    height: 10px;
+    background-color: #999;
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+
+.year-label {
+    font-size: 12px;
+    color: #666;
+}
+
+.month-label {
+    font-size: 10px;
+    color: #666;
+}
+
+
+
+
+
+
+.noUi-tooltip {
+    cursor: pointer;
+}
+
+.date-picker-input {
+    position: absolute;
+    z-index: 1000;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+
+
+/* Style for the visualization output container */
+.output-container {
+    background-color: white; /* Match the main container background */
+    color: black; /* Ensure text is visible */
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    overflow-x: auto; /* Handle horizontal overflow */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
+}
+
+/* Style for titles inside the visualization output container */
+.output-container h2,
+.output-container h3 {
+    color: white; /* Set the text color to white */
+    font-weight: bold; /* Make the title bold */
+    margin-bottom: 10px; /* Add spacing below the title */
+}
+
+.output-container p {
+    line-height: 1.6; /* Improve readability */
+    margin: 10px 0;
+}
+
+
+
+
+
+.valid-entry-day {
+    background: #b6e6b6 !important;
+    border-radius: 50%;
+    color: black;
+}
+
+/* Für Tage mit mindestens einem gültigen Eintrag */
+.valid-entry-day {
+  background-color: #e6f7ff; /* optionales Highlight */
+}
+
+/* Marker für mehrere gültige Einträge */
+.calendar-marker {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 3px;
+  height: 3px;
+  background-color: #0078d7;
+  border-radius: 50%;
+}
+
+/* Damit der Marker relativ zu dayElem positioniert ist */
+.relative-day {
+  position: relative;
+}
+
+
+.small-flatpickr {
+
+    box-sizing: border-box;
+    z-index: 3001;
+}
+
+/* Kalenderelement extrem klein */
+.small-flatpickr .flatpickr-calendar {
+    width: 120px; /* Sehr kleine Breite */
+    height: auto; /* Automatische Höhe */
+    font-size: 8px; /* Sehr kleine Schriftgröße */
+    z-index: 3001;
+}
+
+.small-flatpickr .flatpickr-day {
+    width: 18px; /* Sehr kleine Tage */
+    height: 18px; /* Sehr kleine Tage */
+    line-height: 18px; /* Zentrale Ausrichtung der Zahl */
+}
+
+.small-flatpickr .flatpickr-months {
+    font-size: 8px; /* Sehr kleine Schriftgröße für Monate */
+}
+
+/* Optional: Verkleinern der Monatsnamen und Pfeile */
+.small-flatpickr .flatpickr-months .flatpickr-prev-month,
+.small-flatpickr .flatpickr-months .flatpickr-next-month {
+    font-size: 8px; /* Sehr kleine Schrift für Pfeile */
+}
+
+
+
+
+
+/* Make flatpickr navigation arrows visible but simple */
+.small-flatpickr .flatpickr-months .flatpickr-prev-month,
+.small-flatpickr .flatpickr-months .flatpickr-next-month {
+    font-size: 16px; /* Increased size for better visibility */
+    padding: 0;
+    color: #000; /* Black color */
+    background-color: transparent; /* No background */
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    position: absolute;
+    top: 2px;
+}
+
+.small-flatpickr .flatpickr-months .flatpickr-prev-month {
+    left: 2px;
+}
+
+.small-flatpickr .flatpickr-months .flatpickr-next-month {
+    right: 2px;
+}
+
+.small-flatpickr .flatpickr-months .flatpickr-prev-month:hover,
+.small-flatpickr .flatpickr-months .flatpickr-next-month:hover {
+    color: #555; /* Light grey on hover instead of red */
+    background-color: transparent; /* No background on hover */
+}
+
+/* Ensure the arrow icons themselves are visible */
+.small-flatpickr .flatpickr-months .flatpickr-prev-month svg,
+.small-flatpickr .flatpickr-months .flatpickr-next-month svg {
+    fill: currentColor;
+    width: 14px;
+    height: 14px;
+}
+
+/* Jahr-Dropdown */
+.flatpickr-yearDropdown {
+  appearance: none;
+  border: none;
+  height: 18px;
+  padding: 0 2px;
+  outline: none;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 35px;
+  color: inherit;
+  background-color: transparent;
+  vertical-align: middle;
+  text-align: center;
+  margin-left: 2px;
+
+  scrollbar-width: thin;
+  overflow-y: auto;
+}
+
+.flatpickr-yearDropdown option {
+  font-size: 11px;
+  padding: 1px 3px;
+}
+
+.flatpickr-yearDropdown:focus {
+  outline: none;
+}
+
+.flatpickr-yearDropdown::-ms-expand {
+  display: none;
+}
+
+.flatpickr-yearDropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+.flatpickr-yearDropdown::-webkit-scrollbar-thumb {
+  background-color: #aaa;
+  border-radius: 2px;
+}
+
+/* Monat-Dropdown anpassen */
+.flatpickr-monthDropdown-enhanced {
+  font-size: 12px !important;
+  font-weight: bold !important;
+  height: 18px !important;
+}
+
+.flatpickr-monthDropdown-enhanced option {
+  font-size: 11px;
+  padding: 1px 3px;
+}
+
+.flatpickr-time-selection-enhanced {
+  display: none;
+  padding: 0;
+  background-color: #fff;
+  border: none;
+  border-top: 1px solid #e6e6e6;
+  font-size: 12px;
+  max-height: 100px;
+  margin-top: -3px;
+  width: 100%;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.flatpickr-time-selection-enhanced::-webkit-scrollbar {
+  width: 6px;
+}
+
+.flatpickr-time-selection-enhanced::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+
+
+
+/* Additional styles for the month container */
+.flatpickr-month-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 26px; /* Slightly taller to accommodate larger font */
+    padding: 0;
+    margin: 0;
+}
+
+/* Styling for the month dropdown */
+.flatpickr-month-dropdown {
+    font-size: 12px; /* Match time selection font size */
+    font-weight: bold;
+    height: 18px;
+    padding: 0 2px;
+    appearance: none;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    text-align: center;
+    width: 65px; /* Increased from 55px to 65px */
+}
+
+/* Styling for the month navigation arrows */
+.flatpickr-month-nav-button {
+    padding: 0 2px;
+    height: 24px; /* Slightly taller */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+}
+
+
+
+
+/* Container für Zeit-Auswahl */
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 4px;
+}
+
+/* Zeit-Button */
+.time-entry-button {
+  padding: 3px 0;
+  font-size: 12px;
+  font-weight: normal;
+  text-align: center;
+  border: none;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  border-radius: 3px;
+  width: 100%;
+}
+
+/* Aktive oder gewählte Zeit */
+.time-entry-button.selected {
+  background-color: #e6f7e6;
+  font-weight: bold;
+  border: 1px solid #4CAF50;
+}
+
+/* Hover-Effekt */
+.time-entry-button.hovered:not(.selected) {
+  background-color: #e8e8e8;
+}
+
+/* Kein Zeit-Slot Hinweis */
+.no-valid-times {
+  padding: 10px;
+  color: #666;
+  text-align: center;
+}
+
+
+
+/* Tooltip: macht Tooltip klickbar */
+.tooltip-clickable {
+  cursor: pointer;
+}
+
+/* Force white color for the Cluster Summary heading */
+#wiki-article #summary-section h3 {
+    color: white !important;
+}
+
+/* Ensure slider and calendar elements are always in front of Wikipedia article elements */
+.slider-wrapper,
+.flatpickr-calendar,
+.small-flatpickr,
+.noUi-tooltip,
+.tooltip-clickable,
+.flatpickr-time-selection,
+.flatpickr-time-selection-enhanced,
+.date-picker-input {
+    z-index: 99999 !important;
+    position: relative;
+}
+
+/* Specifically target noUi slider elements to ensure they're above Wikipedia content */
+
+.noUi-connects,
+.noUi-connect
+ {
+    z-index: 1 !important;
+    position: relative;
+}
+
+
+.noUi-base
+ {
+    z-index: 10 !important;
+    position: relative;
+}
+
+.noUi-handle {
+    z-index: 10 !important;
+    position: relative;
+}
+
+/* Ensure slider time selection dropdown appears above everything else */
+.time-grid,
+.time-entry-button {
+    z-index: 100000 !important;
+    position: relative;
+}
+
