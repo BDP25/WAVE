@@ -1,0 +1,3 @@
+[submodule "src/history-collector/wikipedia-histories"]
+	path = src/history-collector/wikipedia-histories
+	url = https://github.com/about2crash/wikipedia-histories.git
