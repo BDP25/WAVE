@@ -134,7 +134,7 @@ def api_visualize():
             word_level=True,
             verbose=True,
             db_config=db_params,
-            redis_config=None,
+            redis_config=redis_params,
             show_revision_info=False
         )
 
@@ -144,7 +144,7 @@ def api_visualize():
 
         # Check if html contains an error message
         if html and ("<div class='alert alert-danger'>" in html or "<div class='alert alert-warning'>" in html):
-            # Don't cache error responses
+            # Still return 200 but with the error message in HTML
             return jsonify({"html": html})
 
         # Check if html is None or empty

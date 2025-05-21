@@ -1,4 +1,17 @@
 import { fetchVisualization } from "./api.js";
+import  { appendTimelineAxis } from "./timelineAxis.js";
+import {
+  formatDate,
+  findClosestEntry,
+  findClosestTimestamp,
+  extractValidTimestamps,
+  prepareTooltipData,
+  getKeyEntries,
+  calculateTimeRanges,
+    handleInvalidDate,
+    applyExactTimestamp
+} from './sliderUtils.js';
+
 
 let debounceTimeout;
 let currentRequestController = null;
@@ -795,11 +808,6 @@ function addCalendarTimeSelectionSupport(instance) {
 }
 
 
-
-
-
-
-
 function applyExactTimestamp(exactEntry, index, slider, onChange) {
     const exactTimestamp = new Date(exactEntry.timestamp).getTime();
     console.log("Found matching entry with timestamp:", new Date(exactTimestamp).toISOString());
@@ -919,7 +927,6 @@ function positionCalendarContainer(instance) {
 
 
 
-
 function setupSlideEventHandler(slider, calendars, tooltips) {
     slider.noUiSlider.on("slide", () => {
         calendars.forEach((fpInstance, index) => {
@@ -1011,4 +1018,3 @@ function addAxisLabel(axis, date, text, className, start, range) {
 
     axis.appendChild(label);
 }
-
