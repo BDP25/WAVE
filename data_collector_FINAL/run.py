@@ -3,9 +3,9 @@ import argparse
 import os
 from get_news_data import fetch_swissdox_data
 from clean_data import clean_and_process_data
-from load_db import load_data
+from load_db import load_data, delete_data_for_date
 from clustering import identify_and_save_daily_events_to_df
-from content_to_relevant_titles import collect_wikipedia_candidates_per_cluster, filter_wikipedia_articles_with_groq
+from content_to_relevant_titles import collect_wikipedia_candidates_per_cluster, filter_wikipedia_articles_with_groq, show_api_keys
 from cluster_data_to_db_json import generate_cluster_json
 from get_wiki_article import validate_wikipedia_titles
 from time import sleep
@@ -23,6 +23,7 @@ db_params = {
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Process news data for a specific date.')
 parser.add_argument('--date', type=str, default='latest', help='Date in YYYY-MM-DD format or "latest" for the latest data (which is two days ago)')
+parser.add_argument('--delete', action='store_true', default=False, help='Delete all information about the specified date before reloading it')
 args = parser.parse_args()
 
 # Handle the date parameter
@@ -41,6 +42,16 @@ else:
 
 print(f"Processing data for date: {date_of_interest}")
 
+if args.delete:
+    # Delete all information about the specified date
+    formatted_date = date_of_interest.strftime("%Y-%m-%d")
+    success, message = delete_data_for_date(formatted_date, db_params)
+    print(message)
+    if not args.date.lower() == "latest":  # If just deleting data, exit after deletion
+        exit(0)
+
+# Show API keys
+show_api_keys()
 
 # download data
 fetch_swissdox_data(date_of_interest, date_of_interest)

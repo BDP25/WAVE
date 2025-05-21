@@ -21,7 +21,11 @@ load_dotenv(dotenv_path='../../WAVE/.env')
 # API-Keys aus den Umgebungsvariablen
 API_KEYS = os.getenv("GROQ_API_KEY").split(", ")
 
-
+def show_api_keys():
+    """Display the API keys."""
+    print("API Keys:")
+    for i, key in enumerate(API_KEYS):
+        print(f"Key {i + 1}: {key}")
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 # TODO entfernen
@@ -90,7 +94,7 @@ def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_
 
                 # 🔄 Wechsel nur bei 3 aufeinanderfolgenden Fehlern
                 if rate_limit_errors[api_key_index] >= 3:
-                    print(f"Wechsle API-Key von {api_key_index + 1} auf {(api_key_index + 2) % len(API_KEYS)}")
+                    print(f"Wechsle API-Key von {api_key_index + 1} auf {(api_key_index + 1) % len(API_KEYS) + 1}")
                     rate_limit_errors[api_key_index] = 0
                     api_key_index = (api_key_index + 1) % len(API_KEYS)
             else:

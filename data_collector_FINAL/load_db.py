@@ -145,6 +145,65 @@ def load_data(json_input, db_params):
         conn.close()
 
 
+def delete_data_for_date(date, db_params):
+    """
+    Deletes all articles and clusters for a given date from the database.
+
+    Parameters:
+    date (str): Date in 'YYYY-MM-DD' format
+    db_params (dict): Dictionary containing database connection parameters
+
+    Returns:
+    tuple: (bool, str) - Success status and message
+    """
+    conn = None
+    try:
+        # Connect to the PostgreSQL database
+        conn = psycopg2.connect(**db_params)
+        cur = conn.cursor()
+
+        # First, get all cluster IDs for the specified date
+        cur.execute(
+            "SELECT cluster_id FROM Cluster WHERE date = %s",
+            (date,)
+        )
+        cluster_ids = [row[0] for row in cur.fetchall()]
+
+        if not cluster_ids:
+            return True, f"No clusters found for date {date}"
+
+        # Delete articles associated with these clusters
+        placeholders = ', '.join(['%s'] * len(cluster_ids))
+        cur.execute(
+            f"DELETE FROM Artikel WHERE cluster_id IN ({placeholders})",
+            tuple(cluster_ids)
+        )
+        articles_deleted = cur.rowcount
+
+        # Delete the clusters
+        cur.execute(
+            "DELETE FROM Cluster WHERE date = %s",
+            (date,)
+        )
+        clusters_deleted = cur.rowcount
+
+        # Commit the transaction
+        conn.commit()
+
+        return True, f"Successfully deleted {articles_deleted} articles and {clusters_deleted} clusters for date {date}"
+
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+        return False, f"Error deleting data for date {date}: {str(e)}"
+
+    finally:
+        if conn is not None:
+            if cur is not None:
+                cur.close()
+            conn.close()
+
+
 if __name__ == "__main__":
     # Define your PostgreSQL connection
 
