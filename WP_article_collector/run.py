@@ -1,6 +1,6 @@
 import argparse
 import sys
-from safe_wiki_to_db import update_article_history
+from safe_wiki_to_db import update_article_history, update_article_history_in_batches
 from db_utils import db_params
 
 def main():
@@ -41,7 +41,7 @@ def main():
     success_count = 0
     for title, lang in articles_to_process:
         print(f"Processing article: {title} ({lang})")
-        if update_article_history(title, lang, db_params):
+        if update_article_history_in_batches(title, lang, db_params, batch_size=50):
             success_count += 1
             print(f"Successfully processed article: {title}")
         else:

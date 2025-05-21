@@ -359,10 +359,10 @@ if __name__ == "__main__":
     }
 
     # Example usage
-    article_title = "David Degen"
+    article_title = "Wladimir Wladimirowitsch Putin"
     language_code = "de"
 
-    task = ("replace") # can be "del", "get", "get-latest", "replace"
+    task = ("del") # can be "del", "get", "get-latest", "replace"
 
     if task == "get":
         article_data, history_data = get_or_update_article(article_title, language_code, db_config=db_config)

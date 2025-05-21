@@ -356,3 +356,102 @@ def update_article_history(article_title, language_code, db_config=None):
             conn.close()
         return False
 
+def update_article_history_in_batches(article_title, language_code, db_config=None, batch_size=50):
+    """
+    Update article history in the database using batch processing for diff calculation.
+
+    Args:
+        article_title: Title of the Wikipedia article
+        language_code: Language code for Wikipedia domain
+        db_config: Dictionary with database connection parameters
+        batch_size: Number of revisions to process in each batch
+
+    Returns:
+        Boolean indicating success or failure
+    """
+    if db_config is None:
+        db_config = db_params
+
+    from get_or_update_articel import download_wiki_history
+
+    history_df, page_id = download_wiki_history(article_title, language_code)
+
+    if history_df.empty or page_id is None:
+        print(f"Failed to retrieve history or page ID for {article_title}")
+        return False
+
+    conn = create_db_connection(**db_config)
+    if not conn:
+        return False
+
+    try:
+        initialize_tables(conn)
+        article_id = save_article_to_db(conn, article_title, language_code, page_id)
+        if not article_id:
+            conn.close()
+            return False
+
+        save_article_history_to_db(conn, article_id, history_df)
+
+        cursor = conn.cursor()
+
+        # Get the total number of revisions
+        cursor.execute("""
+                       SELECT COUNT(*)
+                       FROM history
+                       WHERE article_id = %s
+                       """, (article_id,))
+        total_revisions = cursor.fetchone()[0]
+
+        prev_content = None
+        prev_revid = None
+
+        for offset in range(0, total_revisions, batch_size):
+            print(f"Processing batch starting at offset {offset}...")
+
+            cursor.execute("""
+                           SELECT revid, content, user_name, timestamp
+                           FROM history
+                           WHERE article_id = %s
+                           ORDER BY timestamp ASC
+                               LIMIT %s
+                           OFFSET %s
+                           """, (article_id, batch_size, offset))
+            revisions = cursor.fetchall()
+
+            if not revisions:
+                break
+
+            for i, (current_revid, current_content, current_user, _) in enumerate(revisions):
+                if offset == 0 and i == 0:
+                    # For the very first revision, set diff_content = content
+                    cursor.execute("""
+                                   UPDATE history
+                                   SET diff_content = %s
+                                   WHERE article_id = %s
+                                     AND revid = %s
+                                   """, (current_content, article_id, current_revid))
+                elif prev_content is not None:
+                    # Compute diff between previous content and current content
+                    diff_result = compute_diff(prev_content, current_content, current_user)
+                    cursor.execute("""
+                                   UPDATE history
+                                   SET diff_content = %s
+                                   WHERE article_id = %s
+                                     AND revid = %s
+                                   """, (diff_result, article_id, current_revid))
+
+                # Update the previous content and revid for the next iteration
+                prev_content = current_content
+                prev_revid = current_revid
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error in update_article_history_in_batches: {e}")
+        if conn:
+            conn.close()
+        return False
+
