@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import threading, time, uuid, docker
+import re
 
 app = Flask(__name__)
 docker_client = docker.from_env()
@@ -9,7 +10,7 @@ date_queue = []
 history_queue = []
 date_running = {}      # job_id: True
 history_running = {}   # job_id: True
-MAX_CONCURRENT = 3
+MAX_CONCURRENT = 1  # Changed from 3 to 1 to ensure only one container runs at a time
 
 def process_queue(queue, running_dict, prefix):
     while True:
@@ -65,6 +66,17 @@ def add_date_job():
     date_queue.append({'id': job_id, 'command': docker_command, 'container_name': container_name})
     return jsonify(message="Job added to date collector queue", job_id=job_id)
 
+def sanitize_string(input_string):
+    # Replace non-UTF-8 characters with valid alternatives
+    sanitized = input_string.encode('utf-8', 'replace').decode('utf-8')
+    # Replace specific German characters with ASCII equivalents
+    sanitized = sanitized.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
+    # Replace any remaining invalid characters with dashes
+    sanitized = re.sub(r'[^a-zA-Z0-9_.-]', '-', sanitized)
+    # Ensure the name does not start or end with a dash
+    sanitized = sanitized.strip('-')
+    return sanitized
+
 @app.route('/queue/collect-history', methods=['POST'])
 def add_history_job():
     data = request.json
@@ -73,7 +85,8 @@ def add_history_job():
     if not title:
         return jsonify(error="Title is required"), 400
     job_id = str(uuid.uuid4())
-    formatted_title = title.lower().replace(' ', '-')
+    connected_title = title.lower().replace(' ', '-')
+    formatted_title = sanitize_string(connected_title.lower())
     container_name = f"history-collector-{formatted_title}"
     # Updated command to include --name and --network wave_default
     docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default history-collector --title "{title}" --lang "{lang}"'

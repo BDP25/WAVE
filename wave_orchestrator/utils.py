@@ -4,6 +4,19 @@ import datetime
 import subprocess
 import os
 import shlex
+import re
+
+def sanitize_string(input_string):
+    # Replace non-UTF-8 characters with valid alternatives
+    sanitized = input_string.encode('utf-8', 'replace').decode('utf-8')
+    # Replace specific German characters with ASCII equivalents
+    sanitized = sanitized.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
+    # Replace any remaining invalid characters with dashes
+    sanitized = re.sub(r'[^a-zA-Z0-9_.-]', '-', sanitized)
+    # Ensure the name does not start or end with a dash
+    sanitized = sanitized.strip('-')
+    return sanitized
+
 
 def execute_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None, container_name=None):
     print(f"Executing docker command: {docker_command}")
@@ -55,7 +68,7 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
                 continue
             if token == "--name":
                 if i + 1 < len(parts) and not container_name:
-                    container_name = parts[i+1]
+                    container_name = sanitize_string(parts[i+1])
                 skip_next = True
                 continue
             if token == "--network":   # NEW: skip the network flag and its value

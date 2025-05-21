@@ -34,25 +34,30 @@ queue_bp = Blueprint('queue_bp', __name__)
 def add_queue_command():
     data = request.json
     command_text = data.get('command', '')
+
+    def sanitize_string(input_string):
+        # Replace non-UTF-8 characters with valid alternatives
+        sanitized = input_string.encode('utf-8', 'replace').decode('utf-8')
+        sanitized = sanitized.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
+        sanitized = re.sub(r'[^a-zA-Z0-9_.-]', '-', sanitized)  # Replace invalid characters with dashes
+        return sanitized
+
     if command_text.startswith("collect-date"):
-        # Expected format: "collect-date <date>"
         parts = command_text.split()
         if len(parts) < 2:
             return jsonify(error="Date is required"), 400
         date_value = parts[1]
-        container_name = f"data-collector-{date_value}"
+        container_name = f"data-collector-{sanitize_string(date_value)}"
         docker_command = f"run --rm --env-file .env data-collector --date {date_value}"
         with date_lock:
             date_queue.append({'docker_command': docker_command, 'container_name': container_name})
         return jsonify(message="Date collector task queued"), 200
     elif command_text.startswith("collect-history"):
-        # Expected format: "collect-history <title>"
         parts = command_text.split(maxsplit=1)
         if len(parts) < 2:
             return jsonify(error="Title is required"), 400
         title = parts[1]
-        # Format container name: lowercase and replace spaces with hyphens
-        formatted_title = title.lower().replace(' ', '-')
+        formatted_title = sanitize_string(title.lower())
         container_name = f"history-collector-{formatted_title}"
         docker_command = f'run --rm --env-file .env history-collector --title "{title}" --lang "de"'
         with history_lock:
@@ -477,7 +482,7 @@ def get_jobs():
 # New global queues and concurrency controls
 date_queue = []
 history_queue = []
-max_concurrency = 3
+max_concurrency = 1  # Changed from 3 to 1 to ensure only one container runs at a time
 date_lock = threading.Lock()
 history_lock = threading.Lock()
 date_running = 0
@@ -499,7 +504,10 @@ def process_date_queue():
                 task = date_queue.pop(0)
                 date_running += 1
                 date_running_jobs.append(task)
+                print(f"Starting date task. Queue length: {len(date_queue)}, Running: {date_running}/{max_concurrency}")
             else:
+                if date_queue and date_running >= max_concurrency:
+                    print(f"Date queue waiting. Queue length: {len(date_queue)}, Running: {date_running}/{max_concurrency}")
                 task = None
         if task:
             def run_task(task=task):
@@ -518,6 +526,7 @@ def process_date_queue():
                     })
                     if len(date_completed) > MAX_COMPLETED_HISTORY:
                         date_completed.pop(0)
+                    print(f"Completed date task. Queue length: {len(date_queue)}, Running: {date_running}/{max_concurrency}")
             threading.Thread(target=run_task, daemon=True).start()
         time.sleep(1)
 
@@ -529,7 +538,10 @@ def process_history_queue():
                 task = history_queue.pop(0)
                 history_running += 1
                 history_running_jobs.append(task)
+                print(f"Starting history task. Queue length: {len(history_queue)}, Running: {history_running}/{max_concurrency}")
             else:
+                if history_queue and history_running >= max_concurrency:
+                    print(f"History queue waiting. Queue length: {len(history_queue)}, Running: {history_running}/{max_concurrency}")
                 task = None
         if task:
             def run_task(task=task):
@@ -548,6 +560,7 @@ def process_history_queue():
                     })
                     if len(history_completed) > MAX_COMPLETED_HISTORY:
                         history_completed.pop(0)
+                    print(f"Completed history task. Queue length: {len(history_queue)}, Running: {history_running}/{max_concurrency}")
             threading.Thread(target=run_task, daemon=True).start()
         time.sleep(1)
 
@@ -597,3 +610,4 @@ if __name__ == "__main__":
     load_scheduled_jobs()
     print(f"Flask app running on {DOMAIN} with prefix '{APPLICATION_ROOT}'")
     app.run(host='0.0.0.0', port=5050, debug=False)
+
