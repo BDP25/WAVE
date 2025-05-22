@@ -5,8 +5,27 @@ Elias Hager (hagereli) \
 Joanna Gutbrod (gutbrjoa)
 
 
-TODO Zusammenfassung des Clusters als Bericht
+More Inforamtion about this Project can be found in the [Blogpost](https://bdp25.github.io/) here.
 
-app.py clean code
 
-Repo Docker etc 
+
+For deployment:
+
+```sh
+git clone this repo
+```
+
+move in to the src directory
+
+```sh
+cd src
+```
+build the needed docker image
+
+```sh
+docker compose --profle build build
+```
+run the compose (with -d if detached mode is needed)
+```sh
+docker compose --profile deploy up -d
+```
