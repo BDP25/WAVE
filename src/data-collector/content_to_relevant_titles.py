@@ -6,6 +6,7 @@ import re
 import groq
 import nltk
 from dotenv import load_dotenv
+import logging
 
 # --- NEW: Tor/proxy imports ---
 import requests
@@ -25,19 +26,53 @@ RETRY_TEXT_LENGTH = 1500
 TOR_BASE_PORT = 9050  # First Tor instance on 9050, next on 9052, etc.
 TOR_PORT_STEP = 2     # Each Tor instance uses a separate port (9050, 9052, 9054, ...)
 
+# Setup logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # Environment setup
-load_dotenv(dotenv_path='../../WAVE/.env')
-API_KEYS = os.getenv("GROQ_API_KEY").split(", ")
+load_dotenv()
+
+# Parse API keys from comma-separated string
+raw_api_keys = os.getenv("GROQ_API_KEY", "")
+API_KEYS = [key.strip() for key in raw_api_keys.split(",") if key.strip()]
+
+# Track permanently failed keys
+BLACKLISTED_KEYS = set()
+CURRENT_KEY_INDEX = 0
 
 def show_api_keys():
     """Display the API keys."""
-    print("API Keys:")
-    for i, key in enumerate(API_KEYS):
-        print(f"Key {i + 1}: {key}")
+    valid_keys = len(API_KEYS) - len(BLACKLISTED_KEYS)
+    logger.info(f"Using {valid_keys} of {len(API_KEYS)} available Groq API keys")
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
+def get_next_valid_key_index():
+    """
+    Get the next valid API key index, skipping any blacklisted keys.
+    Returns None if no valid keys are available.
+    """
+    global CURRENT_KEY_INDEX
 
+    if len(BLACKLISTED_KEYS) >= len(API_KEYS):
+        logger.error("All API keys are blacklisted! Unable to proceed.")
+        return None
+
+    # Start from the next key after the current one
+    start_index = CURRENT_KEY_INDEX
+    while True:
+        # Move to next key
+        CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(API_KEYS)
+
+        # If we've cycled through all keys and back to where we started, no valid keys
+        if CURRENT_KEY_INDEX == start_index and CURRENT_KEY_INDEX in BLACKLISTED_KEYS:
+            return None
+
+        # If key is not blacklisted, use it
+        if CURRENT_KEY_INDEX not in BLACKLISTED_KEYS:
+            return CURRENT_KEY_INDEX
 
 def split_text_sentencewise(text, max_length=CHUNK_SIZE):
     """Split text into sentence-wise chunks within word count limit."""
@@ -87,17 +122,30 @@ class PatchedGroqClient(groq.Groq):
 
 
 def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_format=True):
-    api_key_index = 0
-    rate_limit_errors = [0] * len(API_KEYS)
+    global CURRENT_KEY_INDEX
 
-    max_total_attempts = len(API_KEYS) * 3  # Jeder Key darf 3x versagen
+    if len(API_KEYS) == 0:
+        logger.error("No API keys available. Check your GROQ_API_KEY environment variable.")
+        return ""
+
+    # Track error counts for temporary rate-limiting
+    rate_limit_errors = {}
+    max_errors_per_key = 3
+    max_total_attempts = 30  # Avoid infinite loops
     attempts = 0
 
     while attempts < max_total_attempts:
+        # If all keys are blacklisted, return empty result
+        if len(BLACKLISTED_KEYS) >= len(API_KEYS):
+            logger.error("All API keys are blacklisted! Unable to proceed.")
+            return ""
+
+        current_key = API_KEYS[CURRENT_KEY_INDEX]
+
         try:
-            # --- NEW: Use a Tor session per API key ---
-            session = get_tor_session_for_key_index(api_key_index)
-            client = PatchedGroqClient(api_key=API_KEYS[api_key_index], session=session)
+            # --- Use a Tor session per API key ---
+            session = get_tor_session_for_key_index(CURRENT_KEY_INDEX)
+            client = PatchedGroqClient(api_key=current_key, session=session)
 
             # request completion
             completion = client.chat.completions.create(
@@ -111,35 +159,61 @@ def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_
                 response_format={"type": "json_object"} if json_format else None
             )
 
-            # reset rate limit error count for the current API key
-            rate_limit_errors[api_key_index] = 0
+            # Reset rate limit error count on success
+            if CURRENT_KEY_INDEX in rate_limit_errors:
+                rate_limit_errors[CURRENT_KEY_INDEX] = 0
+
             return completion.choices[0].message.content
 
         except Exception as e:
             error_msg = str(e)
-            print(f"Fehler bei API-Key {api_key_index + 1}: {error_msg}")
+            logger.error(f"Error with API key {CURRENT_KEY_INDEX + 1} of {len(API_KEYS)}: {error_msg}")
 
-            # rate limit or organization restriction error handling
-            if (
-                "rate limit" in error_msg.lower() or
-                "429" in error_msg or
-                "organization has been restricted" in error_msg.lower() or
-                "organization_restricted" in error_msg.lower()
-            ):
-                rate_limit_errors[api_key_index] += 1
-                print(f"Rate-Limit/Org-Restrict-Fehler: Zähler für Key {api_key_index + 1} = {rate_limit_errors[api_key_index]}")
+            # Permanently blacklist keys with organization_restricted errors
+            if "organization_restricted" in error_msg.lower() or "organization has been restricted" in error_msg.lower():
+                logger.warning(f"API key {CURRENT_KEY_INDEX + 1} has been permanently blacklisted due to organization restriction")
+                BLACKLISTED_KEYS.add(CURRENT_KEY_INDEX)
+                next_key = get_next_valid_key_index()
+                if next_key is None:
+                    break
+                logger.info(f"Switching from API key {CURRENT_KEY_INDEX + 1} to key {next_key + 1} (of {len(API_KEYS)} available keys)")
+                CURRENT_KEY_INDEX = next_key
+                continue
 
-                # change API key if error occurs
-                if rate_limit_errors[api_key_index] >= 3:
-                    print(f"Wechsle API-Key von {api_key_index + 1} auf {(api_key_index + 1) % len(API_KEYS) + 1}")
-                    rate_limit_errors[api_key_index] = 0
-                    api_key_index = (api_key_index + 1) % len(API_KEYS)
+            # Handle rate limiting
+            if "rate limit" in error_msg.lower() or "429" in error_msg:
+                # Initialize error count for this key if not present
+                if CURRENT_KEY_INDEX not in rate_limit_errors:
+                    rate_limit_errors[CURRENT_KEY_INDEX] = 0
+
+                # Increment error count
+                rate_limit_errors[CURRENT_KEY_INDEX] = rate_limit_errors.get(CURRENT_KEY_INDEX, 0) + 1
+                logger.warning(f"Rate-limit error: API key {CURRENT_KEY_INDEX + 1} - Error count = {rate_limit_errors[CURRENT_KEY_INDEX]} (will switch after {max_errors_per_key} errors)")
+
+                # Switch key if too many rate-limit errors
+                if rate_limit_errors[CURRENT_KEY_INDEX] >= max_errors_per_key:
+                    next_key = get_next_valid_key_index()
+                    if next_key is None:
+                        break
+                    logger.info(f"Switching from API key {CURRENT_KEY_INDEX + 1} to key {next_key + 1} (of {len(API_KEYS)} available keys)")
+                    CURRENT_KEY_INDEX = next_key
+                else:
+                    # Exponential backoff for rate limits
+                    backoff = 3 * (2 ** rate_limit_errors[CURRENT_KEY_INDEX])
+                    logger.info(f"Waiting {backoff} seconds before retrying with same key...")
+                    import time
+                    time.sleep(backoff)
             else:
-                print("Kein Rate-Limit- oder Org-Restrict-Fehler – versuche erneut mit gleichem Key...")
+                # For other errors, try a different key
+                next_key = get_next_valid_key_index()
+                if next_key is None:
+                    break
+                logger.info(f"Switching from API key {CURRENT_KEY_INDEX + 1} to key {next_key + 1} (of {len(API_KEYS)} available keys)")
+                CURRENT_KEY_INDEX = next_key
 
         attempts += 1
 
-    print("Alle API-Keys ausgeschöpft oder mehrfach fehlgeschlagen.")
+    logger.error("Failed to get a successful response after multiple attempts.")
     return ""
 
 

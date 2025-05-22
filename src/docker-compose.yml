@@ -49,7 +49,7 @@ services:
       - "${QUEUE_PORT:-5025}:5025"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./orcestrater_data:/data
+      - ./orchestrator_data:/data
       - ./.env:/default_env:ro
     environment:
       - APPLICATION_ROOT=/admin

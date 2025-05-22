@@ -14,9 +14,6 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Download NLTK resources if needed (uncomment first time)
-# nltk.download('stopwords')
-# nltk.download('punkt')
 
 # Helper functions for URL processing
 def process_url(url: str) -> List[str]:
