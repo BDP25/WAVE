@@ -1,3 +1,4 @@
+name: wave
 services:
   postgres:
     image: postgres:latest
@@ -7,9 +8,10 @@ services:
       POSTGRES_PASSWORD: ***REMOVED***
       POSTGRES_DB: wave
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata_final:/var/lib/postgresql/data
+    profiles: ["deploy"]
 
   redis:
     image: redis:latest
@@ -17,8 +19,9 @@ services:
     env_file:
       - .env
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    profiles: ["deploy"]
 
   nginx-proxy-manager:
     image: 'jc21/nginx-proxy-manager:latest'
@@ -32,34 +35,56 @@ services:
     volumes:
       - npm-data:/data
       - npm-letsencrypt:/etc/letsencrypt
+    profiles: ["deploy"]
 
   orchestrator:
     build:
       context: ./orchestrator
     image: wave-orchestrator
+    restart: unless-stopped
     env_file:
       - .env
     ports:
-      - "5050:5050"
-      - "5025:5025"
+      - "${DASHBOARD_PORT:-5050}:5050"
+      - "${QUEUE_PORT:-5025}:5025"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./orcestrater_data:/data
+      - ./orchestrator/entrypoint.sh:/entrypoint.sh:ro
+      - ./.env:/default_env:ro
     environment:
       - APPLICATION_ROOT=/admin
       - WERKZEUG_PROXY_FIX=1
+    profiles: ["build", "deploy"]
 
   frontend:
     build:
       context: ./frontend
-    image: frontend-prototype
+    image: wave-frontend
+    restart: unless-stopped
     env_file:
       - .env
     ports:
-      - "5000:5000"
+      - "${FRONTEND_PORT:-5000}:5000"
+    profiles: ["build", "deploy"]
+
+  data-collector:
+    build:
+      context: ./data-collector
+    image: data-collector
+    env_file:
+      - .env
+    profiles: ["build"]
+
+  history-collector:
+    build:
+      context: ./history-collector
+    image: history-collector
+    env_file:
+      - .env
+    profiles: ["build"]
 
 volumes:
   pgdata_final:
   npm-data:
   npm-letsencrypt:
-

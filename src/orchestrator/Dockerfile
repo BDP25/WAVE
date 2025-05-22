@@ -12,4 +12,12 @@ COPY templates ./templates
 
 EXPOSE 5050
 VOLUME /data
-CMD ["python", "app.py"]
+
+CMD set -e; \
+    mkdir -p /data/env; \
+    if [ ! -f /data/env/.env ] && [ -f /default_env ]; then \
+        cp /default_env /data/env/.env; \
+    fi; \
+    echo "Starting orchestrator with environment:"; \
+    cat /data/env/.env || echo "No /data/env/.env found"; \
+    exec python app.py

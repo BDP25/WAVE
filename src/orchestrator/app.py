@@ -20,6 +20,7 @@ import re  # added for regex matching
 DOMAIN = os.getenv('DOMAIN', 'localhost:5000')
 APPLICATION_ROOT = os.getenv('APPLICATION_ROOT', '/admin')
 
+
 # Initialize Flask app
 app = Flask(__name__,
             template_folder='templates',
@@ -433,8 +434,11 @@ def read_env_file():
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        password = request.form.get('password')
-        if password == os.getenv('PASSWORD_ORCHESTRATOR'):
+        password = str(request.form.get('password', '')).strip()
+        env_password = str(os.getenv('DASHBOARD_PASSWORD', '')).strip()
+        print(f"Password entered: {password}")
+        print(f"Password from env: {env_password}")
+        if password and password == env_password:
             session['logged_in'] = True
             return redirect(url_for('bp.index'))
         else:
