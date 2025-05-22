@@ -7,6 +7,12 @@ import groq
 import nltk
 from dotenv import load_dotenv
 
+# --- NEW: Tor/proxy imports ---
+import requests
+import socks
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 # Constants
 MAX_WORKERS = 3
 CHUNK_SIZE = 1000
@@ -15,10 +21,12 @@ MAX_TITLES = 4
 MODEL_NAME = "llama3-8b-8192"
 RETRY_TEXT_LENGTH = 1500
 
+# --- NEW: Tor SOCKS proxy base port ---
+TOR_BASE_PORT = 9050  # First Tor instance on 9050, next on 9052, etc.
+TOR_PORT_STEP = 2     # Each Tor instance uses a separate port (9050, 9052, 9054, ...)
 
 # Environment setup
 load_dotenv(dotenv_path='../../WAVE/.env')
-# API-Keys aus den Umgebungsvariablen
 API_KEYS = os.getenv("GROQ_API_KEY").split(", ")
 
 def show_api_keys():
@@ -29,8 +37,6 @@ def show_api_keys():
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
-# TODO entfernen
-nltk.download('punkt')
 
 
 def split_text_sentencewise(text, max_length=CHUNK_SIZE):
@@ -54,6 +60,30 @@ def split_text_sentencewise(text, max_length=CHUNK_SIZE):
     return chunks
 
 
+# --- NEW: Create a requests.Session per API key, each using a different Tor SOCKS proxy ---
+def get_tor_session_for_key_index(key_index):
+    session = requests.Session()
+    tor_port = TOR_BASE_PORT + key_index * TOR_PORT_STEP
+    session.proxies = {
+        'http': f'socks5h://127.0.0.1:{tor_port}',
+        'https': f'socks5h://127.0.0.1:{tor_port}',
+    }
+    # Optional: Add retries for robustness
+    retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+    session.mount('http://', HTTPAdapter(max_retries=retries))
+    return session
+
+# --- NEW: Patch Groq client to use our session ---
+class PatchedGroqClient(groq.Groq):
+    def __init__(self, api_key, session):
+        super().__init__(api_key=api_key)
+        self._session = session
+
+    def _request(self, method, url, **kwargs):
+        # Use our session for all HTTP requests
+        kwargs.setdefault('timeout', 60)
+        return self._session.request(method, url, **kwargs)
 
 
 def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_format=True):
@@ -65,8 +95,9 @@ def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_
 
     while attempts < max_total_attempts:
         try:
-            # initialize Groq client with the current API key
-            client = groq.Groq(api_key=API_KEYS[api_key_index])
+            # --- NEW: Use a Tor session per API key ---
+            session = get_tor_session_for_key_index(api_key_index)
+            client = PatchedGroqClient(api_key=API_KEYS[api_key_index], session=session)
 
             # request completion
             completion = client.chat.completions.create(
@@ -88,18 +119,23 @@ def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_
             error_msg = str(e)
             print(f"Fehler bei API-Key {api_key_index + 1}: {error_msg}")
 
-            # rate limit error handling
-            if "rate limit" in error_msg.lower() or "429" in error_msg:
+            # rate limit or organization restriction error handling
+            if (
+                "rate limit" in error_msg.lower() or
+                "429" in error_msg or
+                "organization has been restricted" in error_msg.lower() or
+                "organization_restricted" in error_msg.lower()
+            ):
                 rate_limit_errors[api_key_index] += 1
-                print(f"Rate-Limit-Fehler: Zähler für Key {api_key_index + 1} = {rate_limit_errors[api_key_index]}")
+                print(f"Rate-Limit/Org-Restrict-Fehler: Zähler für Key {api_key_index + 1} = {rate_limit_errors[api_key_index]}")
 
-                # change API key if rate limit error occurs
+                # change API key if error occurs
                 if rate_limit_errors[api_key_index] >= 3:
                     print(f"Wechsle API-Key von {api_key_index + 1} auf {(api_key_index + 1) % len(API_KEYS) + 1}")
                     rate_limit_errors[api_key_index] = 0
                     api_key_index = (api_key_index + 1) % len(API_KEYS)
             else:
-                print("Kein Rate-Limit-Fehler – versuche erneut mit gleichem Key...")
+                print("Kein Rate-Limit- oder Org-Restrict-Fehler – versuche erneut mit gleichem Key...")
 
         attempts += 1
 

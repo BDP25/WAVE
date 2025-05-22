@@ -50,7 +50,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./orcestrater_data:/data
-      - ./orchestrator/entrypoint.sh:/entrypoint.sh:ro
       - ./.env:/default_env:ro
     environment:
       - APPLICATION_ROOT=/admin
