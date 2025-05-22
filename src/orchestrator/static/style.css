@@ -6,9 +6,22 @@ body {
     background-color: #f5f5f5;
 }
 
+/* New header container styles */
+.header-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.header-container h1 {
+    margin: 0;
+    flex: 1;
+    text-align: center;
+}
+
 h1 {
     color: #333;
-    text-align: center;
     margin-bottom: 30px;
 }
 
@@ -16,6 +29,7 @@ h2 {
     color: #444;
     border-bottom: 1px solid #ddd;
     padding-bottom: 10px;
+    margin-top: 0;
     margin-bottom: 20px;
 }
 
@@ -34,6 +48,22 @@ h2 {
     padding: 20px;
     flex: 1 1 400px;
     margin-bottom: 20px;
+}
+
+/* New styles for sidebar and fixed panels */
+.sidebar-panel {
+    border-left: 4px solid #2196F3;
+}
+
+.fixed-panel {
+    /* Fixed panels always visible by default */
+    display: block !important;
+}
+
+/* Add more emphasis to always-visible panels */
+.fixed-panel h2 {
+    color: #1565C0; /* Darker blue for fixed panels */
+    border-bottom: 2px solid #1565C0;
 }
 
 /* Container List */
@@ -400,7 +430,7 @@ button {
 /* Hamburger Menu and Side Menu */
 #hamburgerContainer {
     position: relative;
-    margin-bottom: 10px;
+    margin-right: 20px; /* Changed from margin-left to margin-right */
 }
 
 .hamburger-menu {
@@ -409,6 +439,7 @@ button {
     user-select: none;
 }
 
+/* Updated side menu styles with active state */
 .side-menu {
     position: fixed;
     top: 0;
@@ -423,18 +454,19 @@ button {
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     z-index: 1000;
-    /* Removed display: none; */
 }
+
 .side-menu.open {
     transform: translateX(0);
 }
 
 .side-menu a {
     display: block;
-    padding: 8px 0;
+    padding: 8px 10px;
     color: #333;
     text-decoration: none;
     border-bottom: 1px solid #eee;
+    border-radius: 4px;
 }
 
 .side-menu a:last-child {
@@ -443,4 +475,79 @@ button {
 
 .side-menu a:hover {
     background-color: #f5f5f5;
+}
+
+/* New style for active menu items */
+.side-menu a.active {
+    background-color: #e0f0ff; /* Light blue background */
+    font-weight: bold;
+    border-left: 4px solid #2196F3;
+}
+
+/* Login Page Styles */
+.login-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f5f5f5;
+}
+
+.login-container {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-title {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+.login-error {
+    color: #f44336;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.login-form .form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.login-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.login-form input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.login-btn:hover {
+    background-color: #1976D2;
 }

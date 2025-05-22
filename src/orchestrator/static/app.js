@@ -128,6 +128,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const decoder = new TextDecoder();
       const outputEl = document.getElementById('commandOutput');
       outputEl.textContent = "";
+
+      // Show command output panel if it's hidden
+      const commandOutputPanel = document.getElementById('commandOutputPanel');
+      if (commandOutputPanel.style.display === 'none') {
+        togglePanel('commandOutputPanel');
+      }
+
       function read() {
         reader.read().then(({ done, value }) => {
           if (done) return;
@@ -491,6 +498,12 @@ document.getElementById('jobForm').addEventListener('submit', function(e) {
         const outputEl = document.getElementById('commandOutput');
         outputEl.textContent = `Running date collection for: ${date}\n`;
 
+        // Show command output panel if it's hidden
+        const commandOutputPanel = document.getElementById('commandOutputPanel');
+        if (commandOutputPanel.style.display === 'none') {
+          togglePanel('commandOutputPanel');
+        }
+
         function read() {
           reader.read().then(({ done, value }) => {
             if (done) {
@@ -522,6 +535,44 @@ document.getElementById('jobForm').addEventListener('submit', function(e) {
   if (jobTypeFilter) {
     jobTypeFilter.addEventListener('change', fetchCompletedJobs);
   }
+
+  // Add listener for immediate command form submission
+  const immediateCommandForm = document.getElementById('immediateCommandForm');
+  if (immediateCommandForm) {
+    immediateCommandForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const command = document.getElementById('immediate_command').value;
+      if (!command) {
+        alert('Please enter a command');
+        return;
+      }
+
+      // Show command output panel if it's hidden
+      const commandOutputPanel = document.getElementById('commandOutputPanel');
+      if (commandOutputPanel.style.display === 'none') {
+        togglePanel('commandOutputPanel');
+      }
+
+      executeImmediateCommand(command);
+    });
+  }
+
+  // Add global reference to togglePanel for use in button event handlers
+  window.togglePanel = function(panelId) {
+    // Get panel element
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+
+    // Toggle panel visibility
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+
+    // Toggle active class on the corresponding sidebar link
+    const linkId = panelId.replace('Panel', 'Link');
+    const link = document.getElementById(linkId);
+    if (link) {
+      link.classList.toggle('active', panel.style.display === 'block');
+    }
+  };
 
   // Initial calls to load data
   updateQueueStatus();

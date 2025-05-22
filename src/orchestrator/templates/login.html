@@ -5,16 +5,20 @@
   <title>Login - WAVE Orchestrator</title>
   <link rel="stylesheet" href="{{ url_for('bp.static', filename='style.css') }}">
 </head>
-<body>
-  <h1>Login</h1>
-  <!-- Display error if provided -->
-  {% if error %}
-    <p style="color:red;">{{ error }}</p>
-  {% endif %}
-  <form action="{{ url_for('bp.login') }}" method="post">
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required>
-    <button type="submit">Login</button>
-  </form>
+<body class="login-body">
+  <div class="login-container">
+    <h1 class="login-title">WAVE Orchestrator</h1>
+    <!-- Display error if provided -->
+    {% if error %}
+      <p class="login-error">{{ error }}</p>
+    {% endif %}
+    <form action="{{ url_for('bp.login') }}" method="post" class="login-form">
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="login-btn">Login</button>
+    </form>
+  </div>
 </body>
 </html>

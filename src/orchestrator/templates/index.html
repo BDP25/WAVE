@@ -8,21 +8,26 @@
 </head>
 <body>
   <a href="{{ url_for('bp.logout') }}" class="logout-btn">Logout</a>
-  <h1>WAVE Orchestrator Dashboard</h1>
-  <!-- Replaced New Menu Bar with Hamburger Menu -->
-  <div id="hamburgerContainer">
-    <span id="hamburgerIcon" class="hamburger-menu">&#9776;</span>
+
+  <!-- Updated header section with hamburger menu on the left -->
+  <div class="header-container">
+    <div id="hamburgerContainer">
+      <span id="hamburgerIcon" class="hamburger-menu">&#9776;</span>
+    </div>
+    <h1>WAVE Orchestrator Dashboard</h1>
   </div>
+
   <div id="sideMenu" class="side-menu">
-    <a href="#" onclick="togglePanel('dateCollectionPanel');">Date Collection</a>
-    <a href="#" onclick="togglePanel('immediateCommandPanel');">Run Docker Command</a>
-    <a href="#" onclick="togglePanel('jobSchedulePanel');">Schedule Job</a>
-    <a href="#" onclick="togglePanel('envPanel');">Edit .env File</a>
+    <a href="#" onclick="togglePanel('dateCollectionPanel');" id="dateCollectionLink">Date Collection</a>
+    <a href="#" onclick="togglePanel('immediateCommandPanel');" id="immediateCommandLink">Run Docker Command</a>
+    <a href="#" onclick="togglePanel('jobSchedulePanel');" id="jobScheduleLink">Schedule Job</a>
+    <a href="#" onclick="togglePanel('envPanel');" id="envLink">Edit .env File</a>
+    <a href="#" onclick="togglePanel('commandOutputPanel');" id="commandOutputLink">Docker Command Output</a>
   </div>
 
   <div class="dashboard-container">
     <!-- Date Collection Panel (default hidden) -->
-    <div id="dateCollectionPanel" class="dashboard-panel" style="display:none;">
+    <div id="dateCollectionPanel" class="dashboard-panel sidebar-panel" style="display:none;">
       <h2>Date Collection</h2>
       <form id="dateCollectionForm" class="command-form">
         <div class="form-group">
@@ -34,15 +39,15 @@
       <div id="dateCollectionStatus" class="status-message"></div>
     </div>
 
-    <!-- Running Containers Panel (unchanged) -->
-    <div class="dashboard-panel">
+    <!-- Running Containers Panel (always visible) -->
+    <div class="dashboard-panel fixed-panel">
       <h2>Running Containers</h2>
       <ul id="containerList" class="container-list"></ul>
       <button id="refreshContainers" class="refresh-btn">Refresh</button>
     </div>
 
     <!-- Run Docker Command Panel (default hidden) -->
-    <div id="immediateCommandPanel" class="dashboard-panel" style="display:none;">
+    <div id="immediateCommandPanel" class="dashboard-panel sidebar-panel" style="display:none;">
       <h2>Run Docker Command Now</h2>
       <form id="immediateCommandForm" class="command-form">
         <div class="form-group">
@@ -74,7 +79,7 @@
     </div>
 
     <!-- Schedule a Docker Job Panel - now hidden by default -->
-    <div id="jobSchedulePanel" class="dashboard-panel" style="display:none;">
+    <div id="jobSchedulePanel" class="dashboard-panel sidebar-panel" style="display:none;">
       <h2>Schedule a Docker Job</h2>
       <form id="jobForm" class="job-form">
         <!-- Job scheduling form -->
@@ -111,7 +116,7 @@
     </div>
 
     <!-- .env Editor Panel - now hidden by default -->
-    <div id="envPanel" class="dashboard-panel" style="display:none;">
+    <div id="envPanel" class="dashboard-panel sidebar-panel" style="display:none;">
       <h2>Edit .env File</h2>
       <form id="envForm" class="env-form">
         <div class="form-group">
@@ -173,7 +178,7 @@
   </div>
 
   <!-- New Docker Command Output Panel -->
-  <div class="dashboard-panel">
+  <div id="commandOutputPanel" class="dashboard-panel sidebar-panel" style="display:none;">
     <h2>Docker Command Output</h2>
     <pre id="commandOutput" class="command-output"></pre>
   </div>
@@ -200,10 +205,20 @@
   </script>
   <script>
     function togglePanel(panelId) {
+      // Get panel element
       const panel = document.getElementById(panelId);
-      panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
+      if (!panel) return;
+
+      // Toggle panel visibility
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+
+      // Toggle active class on the corresponding sidebar link
+      const linkId = panelId.replace('Panel', 'Link');
+      const link = document.getElementById(linkId);
+      if (link) {
+        link.classList.toggle('active', panel.style.display === 'block');
+      }
     }
-    // All panels from the hamburger menu are now hidden by default in the HTML
   </script>
 
 </body>
