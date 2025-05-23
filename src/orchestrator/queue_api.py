@@ -20,7 +20,7 @@ def process_queue(queue, running_dict, prefix):
             running_dict[job_id] = True
             def run_job(job, prefix, job_id):
                 command = job['command']
-                container_name = job.get('container_name', f"{prefix}-{job_id}")
+                container_name = sanitize_string(job.get('container_name', f"{prefix}-{job_id}"))
                 try:
                     # Naively parse the command: remove leading "run" token.
                     parts = command.split()
@@ -60,7 +60,7 @@ def add_date_job():
     if not date_val:
         return jsonify(error="Date is required"), 400
     job_id = str(uuid.uuid4())
-    container_name = f"data-collector-{date_val.strip().replace(' ', '-')}"
+    container_name = sanitize_string(f"data-collector-{date_val.strip().replace(' ', '-')}")
     # Updated command to include --network wave_default
     docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data-collector --date "{date_val}"'
     date_queue.append({'id': job_id, 'command': docker_command, 'container_name': container_name})
@@ -87,7 +87,7 @@ def add_history_job():
     job_id = str(uuid.uuid4())
     connected_title = title.lower().replace(' ', '-')
     formatted_title = sanitize_string(connected_title.lower())
-    container_name = f"history-collector-{formatted_title}"
+    container_name = sanitize_string(f"history-collector-{formatted_title}")
     # Updated command to include --name and --network wave_default
     docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default history-collector --title "{title}" --lang "{lang}"'
     history_queue.append({'id': job_id, 'command': docker_command, 'container_name': container_name})
