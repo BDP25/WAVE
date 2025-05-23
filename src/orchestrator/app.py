@@ -13,7 +13,7 @@ import time
 from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
 import json
-from utils import execute_docker_command, monitor_docker_events, stream_docker_command
+from utils import execute_docker_command, monitor_docker_events, stream_docker_command, sanitize_string
 import re  # added for regex matching
 
 # Load environment variables
@@ -36,20 +36,13 @@ def add_queue_command():
     data = request.json
     command_text = data.get('command', '')
 
-    def sanitize_string(input_string):
-        # Replace non-UTF-8 characters with valid alternatives
-        sanitized = input_string.encode('utf-8', 'replace').decode('utf-8')
-        sanitized = sanitized.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
-        sanitized = re.sub(r'[^a-zA-Z0-9_.-]', '-', sanitized)  # Replace invalid characters with dashes
-        return sanitized
-
     if command_text.startswith("collect-date"):
         parts = command_text.split()
         if len(parts) < 2:
             return jsonify(error="Date is required"), 400
         date_value = parts[1]
-        container_name = f"data-collector-{sanitize_string(date_value)}"
-        docker_command = f"run --rm --env-file .env data-collector --date {date_value}"
+        container_name = sanitize_string(f"data-collector-{date_value}")
+        docker_command = f"run --rm --env-file .env --name {container_name} --network wave_default data-collector --date {date_value}"
         with date_lock:
             date_queue.append({'docker_command': docker_command, 'container_name': container_name})
         return jsonify(message="Date collector task queued"), 200
@@ -59,8 +52,8 @@ def add_queue_command():
             return jsonify(error="Title is required"), 400
         title = parts[1]
         formatted_title = sanitize_string(title.lower())
-        container_name = f"history-collector-{formatted_title}"
-        docker_command = f'run --rm --env-file .env history-collector --title "{title}" --lang "de"'
+        container_name = sanitize_string(f"history-collector-{formatted_title}")
+        docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default history-collector --title "{title}" --lang "de"'
         with history_lock:
             history_queue.append({'docker_command': docker_command, 'container_name': container_name})
         return jsonify(message="History collector task queued"), 200
@@ -178,7 +171,7 @@ def collect_date():
     if not date:
         return jsonify(error="Date is required"), 400
     formatted_date = date.replace('/', '-')
-    container_name = f"data-collector-{date}"
+    container_name = sanitize_string(f"data-collector-{formatted_date}")
     # Updated command to include --network wave_default
     docker_command = f'run --rm --env-file .env --name {container_name} --network wave_default data-collector --date "{date}"'
     with date_lock:
@@ -517,8 +510,19 @@ def process_date_queue():
             def run_task(task=task):
                 global date_running, date_running_jobs
                 cmd = task['docker_command']
+                # Ensure container name in command is sanitized
+                container_name = task.get('container_name')
+                if container_name:
+                    container_name = sanitize_string(container_name)
+                    # Replace the original container name in the command with the sanitized one
+                    cmd_parts = cmd.split('--name')
+                    if len(cmd_parts) > 1:
+                        name_part = cmd_parts[1].strip()
+                        orig_name = name_part.split()[0]
+                        cmd = cmd.replace(f"--name {orig_name}", f"--name {container_name}")
+
                 print(f"Processing date task: {cmd}")
-                result = execute_docker_command(client, None, cmd)
+                result = execute_docker_command(client, None, cmd, container_name=container_name)
                 with date_lock:
                     date_running -= 1
                     if task in date_running_jobs:
@@ -551,8 +555,19 @@ def process_history_queue():
             def run_task(task=task):
                 global history_running, history_running_jobs
                 cmd = task['docker_command']
+                # Ensure container name in command is sanitized
+                container_name = task.get('container_name')
+                if container_name:
+                    container_name = sanitize_string(container_name)
+                    # Replace the original container name in the command with the sanitized one
+                    cmd_parts = cmd.split('--name')
+                    if len(cmd_parts) > 1:
+                        name_part = cmd_parts[1].strip()
+                        orig_name = name_part.split()[0]
+                        cmd = cmd.replace(f"--name {orig_name}", f"--name {container_name}")
+
                 print(f"Processing history task: {cmd}")
-                result = execute_docker_command(client, None, cmd)
+                result = execute_docker_command(client, None, cmd, container_name=container_name)
                 with history_lock:
                     history_running -= 1
                     if task in history_running_jobs:
@@ -614,4 +629,3 @@ if __name__ == "__main__":
     load_scheduled_jobs()
     print(f"Flask app running on {DOMAIN} with prefix '{APPLICATION_ROOT}'")
     app.run(host='0.0.0.0', port=5050, debug=False)
-

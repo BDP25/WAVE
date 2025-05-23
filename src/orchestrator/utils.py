@@ -4,19 +4,41 @@ import datetime
 import subprocess
 import os
 import shlex
+import urllib.parse
 import re
 
 def sanitize_string(input_string):
-    # Replace non-UTF-8 characters with valid alternatives
-    sanitized = input_string.encode('utf-8', 'replace').decode('utf-8')
+    if not input_string:
+        return "container-" + str(uuid.uuid4())[:8]
+
+    # First decode URL-encoded strings if needed
+    try:
+        # Check if the string contains URL encoding
+        if '%' in input_string:
+            decoded = urllib.parse.unquote(input_string)
+        else:
+            decoded = input_string
+    except:
+        decoded = input_string
+
     # Replace specific German characters with ASCII equivalents
-    sanitized = sanitized.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
-    # Replace any remaining invalid characters with dashes
+    sanitized = decoded.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
+    sanitized = sanitized.replace('Ä', 'AE').replace('Ö', 'OE').replace('Ü', 'UE')
+
+    # Replace any non-alphanumeric or non-underscore/dash/dot characters with dashes
     sanitized = re.sub(r'[^a-zA-Z0-9_.-]', '-', sanitized)
+
     # Ensure the name does not start or end with a dash
     sanitized = sanitized.strip('-')
-    return sanitized
 
+    # Convert to lowercase for consistency
+    sanitized = sanitized.lower()
+
+    # Make sure the container name is not empty after sanitization
+    if not sanitized or sanitized.isdigit():
+        return "container-" + str(uuid.uuid4())[:8]
+
+    return sanitized
 
 def execute_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None, container_name=None):
     print(f"Executing docker command: {docker_command}")
@@ -68,13 +90,17 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
                 continue
             if token == "--name":
                 if i + 1 < len(parts) and not container_name:
-                    container_name = sanitize_string(parts[i+1])
+                    container_name = sanitize_string(parts[i+1])  # Sanitize container name
                 skip_next = True
                 continue
             if token == "--network":   # NEW: skip the network flag and its value
                 skip_next = True
                 continue
             cleaned_parts.append(token)
+
+        # Ensure container name is sanitized
+        if container_name:
+            container_name = sanitize_string(container_name)
 
         # Ensure action is still "run"
         if action != "run":
@@ -118,8 +144,8 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
             "remove": rm_flag,
             "network": "wave_default"  # added network parameter
         }
-        run_kwargs["name"] = container_name
-        print(f"Using container name: {container_name}")
+        run_kwargs["name"] = sanitize_string(container_name)
+        print(f"Using container name: {run_kwargs['name']}")
 
         container = client.containers.run(**run_kwargs)
 
@@ -182,13 +208,17 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
                 continue
             if token == "--name":
                 if i + 1 < len(parts) and not container_name:
-                    container_name = parts[i+1]
+                    container_name = sanitize_string(parts[i+1])  # Sanitize container name
                 skip_next = True
                 continue
             if token == "--network":   # NEW: skip the network token and its value
                 skip_next = True
                 continue
             cleaned_parts.append(token)
+
+        # Ensure container name is sanitized
+        if container_name:
+            container_name = sanitize_string(container_name)
 
         if action != "run":
             yield f"Command executed: {docker_command}"
@@ -220,7 +250,7 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
             container_name = "container-" + str(uuid.uuid4())[:8]
             yield f"Auto-generated container name: {container_name}\n"
         else:
-            yield f"Using container name: {container_name}\n"
+            yield f"Using container name: {sanitize_string(container_name)}\n"
 
         run_kwargs = {
             "image": image,
@@ -230,7 +260,7 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
             "remove": rm_flag,
             "network": "wave_default"
         }
-        run_kwargs["name"] = container_name
+        run_kwargs["name"] = sanitize_string(container_name)
 
         container = client.containers.run(**run_kwargs)
 
