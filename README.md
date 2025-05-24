@@ -4,28 +4,150 @@ Simeon Flühmann (fluehsi2)  \
 Elias Hager (hagereli) \
 Joanna Gutbrod (gutbrjoa)
 
+More information about this project can be found in the [Blogpost](https://bdp25.github.io/) here.
 
-More Inforamtion about this Project can be found in the [Blogpost](https://bdp25.github.io/) here.
+---
 
+### **Prerequisites**
 
+Before deploying the project, ensure the following tools are installed on your system:
 
-For deployment:
+- [Docker](https://www.docker.com/)
+- [Docker Compose](https://docs.docker.com/compose/)
+- Git
+
+---
+
+### **Environment Setup**
+
+1. Clone this repository:
+
+   ```sh
+   git clone <repository-url>
+   ```
+
+2. Move into the `src` directory:
+
+   ```sh
+   cd src
+   ```
+
+3. Copy the `.env.example` file to `.env` and fill in the required values:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+   Update the `.env` file with your specific configuration, such as database credentials, API keys, and ports.
+
+---
+
+### **Deployment**
+
+1. Build the required Docker images:
+
+   ```sh
+   docker compose --profile build build
+   ```
+
+2. Run the Docker Compose stack:
+
+   ```sh
+   docker compose --profile deploy up -d
+   ```
+
+   Use the `-d` flag to run in detached mode.
+
+---
+
+### **Accessing the Services**
+
+- **Frontend**: Accessible at `http://localhost:<FRONTEND_PORT>` (default: 5000)
+- **Orchestrator Dashboard**: Accessible at `http://localhost:<DASHBOARD_PORT>` (default: 5050)
+- **Redis**: Accessible at `http://localhost:<REDIS_PORT>` (default: 6379)
+
+---
+
+### **Troubleshooting**
+
+1. **Docker Container Issues**:
+   - Check the logs of a specific container:
+     ```sh
+     docker logs <container_name>
+     ```
+
+2. **Environment Variable Issues**:
+   - Ensure the `.env` file is correctly configured and matches the required format.
+
+3. **Port Conflicts**:
+   - Verify that the ports specified in the `.env` file are not already in use.
+
+4. **Rebuilding Images**:
+   - If changes are made to the code or configuration, rebuild the images:
+     ```sh
+     docker compose --profile build build
+     ```
+
+---
+
+### **Development**
+
+For local development, you can modify the services and rebuild the images as needed. Use the following command to stop and remove all containers:
 
 ```sh
-git clone this repo
+docker compose down
 ```
 
-move in to the src directory
+To clean up unused Docker resources:
 
 ```sh
-cd src
+docker system prune -f
 ```
-build the needed docker image
+#### **Project Structure**
 
-```sh
-docker compose --profle build build
+Below is the directory structure of the project, with explanations for the most important files:
+
 ```
-run the compose (with -d if detached mode is needed)
-```sh
-docker compose --profile deploy up -d
+WAVE
+│
+├── README.md                         # Project documentation (this file)
+├── docker-compose.yml                # Docker Compose configuration for all services
+├── .env.example                      # Example environment variables file
+│
+├── src                               # Main source folder for all services
+│   ├── data-collector                # Service for collecting and processing data
+│   │   ├── run.py                    # Main script for data collection
+│   │   ├── clean_data.py             # Cleans and preprocesses collected data
+│   │   ├── clustering.py             # Clustering logic for data analysis
+│   │   ├── Dockerfile                # Dockerfile for the data-collector service
+│   │   └── ...                       # Other scripts for data collection
+│   │
+│   ├── frontend                      # Service for the user interface
+│   │   ├── app.py                    # Main Flask application for the frontend
+│   │   ├── visualisation.py          # Visualization logic for displaying data
+│   │   ├── Dockerfile                # Dockerfile for the frontend service
+│   │   ├── static                    # Static assets (CSS, JS, images)
+│   │   ├── templates                 # HTML templates for the frontend
+│   │   └── ...                       # Other frontend-related files
+│   │
+│   ├── history-collector             # Service for collecting Wikipedia history data
+│   │   ├── run.py                    # Main script for collecting historical data
+│   │   ├── safe_wiki_to_db.py        # Saves Wikipedia data to the database
+│   │   ├── Dockerfile                # Dockerfile for the history-collector service
+│   │   └── ...                       # Other scripts for history collection
+│   │
+│   └── orchestrator                  # Service for orchestrating tasks
+│       ├── app.py                    # Main Flask application for orchestrating tasks
+│       ├── queue_api.py              # API for managing task queues
+│       ├── utils.py                  # Utility functions for the orchestrator
+│       ├── Dockerfile                # Dockerfile for the orchestrator service
+│       └── ...                       # Other orchestrator-related files
+│
+├── Presentations                     # Folder for project presentations
+│   ├── Architecture Diagramm.drawio  # Architecture diagram of the system
+│   ├── Datenbank_schema.png          # Database schema visualization
+│   └── ...                           # Other presentation files
+│
+└── ...                               # Additional files or folders
+
 ```
