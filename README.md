@@ -138,40 +138,32 @@ WAVE
 ├── docker-compose.yml                # Docker Compose configuration for all services
 ├── .env.example                      # Example environment variables file
 │
-├── src                               # Main source folder for all services
-│   ├── data-collector                # Service for collecting and processing data
-│   │   ├── run.py                    # Main script for data collection
-│   │   ├── clean_data.py             # Cleans and preprocesses collected data
-│   │   ├── clustering.py             # Clustering logic for data analysis
-│   │   ├── Dockerfile                # Dockerfile for the data-collector service
-│   │   └── ...                       # Other scripts for data collection
-│   │
-│   ├── frontend                      # Service for the user interface
-│   │   ├── app.py                    # Main Flask application for the frontend
-│   │   ├── visualisation.py          # Visualization logic for displaying data
-│   │   ├── Dockerfile                # Dockerfile for the frontend service
-│   │   ├── static                    # Static assets (CSS, JS, images)
-│   │   ├── templates                 # HTML templates for the frontend
-│   │   └── ...                       # Other frontend-related files
-│   │
-│   ├── history-collector             # Service for collecting Wikipedia history data
-│   │   ├── run.py                    # Main script for collecting historical data
-│   │   ├── safe_wiki_to_db.py        # Saves Wikipedia data to the database
-│   │   ├── Dockerfile                # Dockerfile for the history-collector service
-│   │   └── ...                       # Other scripts for history collection
-│   │
-│   └── orchestrator                  # Service for orchestrating tasks
-│       ├── app.py                    # Main Flask application for orchestrating tasks
-│       ├── queue_api.py              # API for managing task queues
-│       ├── utils.py                  # Utility functions for the orchestrator
-│       ├── Dockerfile                # Dockerfile for the orchestrator service
-│       └── ...                       # Other orchestrator-related files
-│
-├── Presentations                     # Folder for project presentations
-│   ├── Architecture Diagramm.drawio  # Architecture diagram of the system
-│   ├── Datenbank_schema.png          # Database schema visualization
-│   └── ...                           # Other presentation files
-│
-└── ...                               # Additional files or folders
-
+└── src                               # Main source folder for all services
+    ├── data-collector                # Service for collecting and processing data
+    │   ├── run.py                    # Main script for data collection
+    │   ├── clean_data.py             # Cleans and preprocesses collected data
+    │   ├── clustering.py             # Clustering logic for data analysis
+    │   ├── Dockerfile                # Dockerfile for the data-collector service
+    │   └── ...                       # Other scripts for data collection
+    │
+    ├── frontend                      # Service for the user interface
+    │   ├── app.py                    # Main Flask application for the frontend
+    │   ├── visualisation.py          # Visualization logic for displaying data
+    │   ├── Dockerfile                # Dockerfile for the frontend service
+    │   ├── static                    # Static assets (CSS, JS, images)
+    │   ├── templates                 # HTML templates for the frontend
+    │   └── ...                       # Other frontend-related files
+    │
+    ├── history-collector             # Service for collecting Wikipedia history data
+    │   ├── run.py                    # Main script for collecting historical data
+    │   ├── safe_wiki_to_db.py        # Saves Wikipedia data to the database
+    │   ├── Dockerfile                # Dockerfile for the history-collector service
+    │   └── ...                       # Other scripts for history collection
+    │
+    └── orchestrator                  # Service for orchestrating tasks
+        ├── app.py                    # Main Flask application for orchestrating tasks
+        ├── queue_api.py              # API for managing task queues
+        ├── utils.py                  # Utility functions for the orchestrator
+        ├── Dockerfile                # Dockerfile for the orchestrator service
+        └── ...                       # Other orchestrator-related files
 ```
