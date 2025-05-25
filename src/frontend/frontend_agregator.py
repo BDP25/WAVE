@@ -7,6 +7,27 @@ import csv
 import io
 
 def get_clusters_per_date(date: str):
+    """
+    Retrieve all news clusters for a specific date.
+
+    Args:
+        date (str): The date in 'YYYY-MM-DD' format
+
+    Returns:
+        dict: A dictionary containing lists of clusters, each with associated
+              Wikipedia articles and news articles. Format:
+              {
+                "clusters": [
+                  {
+                    "cluster_id": id,
+                    "wikipedia_articles": [article_names],
+                    "news_articles": [article_objects]
+                  }
+                ]
+              }
+
+              If an error occurs, returns {"error": error_message}
+    """
     date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
     
     db_params = {
@@ -92,6 +113,17 @@ def get_clusters_per_date(date: str):
         return {"error": str(e)}
 
 def get_article_info(article_id):
+    """
+    Retrieve detailed information about a specific article.
+
+    Args:
+        article_id: The unique identifier for the article
+
+    Returns:
+        dict: Article information including publication time, title, content, etc.
+              If the article is not found, returns {"error": "Article not found"}
+              If an error occurs, returns {"error": error_message}
+    """
     db_params = {
         "dbname": os.getenv("DB_NAME", "your_database"),
         "user": os.getenv("DB_USER", "your_username"),
@@ -125,6 +157,13 @@ def get_article_info(article_id):
 
 
 def get_min_max_date():
+    """
+    Retrieve the minimum (oldest) and maximum (newest) dates from the cluster table.
+
+    Returns:
+        tuple: A tuple containing (min_date, max_date) as strings in ISO format,
+               or empty strings if no dates are found or an error occurs
+    """
     db_params = {
         "dbname": os.getenv("DB_NAME", "your_database"),
         "user": os.getenv("DB_USER", "your_username"),

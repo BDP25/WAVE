@@ -20,7 +20,12 @@ logger = logging.getLogger(__name__)
 
 @app.route("/")
 def index():
+    """
+    Render the index page with the minimum and maximum dates from the database.
 
+    Returns:
+        str: Rendered HTML template for the index page
+    """
     min_date, max_date = get_min_max_date()
 
     return render_template("index.html", vorgestern=max_date, min_date=min_date)
@@ -28,6 +33,12 @@ def index():
 
 @app.route("/api/clusters")
 def api_clusters():
+    """
+    API endpoint to retrieve clusters for a specific date.
+
+    Returns:
+        JSON: A list of clusters for the specified date or an error message
+    """
     try:
         datum = request.args.get("datum")
         if not datum:
@@ -41,20 +52,32 @@ def api_clusters():
 
 @app.route("/api/article_history")
 def api_article_history():
+    """
+    API endpoint to retrieve the history of a Wikipedia article by its title.
+
+    Returns:
+        JSON: The article's revision history or an error message
+    """
     try:
         article_title = request.args.get("title")
         # TODO debug
         print(article_title)
         if not article_title:
-            return jsonify({"error": "Kein Artikel angegeben"}), 400
+            return jsonify({"error": "No article specified"}), 400
         history = get_article_history_by_title(article_title)
         return jsonify(history)
     except Exception as e:
-        print(f"Fehler in api_article_history: {str(e)}")
+        print(f"Error in api_article_history: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/cluster_summary")
 def api_cluster_summary():
+    """
+    API endpoint to retrieve a summary text for a specific cluster on a given date.
+
+    Returns:
+        JSON: The cluster summary or an error message
+    """
     try:
         cluster_id = request.args.get("cluster_id")
         date = request.args.get("date")
@@ -82,6 +105,13 @@ def api_cluster_summary():
 
 @app.route("/api/visualize", methods=["GET"])
 def api_visualize():
+    """
+    API endpoint to generate or retrieve a cached visualization of changes between
+    two versions of a Wikipedia article.
+
+    Returns:
+        JSON: HTML visualization content and metadata or an error message
+    """
     try:
         # Get parameters from the request
         article_id = request.args.get("article_id")
@@ -177,6 +207,13 @@ def api_visualize():
 
 @app.route("/api/ip_info", methods=["GET"])
 def api_ip_info():
+    """
+    API endpoint to retrieve information about an IP address from the BTTF Whois service,
+    with caching support.
+
+    Returns:
+        JSON: IP information data or an error message
+    """
     try:
         # Get IP address from the request
         ip_address = request.args.get("ip")

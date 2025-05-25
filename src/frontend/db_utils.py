@@ -98,6 +98,16 @@ def test_db_connection(db_config=None):
 
 
 def get_article_history_by_title(article_title: str):
+    """
+    Retrieve the revision history of a Wikipedia article by its title.
+
+    Args:
+        article_title (str): The title of the Wikipedia article
+
+    Returns:
+        dict: A dictionary containing the article ID and its revision history,
+              or an error message if the article is not found
+    """
     db_params = {
         "dbname": os.getenv("DB_NAME", "your_database"),
         "user": os.getenv("DB_USER", "your_username"),
@@ -162,6 +172,13 @@ def get_article_history_by_title(article_title: str):
         return {"error": str(e), "details": "Database error occurred while fetching article history"}
 
 def get_min_max_date():
+    """
+    Retrieve the minimum (oldest) and maximum (newest) dates from the cluster table.
+
+    Returns:
+        tuple: A tuple containing (min_date, max_date) as strings in ISO format,
+               or empty strings if no dates are found or an error occurs
+    """
     try:
         conn = psycopg2.connect(**db_params)
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -184,7 +201,6 @@ def get_min_max_date():
         print(f"Database error: {e}")
         return "", ""
 
-# TODO
 def get_cluster_summary(cluster_index, date):
     """
     Retrieve the summary_text for the given cluster index on a specific date.

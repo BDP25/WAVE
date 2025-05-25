@@ -44,7 +44,16 @@ _CLEAN_PATTERNS = [
 ]
 
 def generate_color_for_user(user_name: str) -> str:
-    """Map a username to a distinct hex color via HSL hashing."""
+    """
+    Map a username to a distinct hex color via HSL hashing.
+
+    Args:
+        user_name (str): The username to generate a color for
+
+    Returns:
+        str: A hex color code (e.g., '#a1b2c3') that's consistently
+             mapped to the user_name
+    """
     hue = hash(user_name) % 360
     r, g, b = colorsys.hls_to_rgb(hue/360, 0.55, 0.65)
     return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
@@ -54,6 +63,13 @@ def inline_merge_spans(base_html: str, diff_html: str):
     Take base_html (the final revision HTML) and a diff fragment,
     find each <span user-add> or <span user-del> in the diff, and
     splice it into its first matching location in base_html.
+
+    Args:
+        base_html (str): The HTML content of the base revision
+        diff_html (str): The HTML diff fragment containing user-add and user-del spans
+
+    Returns:
+        str: The merged HTML content with annotations for additions and deletions
     """
     base_soup = BeautifulSoup(base_html, "html.parser")
     diff_soup = BeautifulSoup(diff_html, "html.parser")
@@ -89,7 +105,19 @@ def inline_merge_spans(base_html: str, diff_html: str):
     return str(base_soup)
 
 def get_cache_key(article_id, start_revid, end_revid, word_level, show_revision_info):
-    """Generate a unique cache key for the visualization parameters."""
+    """
+    Generate a unique cache key for the visualization parameters.
+
+    Args:
+        article_id: The ID of the Wikipedia article
+        start_revid: The starting revision ID
+        end_revid: The ending revision ID
+        word_level (bool): Whether the diff is at word level
+        show_revision_info (bool): Whether to show revision information
+
+    Returns:
+        str: A unique cache key for these parameters
+    """
     params = f"{article_id}:{start_revid}:{end_revid}:{word_level}:{show_revision_info}"
     return f"wiki_vis:{hashlib.md5(params.encode()).hexdigest()}"
 
@@ -99,6 +127,20 @@ def visualize_wiki_versions_with_deletions(article_id, start_revid, end_revid,
     """
     Fetch all revisions between start_revid and end_revid,
     then inline-merge their spans into the final HTML.
+
+    Args:
+        article_id: ID of the Wikipedia article
+        start_revid: Starting revision ID
+        end_revid: Ending revision ID
+        word_level (bool): Whether to show changes at word level rather than line level
+        verbose (bool): Whether to include verbose output in the log
+        db_config (dict): Database configuration parameters
+        redis_config (dict): Redis configuration parameters
+        show_revision_info (bool): Whether to show revision metadata in the output
+
+    Returns:
+        str: An HTML string displaying the article with highlighted changes
+             between revisions, or an error message if processing fails
     """
     try:
         conn = psycopg2.connect(**db_config)
