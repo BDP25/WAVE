@@ -14,7 +14,21 @@ db_params = {
     }
 
 def create_db_connection(dbname=None, user=None, password=None, host=None, port=None):
-    """Create and return a database connection."""
+    """Create and return a database connection.
+
+    Args:
+        dbname (str, optional): Database name. Defaults to None.
+        user (str, optional): Database username. Defaults to None.
+        password (str, optional): Database password. Defaults to None.
+        host (str, optional): Database host address. Defaults to None.
+        port (str, optional): Database port. Defaults to None.
+
+    Returns:
+        psycopg2.connection: Database connection object if successful, None otherwise.
+
+    Raises:
+        Exception: If connection to the database fails.
+    """
     try:
         conn = psycopg2.connect(
             dbname=dbname,

@@ -13,7 +13,19 @@ import hashlib  # added for user color generation
 from db_utils import create_db_connection, db_params
 
 def initialize_tables(conn):
-    """Create tables if they don't exist."""
+    """
+    Create database tables if they don't exist.
+
+    Args:
+        conn: Database connection object
+
+    Returns:
+        bool: True if tables were created successfully, False otherwise
+
+    Tables created:
+        - WP_article: Stores article metadata
+        - history: Stores article revision history data
+    """
     try:
         cursor = conn.cursor()
 
@@ -51,10 +63,19 @@ def initialize_tables(conn):
         conn.rollback()
         return False
 
-# New function to compute diffs wrapping inserted text with a custom tag using the revision id.
 def clean_internal_links(html):
-    """Remove internal same-page links (<a> tags with href starting with '/wiki/' or '/w/')
-       but keep image links and external links.
+    """
+    Remove internal same-page links (<a> tags with href starting with '/wiki/' or '/w/')
+    but keep image links and external links.
+
+    Args:
+        html (str): HTML content to process
+
+    Returns:
+        str: Processed HTML with internal links replaced by their text content
+
+    Raises:
+        Exception: If there's an error during HTML processing
     """
     try:
         soup = BeautifulSoup(html, 'html.parser')
@@ -70,16 +91,31 @@ def clean_internal_links(html):
         print(f"Error cleaning internal links: {e}")
         return html
 
-# New helper: assign a hex color based on user name.
 def get_user_color(user):
+    """
+    Assign a consistent hex color based on a user name.
+
+    Args:
+        user (str): Username to generate color for
+
+    Returns:
+        str: Hex color code (e.g., '#a1b2c3') derived from user's name
+    """
     # Use first six characters of md5 hash for color code.
     return f"#{hashlib.md5(user.encode()).hexdigest()[:6]}"
 
-# Updated diff function: now accepts a 'user' parameter.
 def diff_text(old_text, new_text, user):
     """
     Compute a word-level diff between two text strings.
     Merges consecutive additions or deletions by the same user into single spans.
+
+    Args:
+        old_text (str): Original text
+        new_text (str): New text to compare against
+        user (str): Username to associate with the changes
+
+    Returns:
+        str: HTML string with added/deleted content wrapped in styled spans
     """
     # Tokenize words, punctuation, and whitespace
     tokens_old = re.findall(r'\w+|[^\w\s]|\s+', old_text, flags=re.UNICODE)
@@ -150,9 +186,17 @@ def diff_text(old_text, new_text, user):
 def compute_diff(old_html, new_html, user):
     """
     Compute an HTML diff that preserves the overall structure.
-    For each target tag (title, h1, p), compute a diff on its text (via get_text),
+
+    For each target tag (title, h1, p, th), compute a diff on its text content,
     then replace its inner HTML with the diff result wrapping inserted/deleted words.
-    Ensures all content after changes is preserved in the output.
+
+    Args:
+        old_html (str): Original HTML content
+        new_html (str): New HTML content to compare against
+        user (str): Username to associate with the changes
+
+    Returns:
+        str: HTML with differences highlighted in spans
     """
     old_soup = BeautifulSoup(old_html, 'html.parser')
     new_soup = BeautifulSoup(new_html, 'html.parser')
@@ -189,7 +233,22 @@ def compute_diff(old_html, new_html, user):
     return str(new_soup)
 
 def save_article_to_db(conn, article_title, language_code, page_id):
-    """Save article to WP_article table and return the article_id."""
+    """
+    Save article metadata to the WP_article table.
+
+    Args:
+        conn: Database connection object
+        article_title (str): Title of the Wikipedia article
+        language_code (str): Language code (e.g., 'en', 'de')
+        page_id (int): Wikipedia's page ID for the article
+
+    Returns:
+        int or None: The article_id if saved successfully, None otherwise
+
+    Notes:
+        - Updates last_updated timestamp if article already exists
+        - Creates a new record if article doesn't exist
+    """
     try:
         cursor = conn.cursor()
 
@@ -226,7 +285,18 @@ def save_article_to_db(conn, article_title, language_code, page_id):
 
 
 def save_article_history_to_db(conn, article_id, history_df):
-    """Save article history data to history table."""
+    """
+    Save article revision history to the database.
+
+    Args:
+        conn: Database connection object
+        article_id (int): ID of the article in the database
+        history_df (pandas.DataFrame): DataFrame containing revision history data
+            with columns: revid, time, user, comment, raw_html
+
+    Returns:
+        bool: True if history was saved successfully, False otherwise
+    """
     if history_df.empty:
         print("No history data to save")
         return False
@@ -274,13 +344,17 @@ def update_article_history(article_title, language_code, db_config=None):
     """
     Main function to update article history in the database.
 
+    Downloads article history from Wikipedia, saves it to the database,
+    and computes incremental diffs between revisions.
+
     Args:
-        article_title: Title of the Wikipedia article
-        language_code: Language code for Wikipedia domain
-        db_config: Dictionary with database connection parameters
+        article_title (str): Title of the Wikipedia article
+        language_code (str): Language code for Wikipedia domain (e.g., 'en', 'de')
+        db_config (dict, optional): Dictionary with database connection parameters.
+            If None, default parameters are used.
 
     Returns:
-        Boolean indicating success or failure
+        bool: True if update was successful, False otherwise
     """
     # Set default db_config if not provided
     if db_config is None:
@@ -360,14 +434,18 @@ def update_article_history_in_batches(article_title, language_code, db_config=No
     """
     Update article history in the database using batch processing for diff calculation.
 
+    Similar to update_article_history() but processes revisions in batches to improve
+    performance for articles with large history.
+
     Args:
-        article_title: Title of the Wikipedia article
-        language_code: Language code for Wikipedia domain
-        db_config: Dictionary with database connection parameters
-        batch_size: Number of revisions to process in each batch
+        article_title (str): Title of the Wikipedia article
+        language_code (str): Language code for Wikipedia domain (e.g., 'en', 'de')
+        db_config (dict, optional): Dictionary with database connection parameters.
+            If None, default parameters are used.
+        batch_size (int, optional): Number of revisions to process in each batch. Default is 50.
 
     Returns:
-        Boolean indicating success or failure
+        bool: True if update was successful, False otherwise
     """
     if db_config is None:
         db_config = db_params
@@ -454,4 +532,3 @@ def update_article_history_in_batches(article_title, language_code, db_config=No
         if conn:
             conn.close()
         return False
-

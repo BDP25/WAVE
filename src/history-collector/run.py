@@ -4,6 +4,21 @@ from safe_wiki_to_db import update_article_history, update_article_history_in_ba
 from db_utils import db_params
 
 def main():
+    """
+    Main entry point for the Wikipedia Article History Collector.
+
+    Processes command-line arguments to collect and store history for either
+    a single Wikipedia article or multiple articles specified in a text file.
+    Each article is processed and saved to the database.
+
+    Command-line arguments:
+        --title, -t: Wikipedia article title (required unless --articles is provided)
+        --lang, -l: Language code (default: en)
+        --articles, -a: Path to text file with list of articles
+
+    Returns:
+        None. Exits with status code 1 on error.
+    """
     parser = argparse.ArgumentParser(description='Wikipedia Article History Collector')
     parser.add_argument('--title', '-t', required=True, help='Wikipedia article title')
     parser.add_argument('--lang', '-l', default='en', help='Language code (default: en)')

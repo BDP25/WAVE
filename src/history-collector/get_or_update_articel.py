@@ -15,7 +15,18 @@ from bs4 import BeautifulSoup  # Add this import for HTML parsing
 
 
 def get_page_id(article_title, language_code):
-    """Get Wikipedia page ID for an article."""
+    """Get Wikipedia page ID for an article.
+
+    Args:
+        article_title (str): Title of the Wikipedia article.
+        language_code (str): Language code for the Wikipedia domain (e.g., 'en', 'de').
+
+    Returns:
+        int or None: The page ID if found, None otherwise.
+
+    Raises:
+        Exception: If there's an error during the API request.
+    """
     try:
         url = f"https://{language_code}.wikipedia.org/w/api.php"
         params = {
@@ -45,7 +56,17 @@ def get_page_id(article_title, language_code):
 
 
 def remove_edit_sections(raw_html):
-    """Remove elements with specific classes, IDs, or tags from raw HTML."""
+    """Remove elements with specific classes, IDs, or tags from raw HTML.
+
+    Args:
+        raw_html (str): The raw HTML content to process.
+
+    Returns:
+        str: The processed HTML with specified elements removed.
+
+    Raises:
+        Exception: If there's an error during HTML processing.
+    """
     try:
         soup = BeautifulSoup(raw_html, 'html.parser')
 
@@ -74,7 +95,17 @@ def remove_edit_sections(raw_html):
         return raw_html
 
 def remove_source_notes(raw_html):
-    """Remove source notes from raw HTML."""
+    """Remove source notes from raw HTML.
+
+    Args:
+        raw_html (str): The raw HTML content to process.
+
+    Returns:
+        str: The HTML content with source notes (<sup> tags) removed.
+
+    Raises:
+        Exception: If there's an error during HTML processing.
+    """
     try:
         soup = BeautifulSoup(raw_html, 'html.parser')
         # Find and remove all <sup> tags
@@ -90,6 +121,15 @@ def remove_source_notes(raw_html):
 def clean_internal_links(html):
     """Remove internal same-page links (<a> tags with href starting with '/wiki/' or '/w/')
        but keep image links and external links.
+
+    Args:
+        html (str): The HTML content to process.
+
+    Returns:
+        str: The HTML content with internal links replaced by their text content.
+
+    Raises:
+        Exception: If there's an error during HTML processing.
     """
     try:
         soup = BeautifulSoup(html, 'html.parser')
@@ -106,7 +146,20 @@ def clean_internal_links(html):
         return html
 
 def download_wiki_history(article_title, language_code):
-    """Download Wikipedia history with raw HTML and return history dataframe and page ID."""
+    """Download Wikipedia history with raw HTML and return history dataframe and page ID.
+
+    Args:
+        article_title (str): Title of the Wikipedia article.
+        language_code (str): Language code for the Wikipedia domain (e.g., 'en', 'de').
+
+    Returns:
+        tuple: A tuple containing:
+            - pandas.DataFrame: DataFrame with revision history data.
+            - int or None: The page ID of the article if found.
+
+    Raises:
+        Exception: If there's an error during history download or processing.
+    """
     # Get the Wikipedia page ID
     page_id = get_page_id(article_title, language_code)
 
@@ -148,7 +201,17 @@ def download_wiki_history(article_title, language_code):
 
 
 def preprocess_history_data(history_data):
-    """Preprocess history data to fix common CSV parsing issues."""
+    """Preprocess history data to fix common CSV parsing issues.
+
+    Args:
+        history_data (list or str): The history data to process, either as a list of objects or a string.
+
+    Returns:
+        str: The preprocessed history data as a string, with quote issues fixed.
+
+    Notes:
+        This function handles escaped quotes and other common CSV formatting issues.
+    """
     # Convert to string format if it's a list of objects
     if isinstance(history_data, list):
         # Join with newlines to create a CSV-like string
@@ -322,7 +385,17 @@ def delete_article(article_title, language_code, db_config=None):
 def download_latest_revision(article_title, language_code):
     """Download only the latest Wikipedia revision to check raw HTML content.
 
-    Returns a dict with revision info or None if no revisions found.
+    Args:
+        article_title (str): Title of the Wikipedia article.
+        language_code (str): Language code for the Wikipedia domain (e.g., 'en', 'de').
+
+    Returns:
+        dict or None: A dictionary containing revision information including 'revid', 'time',
+                     'user', 'comment', and 'raw_html'. Returns None if no revisions are found
+                     or an error occurs.
+
+    Raises:
+        Exception: If there's an error during the download process.
     """
     try:
         history = get_history(article_title, domain=f"{language_code}.wikipedia.org", raw_html=True)
