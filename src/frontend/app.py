@@ -25,13 +25,6 @@ def index():
 
     return render_template("index.html", vorgestern=max_date, min_date=min_date)
 
-@app.route("/validation")
-def validation():
-
-    min_date, max_date = get_min_max_date()
-
-    return render_template("validation.html", vorgestern=max_date, min_date=min_date)
-
 
 @app.route("/api/clusters")
 def api_clusters():
