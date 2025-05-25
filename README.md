@@ -33,7 +33,19 @@ Before deploying the project, ensure the following tools are installed on your s
    git clone <repository-url>
    ```
 
-2. Move into the `src` directory:
+2. Move into the git repository directory:
+
+   ```sh
+   cd WAVE
+   ```
+
+3. Also clone the git submodules: \
+This will ensure that all necessary submodules are included in your local copy of the repository.
+
+   ```sh
+   git submodule update --init --recursive
+   ```
+2. Move into the source directory:
 
    ```sh
    cd src
@@ -70,8 +82,10 @@ Before deploying the project, ensure the following tools are installed on your s
 ### **Accessing the Services**
 
 - **Frontend**: Accessible at `http://localhost:<FRONTEND_PORT>` (default: 5000)
-- **Orchestrator Dashboard**: Accessible at `http://localhost:<DASHBOARD_PORT>/admin` (default: 5050)
-- **Redis**: Accessible at `http://localhost:<REDIS_PORT>` (default: 6379)
+- **Orchestrator Dashboard**: Accessible at `http://localhost:<DASHBOARD_PORT>/admin` (default: 5050, default password: `changeme`)  
+  - Set up recurring Tasks in the Orchestrator Dashboard.  
+  - For testing run the following from the commandline: `docker run --rm --env-file .env --name data-collector-test --network wave_default data-collector --date "latest"`
+- For real deployment, set up NginxPM in the dashboard exposed at `http://localhost:81`.
 
 ---
 
@@ -102,7 +116,7 @@ Before deploying the project, ensure the following tools are installed on your s
 For local development, you can modify the services and rebuild the images as needed. Use the following command to stop and remove all containers:
 
 ```sh
-docker compose down
+docker compose --profile deploy down
 ```
 
 To clean up unused Docker resources:
@@ -110,7 +124,10 @@ To clean up unused Docker resources:
 ```sh
 docker system prune -f
 ```
-#### **Project Structure**
+
+---
+
+### **Project Structure**
 
 Below is the directory structure of the project, with explanations for the most important files:
 
