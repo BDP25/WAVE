@@ -4,9 +4,14 @@ Simeon Flühmann (fluehsi2)  \
 Elias Hager (hagereli) \
 Joanna Gutbrod (gutbrjoa)
 
-More information about this project can be found in the [Blogpost](https://bdp25.github.io/) here.
+WAVE aims to link current events with relevant Wikipedia articles, providing a platform to visualize how changes to these articles relate to ongoing events.
 
-The code for different approaches to finding the most relevant Wikipedia articles for a given topic—and for verifying the information they contain—can be found in the **research** branch of this repository.
+![Frontend](frontend.png)
+
+More information about this project is available in the [blog post](https://bdp25.github.io/).
+
+During WAVE’s development, we explored various approaches for identifying the most relevant Wikipedia articles for a given topic. The code and evaluation of these approaches can be found in the **research** branch of this repository.
+
 
 ---
 
