@@ -8,10 +8,10 @@
     margin-top: 20px;
     margin-right: 25px;
     margin-bottom: 20px;
-    overflow-x: hidden; /* <-- Das verhindert horizontales Scrollen */
+    overflow-x: hidden;
     border-radius: 12px 12px 12px 12px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    height: calc(100vh - 40px); /* Adjusts the height to fill the viewport, leaving room for top and bottom margins */
+    height: calc(100vh - 40px);
 }
 
 
@@ -118,7 +118,6 @@
     transform: translateX(-50%);
 }
 
-
 .year-label {
     font-size: 12px;
     color: #666;
@@ -128,11 +127,6 @@
     font-size: 10px;
     color: #666;
 }
-
-
-
-
-
 
 .noUi-tooltip {
     cursor: pointer;
@@ -147,35 +141,29 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-
-
 /* Style for the visualization output container */
 .output-container {
-    background-color: white; /* Match the main container background */
-    color: black; /* Ensure text is visible */
+    background-color: white;
+    color: black;
     padding: 20px;
     border-radius: 8px;
     margin-top: 20px;
-    overflow-x: auto; /* Handle horizontal overflow */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
+    overflow-x: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Style for titles inside the visualization output container */
 .output-container h2,
 .output-container h3 {
-    color: white; /* Set the text color to white */
-    font-weight: bold; /* Make the title bold */
-    margin-bottom: 10px; /* Add spacing below the title */
+    color: white;
+    font-weight: bold;
+    margin-bottom: 10px;
 }
 
 .output-container p {
-    line-height: 1.6; /* Improve readability */
+    line-height: 1.6;
     margin: 10px 0;
 }
-
-
-
-
 
 .valid-entry-day {
     background: #b6e6b6 !important;
@@ -183,12 +171,12 @@
     color: black;
 }
 
-/* Für Tage mit mindestens einem gültigen Eintrag */
+/* For days with at least one valid entry */
 .valid-entry-day {
-  background-color: #e6f7ff; /* optionales Highlight */
+  background-color: #e6f7ff;
 }
 
-/* Marker für mehrere gültige Einträge */
+/* Marker for multiple valid entries */
 .calendar-marker {
   position: absolute;
   bottom: 2px;
@@ -199,53 +187,47 @@
   border-radius: 50%;
 }
 
-/* Damit der Marker relativ zu dayElem positioniert ist */
+/* Position the marker relative to dayElem */
 .relative-day {
   position: relative;
 }
 
-
 .small-flatpickr {
-
     box-sizing: border-box;
     z-index: 3001;
 }
 
-/* Kalenderelement extrem klein */
+/* Extremely small calendar element */
 .small-flatpickr .flatpickr-calendar {
-    width: 120px; /* Sehr kleine Breite */
-    height: auto; /* Automatische Höhe */
-    font-size: 8px; /* Sehr kleine Schriftgröße */
+    width: 120px;
+    height: auto;
+    font-size: 8px;
     z-index: 3001;
 }
 
 .small-flatpickr .flatpickr-day {
-    width: 18px; /* Sehr kleine Tage */
-    height: 18px; /* Sehr kleine Tage */
-    line-height: 18px; /* Zentrale Ausrichtung der Zahl */
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
 }
 
 .small-flatpickr .flatpickr-months {
-    font-size: 8px; /* Sehr kleine Schriftgröße für Monate */
+    font-size: 8px;
 }
 
-/* Optional: Verkleinern der Monatsnamen und Pfeile */
+/* Optional: Reduce size of month names and arrows */
 .small-flatpickr .flatpickr-months .flatpickr-prev-month,
 .small-flatpickr .flatpickr-months .flatpickr-next-month {
-    font-size: 8px; /* Sehr kleine Schrift für Pfeile */
+    font-size: 8px; /* Very small font for arrows */
 }
-
-
-
-
 
 /* Make flatpickr navigation arrows visible but simple */
 .small-flatpickr .flatpickr-months .flatpickr-prev-month,
 .small-flatpickr .flatpickr-months .flatpickr-next-month {
-    font-size: 16px; /* Increased size for better visibility */
+    font-size: 16px;
     padding: 0;
-    color: #000; /* Black color */
-    background-color: transparent; /* No background */
+    color: #000;
+    background-color: transparent;
     border-radius: 0;
     display: flex;
     align-items: center;
@@ -266,8 +248,8 @@
 
 .small-flatpickr .flatpickr-months .flatpickr-prev-month:hover,
 .small-flatpickr .flatpickr-months .flatpickr-next-month:hover {
-    color: #555; /* Light grey on hover instead of red */
-    background-color: transparent; /* No background on hover */
+    color: #555;
+    background-color: transparent;
 }
 
 /* Ensure the arrow icons themselves are visible */
@@ -356,21 +338,19 @@
   border-radius: 3px;
 }
 
-
-
 /* Additional styles for the month container */
 .flatpickr-month-container {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 26px; /* Slightly taller to accommodate larger font */
+    height: 26px;
     padding: 0;
     margin: 0;
 }
 
 /* Styling for the month dropdown */
 .flatpickr-month-dropdown {
-    font-size: 12px; /* Match time selection font size */
+    font-size: 12px;
     font-weight: bold;
     height: 18px;
     padding: 0 2px;
@@ -379,7 +359,7 @@
     background-color: transparent;
     cursor: pointer;
     text-align: center;
-    width: 65px; /* Increased from 55px to 65px */
+    width: 65px;
 }
 
 /* Styling for the month navigation arrows */
@@ -391,9 +371,6 @@
     justify-content: center;
     width: 20px;
 }
-
-
-
 
 /* Container für Zeit-Auswahl */
 .time-grid {
