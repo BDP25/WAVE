@@ -6,6 +6,8 @@ Joanna Gutbrod (gutbrjoa)
 
 More information about this project can be found in the [Blogpost](https://bdp25.github.io/) here.
 
+The code for different approaches to finding the most relevant Wikipedia articles for a given topic—and for verifying the information they contain—can be found in the **research** branch of this repository.
+
 ---
 
 ### **Prerequisites**
