@@ -14,6 +14,14 @@ history_running = {}   # job_id: True
 MAX_CONCURRENT = 1  # Changed from 3 to 1 to ensure only one container runs at a time
 
 def process_queue(queue, running_dict, prefix):
+    """
+    Continuously process jobs in a queue, ensuring only a limited number of jobs run concurrently.
+
+    Args:
+        queue (list): The queue of jobs to process.
+        running_dict (dict): A dictionary tracking running jobs.
+        prefix (str): A prefix for container names.
+    """
     while True:
         if len(running_dict) < MAX_CONCURRENT and queue:
             job = queue.pop(0)
@@ -58,6 +66,12 @@ threading.Thread(target=process_queue, args=(history_queue, history_running, "hi
 
 @app.route('/queue/collect-date', methods=['POST'])
 def add_date_job():
+    """
+    Add a job to the date collector queue.
+
+    Returns:
+        Response: JSON response with the job ID or an error message.
+    """
     data = request.json
     date_val = data.get('date')
     if not date_val:
@@ -70,6 +84,12 @@ def add_date_job():
 
 @app.route('/queue/collect-history', methods=['POST'])
 def add_history_job():
+    """
+    Add a job to the history collector queue.
+
+    Returns:
+        Response: JSON response with the job ID or an error message.
+    """
     data = request.json
     title = data.get('title')
     lang = data.get('lang', 'de')
@@ -86,6 +106,12 @@ def add_history_job():
 
 @app.route('/queue/status', methods=['GET'])
 def queue_status():
+    """
+    Retrieve the status of the date and history queues.
+
+    Returns:
+        Response: JSON response with the current queue and running job statuses.
+    """
     return jsonify(
         date_queue = [job['id'] for job in date_queue],
         date_running = list(date_running.keys()),

@@ -33,6 +33,12 @@ queue_bp = Blueprint('queue_bp', __name__)
 
 @queue_bp.route('/command', methods=['POST'])
 def add_queue_command():
+    """
+    Add a command to the queue for processing.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     data = request.json
     command_text = data.get('command', '')
 
@@ -103,6 +109,9 @@ SCHEDULED_JOBS_FILE = os.path.join("/data", "scheduled_jobs.json")
 
 # New helper to persist scheduled jobs
 def persist_scheduled_jobs():
+    """
+    Persist the current scheduled jobs to a JSON file for later retrieval.
+    """
     persistent_jobs = {}
     for job_id, info in scheduled_jobs.items():
         persistent_jobs[job_id] = {
@@ -122,6 +131,9 @@ def persist_scheduled_jobs():
 
 # New helper to load and reschedule persisted jobs
 def load_scheduled_jobs():
+    """
+    Load and reschedule persisted jobs from the JSON file.
+    """
     if os.path.exists(SCHEDULED_JOBS_FILE):
         try:
             with open(SCHEDULED_JOBS_FILE, 'r') as f:
@@ -158,6 +170,10 @@ bp = Blueprint('bp', __name__, static_folder='static')
 
 @bp.before_request
 def require_login():
+    """
+    Ensure the user is logged in before accessing certain routes.
+    Redirects to the login page if not authenticated.
+    """
     # Allow login and logout routes to be accessed without login
     if request.endpoint in ('bp.login', 'bp.logout', 'bp.static'):
         return
@@ -166,6 +182,12 @@ def require_login():
 
 @bp.route('/api/collect-date', methods=['POST'])
 def collect_date():
+    """
+    Queue a data collection task for a specific date.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     data = request.json
     date = data.get('date')
     if not date:
@@ -180,10 +202,22 @@ def collect_date():
 
 @bp.route('/api/presets', methods=['GET'])
 def get_presets():
+    """
+    Retrieve all command presets.
+
+    Returns:
+        JSON response containing the list of presets.
+    """
     return jsonify(presets=command_presets)
 
 @bp.route('/api/presets', methods=['POST'])
 def add_preset():
+    """
+    Add a new command preset.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     data = request.json
     name = data.get('name', '')
     command = data.get('command', '')
@@ -211,6 +245,15 @@ def add_preset():
 
 @bp.route('/api/presets/<preset_id>', methods=['DELETE'])
 def delete_preset(preset_id):
+    """
+    Delete a command preset by its ID.
+
+    Args:
+        preset_id (str): The ID of the preset to delete.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     global command_presets
 
     original_length = len(command_presets)
@@ -230,6 +273,15 @@ def delete_preset(preset_id):
 
 @bp.route('/api/presets/execute/<preset_id>', methods=['POST'])
 def execute_preset(preset_id):
+    """
+    Execute a command preset by its ID.
+
+    Args:
+        preset_id (str): The ID of the preset to execute.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     preset = next((p for p in command_presets if p.get('id') == preset_id), None)
 
     if not preset:
@@ -243,6 +295,12 @@ def execute_preset(preset_id):
 
 @bp.route('/api/containers', methods=['GET'])
 def get_containers():
+    """
+    Retrieve information about running Docker containers.
+
+    Returns:
+        JSON response containing container details.
+    """
     containers_info = []
     for container in client.containers.list():
         start = container.attrs["State"].get("StartedAt")
@@ -266,6 +324,13 @@ def get_containers():
 
 
 def enqueue_collector_job(job_id, docker_command):
+    """
+    Enqueue a collector job for execution.
+
+    Args:
+        job_id (str): The ID of the job.
+        docker_command (str): The Docker command to execute.
+    """
     if docker_command.startswith('run --rm --env-file .env data-collector') and "--name" not in docker_command:
         m = re.search(r'--date\s+"([^"]+)"', docker_command)
         date_str = m.group(1) if m else "latest"
@@ -288,6 +353,15 @@ def enqueue_collector_job(job_id, docker_command):
 
 # Wrapper function to enqueue jobs at the scheduled time
 def scheduled_job_wrapper(job_id, docker_command, chain_command, env_vars):
+    """
+    Wrapper function to enqueue or execute jobs at the scheduled time.
+
+    Args:
+        job_id (str): The ID of the job.
+        docker_command (str): The Docker command to execute.
+        chain_command (str): The command to chain after the main command.
+        env_vars (dict): Environment variables for the job.
+    """
     if docker_command.startswith('run --rm --env-file .env data-collector') or docker_command.startswith('run --rm --env-file .env history-collector'):
         enqueue_collector_job(job_id, docker_command)
     else:
@@ -295,6 +369,12 @@ def scheduled_job_wrapper(job_id, docker_command, chain_command, env_vars):
 
 @bp.route('/api/schedule', methods=['POST'])
 def schedule_job():
+    """
+    Schedule a new job with optional delay or cron expression.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     data = request.json
     docker_command = data.get('docker_command', '')
     chain_command = data.get('chain_command')
@@ -387,6 +467,15 @@ def schedule_job():
 
 @bp.route('/api/jobs/<job_id>', methods=['DELETE'])
 def delete_job(job_id):
+    """
+    Delete a scheduled job by its ID.
+
+    Args:
+        job_id (str): The ID of the job to delete.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     if job_id in scheduled_jobs:
         job_info = scheduled_jobs[job_id]
         job_info['job'].remove()
@@ -397,6 +486,12 @@ def delete_job(job_id):
 
 @bp.route('/api/env', methods=['POST'])
 def create_env_file():
+    """
+    Create a new environment file with the given content.
+
+    Returns:
+        JSON response indicating success or error.
+    """
     data = request.json
     filename = data.get('filename', '.env')
     content = data.get('content', '')
@@ -413,6 +508,12 @@ def create_env_file():
 
 @bp.route('/api/env', methods=['GET'])
 def read_env_file():
+    """
+    Read the content of an environment file.
+
+    Returns:
+        JSON response containing the file content or an error.
+    """
     filename = request.args.get('filename', '.env')
     file_path = os.path.join(env_folder, filename)
     if os.path.exists(file_path):
@@ -426,6 +527,12 @@ def read_env_file():
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    Handle user login by verifying the password.
+
+    Returns:
+        HTML response for login page or redirect on success.
+    """
     if request.method == 'POST':
         password = str(request.form.get('password', '')).strip()
         env_password = str(os.getenv('DASHBOARD_PASSWORD', '')).strip()
@@ -440,15 +547,27 @@ def login():
 
 @bp.route('/logout')
 def logout():
+    """
+    Log out the current user and redirect to the login page.
+    """
     session.pop('logged_in', None)
     return redirect(url_for('bp.login'))
 
 @bp.route('/')
 def index():
+    """
+    Render the main dashboard page.
+    """
     return render_template('index.html')
 
 @bp.route('/api/queue-status', methods=['GET'])
 def queue_status():
+    """
+    Retrieve the status of the date and history queues.
+
+    Returns:
+        JSON response with queue statistics and running jobs.
+    """
     global date_queue, date_running_jobs, date_completed, history_queue, history_running_jobs, history_completed
     return jsonify({
         "date": {
@@ -465,6 +584,12 @@ def queue_status():
 
 @bp.route('/api/jobs', methods=['GET'])
 def get_jobs():
+    """
+    Retrieve a list of all scheduled jobs.
+
+    Returns:
+        JSON response containing job details.
+    """
     jobs_list = []
     for job_id, job_info in scheduled_jobs.items():
         jobs_list.append({
@@ -494,6 +619,9 @@ MAX_COMPLETED_HISTORY = 100
 
 # New functions to process each queue
 def process_date_queue():
+    """
+    Continuously process tasks in the date queue.
+    """
     global date_running, date_running_jobs
     while True:
         with date_lock:
@@ -539,6 +667,9 @@ def process_date_queue():
         time.sleep(1)
 
 def process_history_queue():
+    """
+    Continuously process tasks in the history queue.
+    """
     global history_running, history_running_jobs
     while True:
         with history_lock:
@@ -586,6 +717,12 @@ def process_history_queue():
 # Add new endpoint to get detailed completed jobs
 @bp.route('/api/completed-jobs', methods=['GET'])
 def get_completed_jobs():
+    """
+    Retrieve a list of completed jobs.
+
+    Returns:
+        JSON response containing completed job details.
+    """
     job_type = request.args.get('type', 'all')
     limit = int(request.args.get('limit', MAX_COMPLETED_HISTORY))
 

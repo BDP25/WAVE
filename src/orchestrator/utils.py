@@ -8,6 +8,15 @@ import urllib.parse
 import re
 
 def sanitize_string(input_string):
+    """
+    Sanitize a string to create a valid container name.
+
+    Args:
+        input_string (str): The input string to sanitize.
+
+    Returns:
+        str: A sanitized string suitable for use as a container name.
+    """
     if not input_string:
         return "container-" + str(uuid.uuid4())[:8]
 
@@ -41,6 +50,20 @@ def sanitize_string(input_string):
     return sanitized
 
 def execute_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None, container_name=None):
+    """
+    Execute a Docker command using the Docker client.
+
+    Args:
+        client (docker.DockerClient): The Docker client instance.
+        job_id (str): The ID of the job.
+        docker_command (str): The Docker command to execute.
+        chain_command (str, optional): A command to execute after the main command.
+        env_vars (dict, optional): Environment variables for the container.
+        container_name (str, optional): The name of the container.
+
+    Returns:
+        str: Logs or error message from the executed command.
+    """
     print(f"Executing docker command: {docker_command}")
     try:
         parts = shlex.split(docker_command)
@@ -161,6 +184,20 @@ def execute_docker_command(client, job_id, docker_command, chain_command=None, e
         return f"Error executing docker command: {e}"
 
 def stream_docker_command(client, job_id, docker_command, chain_command=None, env_vars=None, container_name=None):
+    """
+    Stream logs from a Docker command execution.
+
+    Args:
+        client (docker.DockerClient): The Docker client instance.
+        job_id (str): The ID of the job.
+        docker_command (str): The Docker command to execute.
+        chain_command (str, optional): A command to execute after the main command.
+        env_vars (dict, optional): Environment variables for the container.
+        container_name (str, optional): The name of the container.
+
+    Yields:
+        str: Logs or error messages from the executed command.
+    """
     print(f"Streaming docker command: {docker_command}")
     try:
         parts = shlex.split(docker_command)  # use shlex.split for proper argument parsing
@@ -272,6 +309,13 @@ def stream_docker_command(client, job_id, docker_command, chain_command=None, en
         yield f"Error executing docker command: {e}"
 
 def monitor_docker_events(client, chained_containers):
+    """
+    Monitor Docker events and handle container lifecycle events.
+
+    Args:
+        client (docker.DockerClient): The Docker client instance.
+        chained_containers (dict): A dictionary mapping container names to chained commands.
+    """
     for event in client.events(decode=True):
         if event.get("Type") == "container" and event.get("Action") == "die":
             container_id = event.get("id")
