@@ -7,6 +7,7 @@ def generate_cluster_id(cluster_number: str, date: str) -> str:
     Generates a hashed cluster ID based on the cluster number and the current timestamp.
 
     :param cluster_number: The cluster number
+    :param date: The publication date to include in the hash
     :return: A hashed cluster ID as a string
     """
     raw_id = f"{cluster_number}{date}"
@@ -19,7 +20,9 @@ def generate_cluster_json(filtered_df, cluster_topics, cluster_summaries) -> str
     """
     Transforms the filtered DataFrame into a structured JSON format for clustering data.
 
-    :param filtered_df: A DataFrame containing cluster data
+    :param filtered_df: A DataFrame containing cluster data with article information
+    :param cluster_topics: A dictionary mapping cluster IDs to lists of relevant Wikipedia article names
+    :param cluster_summaries: A dictionary mapping cluster IDs to summary texts
     :return: A JSON-formatted string representing the cluster data
     """
     cluster_data = {}
@@ -57,10 +60,6 @@ def generate_cluster_json(filtered_df, cluster_topics, cluster_summaries) -> str
         "cluster": list(cluster_data.values())
     }
     return json.dumps(json_data, indent=4, ensure_ascii=False)
-
-
-
-
 
 
 if __name__ == "__main__":

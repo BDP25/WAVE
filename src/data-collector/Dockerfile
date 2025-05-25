@@ -22,7 +22,7 @@ RUN python -m spacy download de_core_news_md
 COPY . .
 RUN rm -f /app/requirements.txt
 
-# Create a more flexible entrypoint script
+# Create entrypoint script
 RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
     echo '# Default to today if no date specified' >> /app/entrypoint.sh && \
     echo 'if [ $# -eq 0 ]; then' >> /app/entrypoint.sh && \

@@ -78,6 +78,18 @@ def create_schema(db_params=None):
 
 
 def load_data(json_input, db_params):
+    """
+    Loads data from a JSON source into the database.
+
+    Parameters:
+    json_input (str, bytes, os.PathLike or dict): Source of data - can be a JSON string,
+                                                 a file path to a JSON file, or a dictionary
+    db_params (dict): Database connection parameters containing:
+                     dbname, user, password, host, port
+
+    Returns:
+    None: The function inserts data into the database but doesn't return anything
+    """
     # Check if json_input is a file path, a JSON string, or a dictionary
     if isinstance(json_input, (str, bytes, os.PathLike)):
         try:

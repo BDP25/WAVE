@@ -6,6 +6,15 @@ from url_deduplication import remove_similar_rows as rsr
 
 # Function to clean text (remove HTML tags, URLs, and unnecessary spaces)
 def clean_text(text):
+    """
+    Cleans text by removing HTML tags, URLs, HTML entities, and normalizing spaces.
+
+    Args:
+        text (str): The text to clean
+
+    Returns:
+        str: The cleaned text with HTML tags, URLs, and extra spaces removed
+    """
     if pd.isna(text):
         return ''
     text = re.sub(r'<[^>]+>', ' ', text)  # Remove HTML tags
@@ -22,7 +31,6 @@ def clean_and_process_data(folder='raw_data', similarity_threshold=0.98):
 
     Args:
         folder (str): Path to the folder containing the .tsv.xz file.
-        output_folder (str): Path to the folder where the cleaned Parquet file will be saved.
         similarity_threshold (float): Threshold for removing similar articles (between 0 and 1).
 
     Returns:

@@ -37,7 +37,16 @@ USED_SOURCES = [
 
 
 def build_query_yaml(start_date: str, end_date: str) -> str:
-    """Builds the YAML query string to send to the Swissdox API."""
+    """
+    Builds the YAML query string to send to the Swissdox API.
+
+    Args:
+        start_date (str): The start date for article retrieval in YYYY-MM-DD format
+        end_date (str): The end date for article retrieval in YYYY-MM-DD format
+
+    Returns:
+        str: A YAML-formatted query string ready for API submission
+    """
     return f"""
 query:
   sources: {USED_SOURCES}
@@ -64,7 +73,16 @@ version: 1.2
 
 
 def fetch_swissdox_data(start_date: str, end_date: str) -> Optional[str]:
-    """Sends a query to the Swissdox API and initiates the download process if successful."""
+    """
+    Sends a query to the Swissdox API and initiates the download process if successful.
+
+    Args:
+        start_date (str): The start date for article retrieval in YYYY-MM-DD format
+        end_date (str): The end date for article retrieval in YYYY-MM-DD format
+
+    Returns:
+        Optional[str]: Path to the downloaded file if successful, None if failed
+    """
     query_yaml = build_query_yaml(start_date, end_date)
     query_name = f"LastWeekNews_{int(time.time())}_{random.randint(1000, 9999)}"
 
@@ -85,7 +103,15 @@ def fetch_swissdox_data(start_date: str, end_date: str) -> Optional[str]:
 
 
 def download_news_data(query_id: int) -> Optional[str]:
-    """Polls the API until the query is finished and downloads the result file."""
+    """
+    Polls the API until the query is finished and downloads the result file.
+
+    Args:
+        query_id (int): The ID of the query to monitor and download
+
+    Returns:
+        Optional[str]: Path to the downloaded file if successful, None if failed
+    """
     while True:
         response = requests.get(f"{API_URL_STATUS}/{query_id}", headers=HEADERS)
         status_data = response.json()[0]
@@ -104,7 +130,15 @@ def download_news_data(query_id: int) -> Optional[str]:
 
 
 def save_downloaded_file(download_url: str) -> Optional[str]:
-    """Downloads the file from the given URL and saves it locally."""
+    """
+    Downloads the file from the given URL and saves it locally.
+
+    Args:
+        download_url (str): URL to download the file from
+
+    Returns:
+        Optional[str]: Path to the saved file if successful, None if failed
+    """
     filename = os.path.basename(download_url)
     response = requests.get(download_url, headers=HEADERS)
 

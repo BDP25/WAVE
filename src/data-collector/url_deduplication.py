@@ -670,13 +670,6 @@ def remove_similar_rows(df: pd.DataFrame, threshold: float = 0.85, debug: bool =
     # Drop extra columns added during processing
     result_df = result_df.drop(columns=['url', 'base_link'], errors='ignore')
     
-    # FINAL STEP: Run day-by-day content similarity deduplication
-    # TODO: Fix the similarity deduplication step, because it is currently dosnt remove nearly identical articles
-    # try:
-    #     result_df = deduplicate_by_content_similarity_per_day(result_df, threshold)
-    # except Exception as e:
-    #     logger.error(f"Error during day-by-day deduplication: {str(e)}. Using previous deduplication results.")
-    
     logger.info(f"Final deduplicated DataFrame has {len(result_df)} rows")
     
     # Restore original logging level

@@ -3,7 +3,18 @@ from pprint import pprint
 
 
 def validate_wikipedia_titles(cluster_topics: dict, language: str = 'de') -> dict:
-    """Returns validated Wikipedia article titles for each cluster."""
+    """
+    Returns validated Wikipedia article titles for each cluster.
+
+    Args:
+        cluster_topics (dict): Dictionary mapping cluster IDs to lists of potential
+                               Wikipedia article titles
+        language (str): Wikipedia language edition to use (default: 'de' for German)
+
+    Returns:
+        dict: Dictionary mapping cluster IDs to lists of validated Wikipedia article titles
+              Only clusters with at least one valid article are included
+    """
     wikipedia.set_lang(language)
     results = {}
 
@@ -15,7 +26,15 @@ def validate_wikipedia_titles(cluster_topics: dict, language: str = 'de') -> dic
 
 
 def process_keywords(keywords: list) -> list:
-    """Returns validated Wikipedia article titles from a list of keywords."""
+    """
+    Returns validated Wikipedia article titles from a list of keywords.
+
+    Args:
+        keywords (list): List of potential Wikipedia article titles or search terms
+
+    Returns:
+        list: List of validated Wikipedia article titles without duplicates
+    """
     validated_articles = set()  # Use set instead of list to avoid duplicates
 
     for term in keywords:
@@ -26,7 +45,18 @@ def process_keywords(keywords: list) -> list:
 
 
 def get_wikipedia_article(term: str):
-    """Finds Wikipedia article for a term, handling disambiguation."""
+    """
+    Finds Wikipedia article for a term, handling disambiguation.
+
+    First attempts an exact match, then handles disambiguation pages by taking
+    the first option, and finally falls back to search suggestions if needed.
+
+    Args:
+        term (str): Search term or potential Wikipedia article title
+
+    Returns:
+        wikipedia.WikipediaPage or None: Wikipedia page object if found, None otherwise
+    """
     # First try exact match
     try:
         return wikipedia.page(term, auto_suggest=False)

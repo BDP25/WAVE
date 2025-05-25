@@ -43,7 +43,10 @@ BLACKLISTED_KEYS = set()
 CURRENT_KEY_INDEX = 0
 
 def show_api_keys():
-    """Display the API keys."""
+    """
+    Display the number of valid API keys available for use.
+    Logs the count of valid keys (total keys minus blacklisted keys).
+    """
     valid_keys = len(API_KEYS) - len(BLACKLISTED_KEYS)
     logger.info(f"Using {valid_keys} of {len(API_KEYS)} available Groq API keys")
 
@@ -52,7 +55,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 def get_next_valid_key_index():
     """
     Get the next valid API key index, skipping any blacklisted keys.
-    Returns None if no valid keys are available.
+
+    Returns:
+        int or None: The index of the next valid API key, or None if no valid keys are available.
     """
     global CURRENT_KEY_INDEX
 
@@ -75,7 +80,16 @@ def get_next_valid_key_index():
             return CURRENT_KEY_INDEX
 
 def split_text_sentencewise(text, max_length=CHUNK_SIZE):
-    """Split text into sentence-wise chunks within word count limit."""
+    """
+    Split text into sentence-wise chunks within word count limit.
+
+    Args:
+        text (str): The text to split into chunks.
+        max_length (int): Maximum number of words per chunk. Defaults to CHUNK_SIZE.
+
+    Returns:
+        list: A list of text chunks, each containing complete sentences and not exceeding max_length.
+    """
     sentences = nltk.sent_tokenize(text)
     chunks, current_chunk, current_length = [], [], 0
 
@@ -95,8 +109,16 @@ def split_text_sentencewise(text, max_length=CHUNK_SIZE):
     return chunks
 
 
-# --- NEW: Create a requests.Session per API key, each using a different Tor SOCKS proxy ---
 def get_tor_session_for_key_index(key_index):
+    """
+    Create a requests Session that routes through a Tor SOCKS proxy for the given key index.
+
+    Args:
+        key_index (int): Index of the API key, used to determine which Tor port to use.
+
+    Returns:
+        requests.Session: A configured Session object that routes through the appropriate Tor proxy.
+    """
     session = requests.Session()
     tor_port = TOR_BASE_PORT + key_index * TOR_PORT_STEP
     session.proxies = {
@@ -109,19 +131,54 @@ def get_tor_session_for_key_index(key_index):
     session.mount('http://', HTTPAdapter(max_retries=retries))
     return session
 
-# --- NEW: Patch Groq client to use our session ---
 class PatchedGroqClient(groq.Groq):
+    """
+    A patched version of the Groq client that uses a custom session for HTTP requests.
+
+    This allows routing requests through Tor or other proxies.
+    """
     def __init__(self, api_key, session):
+        """
+        Initialize the patched Groq client.
+
+        Args:
+            api_key (str): The Groq API key.
+            session (requests.Session): The session to use for HTTP requests.
+        """
         super().__init__(api_key=api_key)
         self._session = session
 
     def _request(self, method, url, **kwargs):
+        """
+        Override the _request method to use our custom session.
+
+        Args:
+            method (str): HTTP method.
+            url (str): URL to request.
+            **kwargs: Additional keyword arguments for the request.
+
+        Returns:
+            Response: The HTTP response.
+        """
         # Use our session for all HTTP requests
         kwargs.setdefault('timeout', 60)
         return self._session.request(method, url, **kwargs)
 
 
 def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_format=True):
+    """
+    Call the Groq API with automatic key rotation and error handling.
+
+    Args:
+        prompt (str): The user prompt to send to the API.
+        system_content (str): The system message content.
+        temperature (float): The sampling temperature. Defaults to 0.4.
+        max_tokens (int): Maximum number of tokens to generate. Defaults to 300.
+        json_format (bool): Whether to request JSON formatted output. Defaults to True.
+
+    Returns:
+        str: The generated content from the API, or an empty string if all attempts fail.
+    """
     global CURRENT_KEY_INDEX
 
     if len(API_KEYS) == 0:
@@ -218,7 +275,15 @@ def call_groq_api(prompt, system_content, temperature=0.4, max_tokens=300, json_
 
 
 def parse_json_response(response):
-    """Extract JSON data from API response string."""
+    """
+    Extract JSON data from API response string.
+
+    Args:
+        response (str): The API response string.
+
+    Returns:
+        dict: Extracted JSON data as a dictionary, or empty dict if parsing fails.
+    """
     try:
         json_str = re.search(r'\{.*\}', response, re.DOTALL)
         return json.loads(json_str.group()) if json_str else {}
@@ -227,7 +292,17 @@ def parse_json_response(response):
 
 
 def create_prompt(chunk, title_focus=False):
-    """Create analysis prompt based on focus type."""
+    """
+    Create analysis prompt based on focus type.
+
+    Args:
+        chunk (str): Text chunk to analyze.
+        title_focus (bool): If True, focus only on extracting Wikipedia titles.
+                           If False, extract both summary and titles. Defaults to False.
+
+    Returns:
+        str: The prompt to send to the language model.
+    """
     if title_focus:
         return (
             "Analysiere diesen Text und finde exakt passende Wikipedia-Artikeltitel.\n\n"
@@ -247,7 +322,17 @@ def create_prompt(chunk, title_focus=False):
 
 
 def process_text_chunk(chunk, title_focus=False):
-    """Process text chunk to extract summary and Wikipedia titles."""
+    """
+    Process text chunk to extract summary and Wikipedia titles.
+
+    Args:
+        chunk (str): Text chunk to analyze.
+        title_focus (bool): If True, focus only on extracting titles. Defaults to False.
+
+    Returns:
+        tuple: (summary, titles) where summary is a string and titles is a list of strings.
+              If title_focus is True, summary will be an empty string.
+    """
     system_content = "Du bist ein präziser Analyst, der Texte zusammenfasst und relevante Wikipedia-Artikel findet."
     prompt = create_prompt(chunk, title_focus)
 
@@ -258,7 +343,17 @@ def process_text_chunk(chunk, title_focus=False):
 
 
 def process_text_chunks_batch(chunks, max_workers=MAX_WORKERS, title_focus=False):
-    """Process multiple text chunks in parallel."""
+    """
+    Process multiple text chunks in parallel.
+
+    Args:
+        chunks (list): List of text chunks to analyze.
+        max_workers (int): Maximum number of concurrent workers. Defaults to MAX_WORKERS.
+        title_focus (bool): If True, focus only on extracting titles. Defaults to False.
+
+    Returns:
+        tuple: (summaries, titles) where summaries is a list of strings and titles is a list of strings.
+    """
     summaries, titles = [], []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -278,7 +373,16 @@ def process_text_chunks_batch(chunks, max_workers=MAX_WORKERS, title_focus=False
 
 
 def retry_title_extraction(texts, max_attempts=1):
-    """Extract titles with shorter text snippets when initial attempt fails."""
+    """
+    Extract titles with shorter text snippets when initial attempt fails.
+
+    Args:
+        texts (list): List of texts to analyze.
+        max_attempts (int): Maximum number of retry attempts. Defaults to 1.
+
+    Returns:
+        list: List of extracted Wikipedia article titles.
+    """
     all_titles = []
 
     for attempt in range(max_attempts):
@@ -294,8 +398,15 @@ def retry_title_extraction(texts, max_attempts=1):
 
 
 def deduplicate_titles(titles):
-    """Remove similar titles while keeping at least the first 3 entries."""
+    """
+    Remove similar titles while keeping at least the first entries.
 
+    Args:
+        titles (list): List of Wikipedia article titles.
+
+    Returns:
+        list: Deduplicated list of Wikipedia article titles.
+    """
     # Always keep the first 3 titles (most frequent ones)
     result = []
 
@@ -308,7 +419,15 @@ def deduplicate_titles(titles):
 
 
 def generate_final_summary(summaries):
-    """Create final summary from multiple chunk summaries."""
+    """
+    Create final summary from multiple chunk summaries.
+
+    Args:
+        summaries (list): List of summary texts from different chunks.
+
+    Returns:
+        str: A consolidated summary of approximately 4 sentences.
+    """
     if not summaries:
         return "Keine Zusammenfassung verfügbar."
 
@@ -331,7 +450,18 @@ def generate_final_summary(summaries):
 
 
 def process_cluster_texts(texts, chunk_size=CHUNK_SIZE, max_texts=MAX_TEXTS_PER_CLUSTER):
-    """First generate a summary, then use it to extract Wikipedia titles."""
+    """
+    First generate a summary, then use it to extract Wikipedia titles.
+
+    Args:
+        texts (list): List of article texts to process.
+        chunk_size (int): Maximum size of each text chunk. Defaults to CHUNK_SIZE.
+        max_texts (int): Maximum number of texts to process. Defaults to MAX_TEXTS_PER_CLUSTER.
+
+    Returns:
+        tuple: (final_summary, wiki_titles) where final_summary is a string and
+               wiki_titles is a list of Wikipedia article titles.
+    """
     sampled_texts = random.sample(texts, min(len(texts), max_texts))
 
     # Use only the first 7 chunks per article
@@ -365,7 +495,18 @@ def process_cluster_texts(texts, chunk_size=CHUNK_SIZE, max_texts=MAX_TEXTS_PER_
     return final_summary, wiki_titles
 
 def collect_wikipedia_candidates_per_cluster(filtered_df):
-    """Process all clusters to extract Wikipedia titles and summaries using summary-based approach."""
+    """
+    Process all clusters to extract Wikipedia titles and summaries using summary-based approach.
+
+    Args:
+        filtered_df (pd.DataFrame): DataFrame containing cluster data with a 'cluster_id'
+                                   column and 'combined_text' column.
+
+    Returns:
+        tuple: (cluster_candidates, cluster_summaries) where cluster_candidates is a dict
+               mapping cluster IDs to lists of Wikipedia titles, and cluster_summaries
+               is a dict mapping cluster IDs to summary texts.
+    """
     cluster_candidates, cluster_summaries = {}, {}
 
     for cluster_id in sorted(filtered_df["cluster_id"].unique()):
@@ -397,6 +538,16 @@ def collect_wikipedia_candidates_per_cluster(filtered_df):
 
 
 def filter_wikipedia_articles_with_groq(summary_dict, wiki_articles_dict):
+    """
+    Filter Wikipedia articles to keep only those relevant to the cluster summaries.
+
+    Args:
+        summary_dict (dict): Dictionary mapping cluster IDs to summary texts.
+        wiki_articles_dict (dict): Dictionary mapping cluster IDs to lists of Wikipedia article titles.
+
+    Returns:
+        dict: Filtered dictionary mapping cluster IDs to lists of relevant Wikipedia article titles.
+    """
     filtered = {}
     for cluster_id, articles in wiki_articles_dict.items():
         summary = summary_dict.get(cluster_id, "")

@@ -7,6 +7,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 def setup_spacy_model(model_name="de_core_news_md"):
+    """
+    Load a spaCy language model, downloading it if not already available.
+
+    Args:
+        model_name (str): Name of the spaCy model to load. Defaults to "de_core_news_md".
+
+    Returns:
+        spacy.language.Language: The loaded spaCy language model.
+    """
     try:
         nlp = spacy.load(model_name)
     except OSError:
@@ -20,6 +29,26 @@ german_stop_words = list(nlp.Defaults.stop_words)
 def identify_and_save_daily_events_to_df(
     df, max_events=7, similarity_threshold=0.35, min_entity_importance=3, min_articles=2
 ):
+    """
+    Identifies daily events from a dataframe of news articles by clustering similar articles
+    and extracting important entities.
+
+    Args:
+        df (pd.DataFrame): Dataframe containing news articles with 'head', 'content', 'id',
+                          'pubtime', 'medium_name', and optionally 'article_link' columns.
+        max_events (int): Maximum number of events/clusters to identify. Defaults to 7.
+        similarity_threshold (float): Minimum cosine similarity for articles to be considered
+                                     in the same cluster. Defaults to 0.35.
+        min_entity_importance (int): Minimum importance score for entities to consider a
+                                    cluster valid. Defaults to 3.
+        min_articles (int): Minimum number of articles required to form a valid cluster.
+                          Defaults to 2.
+
+    Returns:
+        pd.DataFrame: A dataframe with articles grouped by clusters, containing columns:
+                     'id', 'cluster_id', 'pubtime', 'medium_name', 'article_link',
+                     'head', 'content', and 'combined_text'.
+    """
     article_entities = []
     headline_texts = []
     content_texts = []
