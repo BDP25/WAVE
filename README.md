@@ -65,7 +65,7 @@ Before deploying the project, ensure the following tools are installed on your s
 ### **Accessing the Services**
 
 - **Frontend**: Accessible at `http://localhost:<FRONTEND_PORT>` (default: 5000)
-- **Orchestrator Dashboard**: Accessible at `http://localhost:<DASHBOARD_PORT>` (default: 5050)
+- **Orchestrator Dashboard**: Accessible at `http://localhost:<DASHBOARD_PORT>/admin` (default: 5050)
 - **Redis**: Accessible at `http://localhost:<REDIS_PORT>` (default: 6379)
 
 ---
